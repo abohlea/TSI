@@ -99,6 +99,8 @@ export class FieldTestRoom extends Room<FieldTestState> {
   }
 
   private handleInput(client: Client, payload: unknown): void {
+    const player = this.state.players.get(client.sessionId);
+    if (!player || player.health <= 0) return;
     const lastSequence = this.lastSequences.get(client.sessionId) ?? -1;
     const input = parsePlayerInput(payload, lastSequence);
     if (!input) return;
