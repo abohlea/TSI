@@ -88,7 +88,8 @@ const PLAYER_SPAWN_POINTS: readonly SpawnPosition[] = [
   { x: -2, z: 5 }, { x: 2, z: 5 },
   { x: -2, z: 9 }, { x: 2, z: 9 },
   { x: -6, z: 5 }, { x: 6, z: 5 },
-  { x: -6, z: 9 }, { x: 6, z: 9 }
+  { x: -6, z: 9 }, { x: 6, z: 9 },
+  { x: -10, z: 5 }, { x: 10, z: 5 }
 ];
 
 /** Finds a walkable spawn point that is not occupied by another player. */
