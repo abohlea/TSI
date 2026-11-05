@@ -61,6 +61,7 @@ const player = createPlayer(app);
 const input = new GameInput(canvas);
 const hud = createHud();
 const network = new TsiNetworkClient();
+const selectedRoom = new URLSearchParams(window.location.search).get('mode') === 'teams' ? 'team_match' : 'field_test';
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
@@ -283,6 +284,18 @@ connectButton?.addEventListener('click', async () => {
         hud.setAmmo(ammo, reserve);
         hud.setScore(kills, arena.targets.length);
       },
+      onTeamWelcome(team) {
+        hud.toast('ÉQUIPE ' + team.toUpperCase() + ' · MODE 5V5');
+      },
+      onTeamMatchState(state) {
+        if (state.phase === 'active') {
+          hud.toast('MANCHE ' + state.round + '/3 · ALPHA ' + state.matchScore.alpha + ' — BRAVO ' + state.matchScore.bravo);
+        } else if (state.phase === 'intermission') {
+          hud.toast('MANCHE SUIVANTE · ' + Math.ceil(state.remainingMs / 1000) + ' s');
+        } else if (state.winner) {
+          hud.toast('VICTOIRE ÉQUIPE ' + state.winner.toUpperCase());
+        }
+      },
       onMatchState(state) {
         if (state.phase === 'countdown') hud.toast('MATCH DANS ' + Math.max(1, Math.ceil(state.remainingMs / 1000)) + ' s');
         else if (state.phase === 'active') hud.toast('MATCH LANCÉ · PREMIER À ' + state.scoreLimit);
@@ -303,7 +316,7 @@ connectButton?.addEventListener('click', async () => {
         else if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
       },
       onSnapshot: applyNetworkSnapshot
-    }, isFirebaseConfigured() && hasFirebaseUser() ? getFirebaseIdToken : undefined);
+    }, isFirebaseConfigured() && hasFirebaseUser() ? getFirebaseIdToken : undefined, selectedRoom);
     setStarted();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erreur de connexion au serveur local.';
