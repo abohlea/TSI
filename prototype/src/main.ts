@@ -321,7 +321,8 @@ app.on('update', (dt: number) => {
     const speed = drivingVehicle ? (controls.sprint ? 15 : 10) : (controls.sprint ? 8.2 : 5.2);
     movingForAnimation = moveLength > 0.01 && !drivingVehicle;
     sprintingForAnimation = controls.sprint && !drivingVehicle;
-    vehicleSteering += ((drivingVehicle && moveLength > 0.01) ? clamp(controls.moveX, -1, 1) * 28 : 0 - vehicleSteering) * Math.min(1, dt * 7);
+    const steeringTarget = drivingVehicle && moveLength > 0.01 ? clamp(controls.moveX, -1, 1) * 28 : 0;
+    vehicleSteering += (steeringTarget - vehicleSteering) * Math.min(1, dt * 7);
     arena.steeringWheel.setLocalEulerAngles(90, 0, vehicleSteering);
     if (drivingVehicle && moveLength > 0.01) {
       vehicleWheelRotation += speed * dt * 42 * (controls.moveY >= 0 ? 1 : -1);
