@@ -170,11 +170,18 @@ def build():
     E("head_proxy",(0,0,1.77),(.13,.13,.17),SKIN,"head")
     E("helmet",(0,0,1.88),(.17,.17,.12),GRAPH,"head")
     B("helmet_front",(0,-.145,1.86),(.18,.025,.045),STEEL,"head",.012)
+    B("helmet_brow",(0,-.153,1.825),(.205,.018,.018),GRAPH,"head",.006)
     B("visor",(0,-.137,1.79),(.19,.018,.065),BLUE,"head",.012)
+    B("helmet_rear_rail",(0,.145,1.84),(.16,.018,.035),STEEL,"head",.008)
+    E("neck_seal",(0,0,1.665),(.125,.13,.045),FAB,"neck")
     E("jaw_guard",(0,-.105,1.69),(.115,.055,.055),GRAPH,"head")
     B("respirator_core",(0,-.158,1.715),(.085,.025,.045),STEEL,"head",.012)
     for side,sign in (("L",1),("R",-1)):
         E("cheek_guard_"+side,(0,sign*.105,1.72),(.075,.035,.065),GRAPH,"head")
+        B("cheek_vent_"+side,(.018,sign*.135,1.72),(.038,.009,.022),STEEL,"head",.004)
+        E("respirator_filter_"+side,(.018,-.174,1.714),(.027,.018,.027),GRAPH,"head")
+        E("respirator_filter_cap_"+side,(.018,-.19,1.714),(.014,.006,.014),ORANGE,"head")
+        E("helmet_bolt_"+side,(-.035,sign*.158,1.86),(.012,.009,.012),ORANGE,"head")
         E("comms_earcup_"+side,(0,sign*.145,1.82),(.045,.035,.055),STEEL,"head")
         B("comms_orange_"+side,(.012,sign*.176,1.82),(.025,.012,.018),ORANGE,"head",.004)
     # legs, kneepads and boots
