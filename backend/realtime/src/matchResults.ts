@@ -38,8 +38,11 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
     }
   }
 
-  const ranked = [...participants].sort((a, b) => b.kills - a.kills || b.score - a.score);
-  const winnerUid = ranked.length > 1 && ranked[0]!.kills > ranked[1]!.kills ? ranked[0]!.uid : null;
+  const ranked = [...participants].sort((a, b) => b.score - a.score || b.kills - a.kills);
+  const winnerUid = ranked.length > 0 && (
+    ranked.length === 1 || ranked[0]!.score > ranked[1]!.score ||
+    (ranked[0]!.score === ranked[1]!.score && ranked[0]!.kills > ranked[1]!.kills)
+  ) ? ranked[0]!.uid : null;
   const db = getFirestore(getFirebaseAdminApp());
   const matchRef = db.doc('matchSummaries/' + input.matchId);
   const statsRefs = participants.map((participant) => ({
