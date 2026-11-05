@@ -1,6 +1,6 @@
 # TSI — mode équipes 5v5 et manches successives
 
-## Règles serveur préparées
+## Règles serveur
 
 Le module `backend/realtime/src/teamRounds.ts` contient le noyau de règles déterministes pour le mode équipes :
 
@@ -18,15 +18,21 @@ Les paramètres de durée et le score cible sont configurables via `TeamMatchCon
 
 ## Statut d'intégration
 
-**Noyau de règles implémenté, intégration Colyseus/client non terminée.** Le mode actuellement exposé par `FieldTestRoom` reste FFA. Le module est une première livraison testable isolément ; il ne faut pas encore présenter le 5v5 comme jouable.
+**Le mode équipes est désormais branché à une room Colyseus dédiée.** Le mode FFA historique reste disponible dans `field_test`; le mode équipes est exposé dans `team_match`. Le prototype rejoint ce mode avec le paramètre URL `?mode=teams`.
 
-Avant d'activer le mode dans le matchmaking, il faut :
-1. augmenter et valider la capacité de room à dix joueurs ;
-2. transmettre le mode demandé et assigner chaque joueur à une équipe côté serveur ;
-3. interdire les tirs alliés et comptabiliser les éliminations dans le score d'équipe ;
-4. synchroniser équipe, manche, scores et compte à rebours aux clients ;
-5. réinitialiser santé, munitions, positions et états à chaque nouvelle manche ;
-6. persister le résultat final et couvrir les déconnexions/reconnexions ;
-7. ajouter des tests d'intégration avec plusieurs clients Colyseus.
+La room équipes comprend :
+- capacité maximale de dix joueurs et affectation alpha/bravo équilibrée ;
+- tirs validés par le serveur, avec coéquipiers exclus des cibles ;
+- score d'équipe, fin de manche sur cinq éliminations ou à trois minutes ;
+- intermission de huit secondes, reset des opérateurs et meilleur des trois ;
+- diffusion de l'équipe, du numéro de manche, des scores et du compte à rebours ;
+- sauvegarde Firestore idempotente du résultat final, de l'équipe gagnante et des manches gagnées.
 
-Les règles sont couvertes par `backend/realtime/tests/teamRounds.test.ts`. La CI doit confirmer le typecheck et les tests avant de déclarer ce noyau validé.
+Les tests unitaires du noyau de règles sont dans `backend/realtime/tests/teamRounds.test.ts`. Un test Firestore Emulator couvre aussi la persistance des vainqueurs d'équipe et l'idempotence.
+
+## Limites restantes avant production
+
+- Les tests multi-clients Colyseus, la reconnexion après déconnexion et les essais de charge restent à faire.
+- L'équilibrage se fait à l'entrée dans la room ; il ne réaffecte pas les joueurs déjà connectés.
+- Le client affiche les événements de manches par notifications HUD ; un tableau de score d'équipe permanent et un écran de fin de match dédié restent à produire.
+- La room est une première intégration jouable de validation, pas encore un matchmaking public de production.
