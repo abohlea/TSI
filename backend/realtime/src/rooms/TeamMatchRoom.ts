@@ -4,6 +4,7 @@ import { clamp, isRecord } from '../types.js';
 import { parsePlayerInput } from '../validation.js';
 import { consumeSessionTicket } from '../sessionTickets.js';
 import { persistMatchResult, type MatchParticipantResult } from '../matchResults.js';
+import { saveMatchCheckpoint } from '../matchJournal.js';
 import {
   advanceTeamMatch,
   assignBalancedTeam,
@@ -60,6 +61,7 @@ export class TeamMatchRoom extends Room {
   private readonly matchStartedAt = Date.now();
   private readonly reloadEnds = new Map<string, number>();
   private persistenceStarted = false;
+  private checkpointQueue: Promise<void> = Promise.resolve();
   private lastClockBroadcastAt = 0;
 
   override onCreate(): void {
@@ -109,6 +111,7 @@ export class TeamMatchRoom extends Room {
     client.send('team-match-state', this.matchPayload());
     this.broadcastPlayers();
     this.broadcastMatchState();
+    this.queueCheckpoint();
   }
 
   override onLeave(client: Client): void {
@@ -165,6 +168,7 @@ export class TeamMatchRoom extends Room {
           respawnAt: victim.respawnAt
         });
         this.advanceAndBroadcast(now);
+        this.queueCheckpoint();
       }
     }
     client.send('team-shot', { accepted: true, hit: result.hit, eliminated: result.eliminated });
@@ -232,6 +236,7 @@ export class TeamMatchRoom extends Room {
     if (this.match !== previous) {
       if (this.match.phase === 'active' && previous.phase === 'intermission') this.resetRound();
       this.broadcastMatchState();
+      this.queueCheckpoint();
       if (this.match.phase === 'finished') {
         this.broadcast('team-match-ended', this.matchPayload());
         void this.persistResult();
@@ -285,15 +290,36 @@ export class TeamMatchRoom extends Room {
     client.send('team-self', { ammo: player.ammo, reserve: player.reserve, score: player.score });
   }
 
+
+  private queueCheckpoint(): void {
+    if (this.participants.size === 0 || this.match.phase === 'finished') return;
+    const checkpoint = {
+      matchId: this.roomId,
+      mode: 'field-test-teams' as const,
+      startedAt: this.matchStartedAt,
+      participants: [...this.participants.values()].map((participant) => ({ ...participant })),
+      teamWins: { ...this.match.roundWins }
+    };
+    this.checkpointQueue = this.checkpointQueue
+      .then(() => saveMatchCheckpoint(checkpoint))
+      .catch((error) => {
+        console.error('[TSI] Failed to checkpoint team match:', error);
+      });
+  }
+
   private async persistResult(): Promise<void> {
     if (this.persistenceStarted || this.participants.size === 0 || this.match.phase !== 'finished') return;
     this.persistenceStarted = true;
     try {
+      await this.checkpointQueue;
       await persistMatchResult({
         matchId: this.roomId, mode: 'field-test-teams', startedAt: this.matchStartedAt,
         endedAt: Date.now(), participants: [...this.participants.values()],
         winnerTeam: this.match.winner, teamWins: this.match.roundWins
       });
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const { getFirebaseAdminApp } = await import('../firebaseAuth.js');
+      await getFirestore(getFirebaseAdminApp()).doc('activeMatchCheckpoints/' + this.roomId).delete();
     } catch (error) {
       this.persistenceStarted = false;
       console.error('[TSI] Failed to persist team match result:', error);
