@@ -28,13 +28,16 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
   }
   const participants = input.participants;
   if (participants.length === 0) return false;
-  if (participants.length > 8) throw new Error('Too many match participants.');
+  const participantLimit = input.mode === 'field-test-teams' ? 10 : 8;
+  if (participants.length > participantLimit) throw new Error('Too many match participants.');
 
   const seen = new Set<string>();
   for (const participant of participants) {
     if (!participant.uid || participant.uid.length > 128 || seen.has(participant.uid)) {
       throw new Error('Invalid or duplicate match participant.');
     }
+    if (participant.team !== undefined && participant.team !== 'alpha' && participant.team !== 'bravo') throw new Error('Invalid participant team.');
+    if (input.mode === 'field-test-teams' && !participant.team) throw new Error('Team participant is missing a team.');
     seen.add(participant.uid);
     for (const value of [participant.score, participant.kills, participant.deaths, participant.joinedAt]) {
       if (!Number.isSafeInteger(value) || value < 0) throw new Error('Invalid match participant statistics.');
@@ -73,6 +76,7 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
         score: participant.score,
         kills: participant.kills,
         deaths: participant.deaths,
+        ...(participant.team ? { team: participant.team } : {}),
         joinedAt: Timestamp.fromMillis(participant.joinedAt)
       })),
       createdAt: FieldValue.serverTimestamp()
