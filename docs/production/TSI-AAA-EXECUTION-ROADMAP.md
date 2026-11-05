@@ -54,6 +54,15 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Commit `34b8fd8287fdfc8a25b892ae609218e6fe530984` : tests de portée maximale, cibles inactives et exclusion des joueurs déjà éliminés.
 - Ces tests sont ajoutés au code ; leur passage doit être confirmé par une exécution CI après ces commits avant d'être déclarés validés.
 
+### Complément P5 — authentification Firebase du serveur (5 novembre 2026)
+- Ajout de `firebase-admin@14.5.0` au serveur Colyseus (Node.js 22+).
+- Le join en production exige désormais un Firebase Authentication ID token ; le serveur le vérifie via Firebase Admin avec contrôle de révocation.
+- Le projet Firebase est fourni par `FIREBASE_PROJECT_ID` et les identifiants doivent venir d'Application Default Credentials / workload identity du runtime. Aucun fichier de clé de service n'est commité.
+- Le jeton local reste limité au développement ; la configuration production refuse son activation.
+- Tests ajoutés pour rejeter les tokens manifestement malformés avant initialisation des credentials.
+- Limites : aucun ticket de session court à usage unique, aucun compte Firebase client configuré dans le prototype, aucune écriture de progression/résultat depuis le backend, aucun déploiement ou test avec un vrai projet Firebase. Cette étape est une intégration de code, pas une mise en service production.
+- Commits : `bce0628` (dépendance), `63fb65b` (vérification), `c7ddeb7` (join), `e22c750` (configuration production), `85e9fcf` (tests), `5657215` (documentation).
+
 ## 2. Périmètre prioritaire : vertical slice
 
 Ne pas produire simultanément tous les modes. Le premier objectif de production est une tranche jouable complète qui prouve la qualité de bout en bout :
