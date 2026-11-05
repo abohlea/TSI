@@ -38,6 +38,7 @@ before(async () => {
     await setDoc(doc(db, 'inventories/alice/items/skin-01'), { itemDefinitionId: 'skin-01', quantity: 1 });
     await setDoc(doc(db, 'progression/alice'), { level: 4, experience: 1200 });
     await setDoc(doc(db, 'seasons/season-01'), { status: 'active' });
+    await setDoc(doc(db, 'playerStats/alice'), { uid: 'alice', matchesPlayed: 2, kills: 5 });
     await setDoc(doc(db, 'matchSummaries/match-alice'), {
       participantUids: ['alice'],
       winnerUid: 'alice',
@@ -138,4 +139,13 @@ test('all reads and writes are denied to unauthenticated clients', async () => {
   await assertFails(getDoc(doc(db, 'seasons/season-01')));
   await assertFails(getDoc(doc(db, 'playerProfiles/alice')));
   await assertFails(setDoc(doc(db, 'users/anonymous'), { displayName: 'Anonymous' }));
+});
+
+test('player statistics are readable only by their owner and immutable by clients', async () => {
+  const aliceDb = environment.authenticatedContext('alice').firestore();
+  const bobDb = environment.authenticatedContext('bob').firestore();
+  await assertSucceeds(getDoc(doc(aliceDb, 'playerStats/alice')));
+  await assertFails(getDoc(doc(bobDb, 'playerStats/alice')));
+  await assertFails(setDoc(doc(aliceDb, 'playerStats/alice'), { kills: 999 }));
+  await assertFails(getDocs(collection(aliceDb, 'playerStats')));
 });
