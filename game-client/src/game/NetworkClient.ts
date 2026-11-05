@@ -55,9 +55,9 @@ export class TsiFieldTestConnection implements NetworkPort {
       } else {
         this.addRemotePlayer(sessionId, player.x, player.z, player.yaw);
       }
-      callbacks.listen(player, "x", (value) => this.updatePlayerPosition(sessionId, player, value, player.z, player.yaw));
-      callbacks.listen(player, "z", (value) => this.updatePlayerPosition(sessionId, player, player.x, value, player.yaw));
-      callbacks.listen(player, "yaw", (value) => this.updatePlayerPosition(sessionId, player, player.x, player.z, value));
+      callbacks.listen(player, "x", () => this.updatePlayerView(sessionId, player));
+      callbacks.listen(player, "z", () => this.updatePlayerView(sessionId, player));
+      callbacks.listen(player, "yaw", () => this.updatePlayerView(sessionId, player));
     });
     callbacks.onRemove("players", (_player, sessionId) => this.removeRemotePlayer(sessionId));
 
@@ -126,26 +126,21 @@ export class TsiFieldTestConnection implements NetworkPort {
     this.remotePlayers.set(sessionId, root);
   }
 
-  private updatePlayerPosition(
+  private updatePlayerView(
     sessionId: string,
-    player: { x: number; z: number; yaw: number },
-    changedValue: number,
-    x: number,
-    z: number,
-    yaw: number
+    player: { x: number; z: number; yaw: number }
   ): void {
-    if (!Number.isFinite(changedValue)) return;
     if (sessionId === this.room?.sessionId) {
       this.controller?.reconcileServerPosition(player.x, player.z, player.yaw);
       return;
     }
     const remote = this.remotePlayers.get(sessionId);
     if (!remote) {
-      this.addRemotePlayer(sessionId, x, z, yaw);
+      this.addRemotePlayer(sessionId, player.x, player.z, player.yaw);
       return;
     }
-    remote.setPosition(x, 1.0, z);
-    remote.setEulerAngles(0, yaw, 0);
+    remote.setPosition(player.x, 1.0, player.z);
+    remote.setEulerAngles(0, player.yaw, 0);
   }
 
   private applyTarget(id: number, x: number, z: number, health: number, active: boolean): void {
