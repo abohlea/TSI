@@ -6,9 +6,14 @@ if (process.env.NODE_ENV === "production") {
   throw new Error("The TSI Field Test server is local-development only; production startup is blocked.");
 }
 
-const token = process.env.TSI_LOCAL_DEV_TOKEN;
-if (!token || token.length < 24) {
-  throw new Error("Set TSI_LOCAL_DEV_TOKEN to a private random value of at least 24 characters.");
+if (!process.env.FIREBASE_PROJECT_ID?.trim()) {
+  throw new Error("Set FIREBASE_PROJECT_ID to the shared Firebase project or emulator project ID.");
+}
+if (!process.env.FIREBASE_AUTH_EMULATOR_HOST) {
+  throw new Error("Set FIREBASE_AUTH_EMULATOR_HOST for local development; do not use production Auth credentials in this test server.");
+}
+if (!process.env.FIRESTORE_EMULATOR_HOST) {
+  throw new Error("Set FIRESTORE_EMULATOR_HOST for local development; do not write test profiles to production Firestore.");
 }
 
 const port = Number.parseInt(process.env.PORT ?? "2567", 10);
