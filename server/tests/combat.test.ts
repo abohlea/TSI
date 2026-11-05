@@ -53,16 +53,16 @@ test("three server-resolved hits eliminate a player and expose the respawn delay
   const third = resolveAuthoritativeHit(0, 4, 0, "shooter", targets, [victim], noBlockers);
 
   assert.equal(first.kind, "player");
-  assert.equal(first.eliminated, false);
+  assert.equal(first.kind === "player" && first.eliminated, false);
   assert.equal(second.kind, "player");
-  assert.equal(second.eliminated, false);
+  assert.equal(second.kind === "player" && second.eliminated, false);
   assert.deepEqual(third, { kind: "player", sessionId: "victim", eliminated: true });
   assert.equal(victim.health, 0);
   assert.equal(PLAYER_RESPAWN_SECONDS, 4);
 });
 
 test("an obstacle blocks a shot before it reaches the opponent", () => {
-  const victim = player( "victim", 0, -12);
+  const victim = player("victim", 0, -12);
   const blocker = { minX: -2, maxX: 2, minZ: -6, maxZ: -4 };
 
   const result = resolveAuthoritativeHit(0, 4, 0, "shooter", [], [victim], [blocker]);
