@@ -2,7 +2,8 @@ import * as pc from 'playcanvas';
 import { createArena } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
-import { createPlayer } from './game/player';
+import { createPlayer, createRemotePlayer } from './game/player';
+import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { createHud } from './ui/hud';
 import './style.css';
 
@@ -57,12 +58,24 @@ const arena = createArena(app);
 const player = createPlayer(app);
 const input = new GameInput(canvas);
 const hud = createHud();
+const network = new TsiNetworkClient();
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
+const connectButton = document.getElementById('connect-button') as HTMLButtonElement | null;
+const connectionStatus = document.getElementById('connection-status');
 const touchControls = document.getElementById('touch-controls');
 const mobileLike = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
 if (touchControls && mobileLike) touchControls.classList.add('active');
+
+const serverUrl = import.meta.env.VITE_TSI_SERVER_URL ?? 'http://localhost:2567';
+const localDevToken = import.meta.env.VITE_TSI_LOCAL_DEV_TOKEN ?? '';
+if (connectButton && (!serverUrl || localDevToken.length < 24)) {
+  connectButton.disabled = true;
+  if (connectionStatus) {
+    connectionStatus.textContent = 'Serveur non configuré · voir prototype/.env.example';
+  }
+}
 
 let active = false;
 let yaw = 0;
@@ -74,7 +87,9 @@ let shotCooldown = 0;
 let reloadTimer = 0;
 let fpsAccumulator = 0;
 let fpsFrames = 0;
+let networkSendAccumulator = 0;
 const playerRadius = 0.58;
+const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -137,13 +152,66 @@ function updateTargets(now: number): void {
   }
 }
 
+function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
+  const visibleRemoteIds = new Set<string>();
+
+  for (const remote of snapshot.players) {
+    if (remote.playerId === network.playerId) continue;
+    visibleRemoteIds.add(remote.playerId);
+
+    let view = remotePlayers.get(remote.playerId);
+    if (!view) {
+      const root = createRemotePlayer(app, remote.playerId);
+      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw };
+      remotePlayers.set(remote.playerId, view);
+    }
+
+    view.targetX = remote.x;
+    view.targetZ = remote.z;
+    view.targetYaw = remote.yaw;
+  }
+
+  for (const [id, view] of remotePlayers) {
+    if (visibleRemoteIds.has(id)) continue;
+    view.root.destroy();
+    remotePlayers.delete(id);
+  }
+}
+
 function setStarted(): void {
   active = true;
   startOverlay?.classList.add('hidden');
   if (!mobileLike) void canvas.requestPointerLock?.();
-  hud.toast('TERRAIN ACTIF · BONNE CHANCE');
+  hud.toast(network.connected ? 'SESSION LOCALE CONNECTÉE' : 'TERRAIN LOCAL ACTIF');
 }
+
 startButton?.addEventListener('click', setStarted);
+
+connectButton?.addEventListener('click', async () => {
+  if (!connectionStatus || !connectButton) return;
+  connectButton.disabled = true;
+
+  try {
+    await network.connect(serverUrl, localDevToken, {
+      onStatus(message) {
+        connectionStatus.textContent = message;
+        if (!network.connected && message.startsWith('Connexion fermée')) {
+          connectButton.disabled = false;
+        }
+      },
+      onWelcome(_playerId, spawn) {
+        player.root.setPosition(spawn.x, 0.04, spawn.z);
+      },
+      onSnapshot: applyNetworkSnapshot
+    });
+    setStarted();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Erreur de connexion au serveur local.';
+    connectionStatus.textContent = message;
+    connectButton.disabled = false;
+    hud.toast('CONNEXION AU SERVEUR IMPOSSIBLE');
+  }
+});
 
 app.on('update', (dt: number) => {
   shotCooldown = Math.max(0, shotCooldown - dt);
@@ -171,11 +239,13 @@ app.on('update', (dt: number) => {
     const moveX = rightX * controls.moveX + forwardX * controls.moveY;
     const moveZ = rightZ * controls.moveX + forwardZ * controls.moveY;
     const moveLength = Math.hypot(moveX, moveZ);
+    const normalizedX = moveLength > 1 ? moveX / moveLength : moveX;
+    const normalizedZ = moveLength > 1 ? moveZ / moveLength : moveZ;
     const speed = controls.sprint ? 8.2 : 5.2;
 
     if (moveLength > 0.01) {
-      const stepX = (moveX / moveLength) * speed * dt;
-      const stepZ = (moveZ / moveLength) * speed * dt;
+      const stepX = normalizedX * speed * dt;
+      const stepZ = normalizedZ * speed * dt;
       const current = player.root.getPosition().clone();
       const nextX = current.x + stepX;
       const nextZ = current.z + stepZ;
@@ -187,6 +257,23 @@ app.on('update', (dt: number) => {
 
     if (controls.reload) reload();
     if (controls.shoot) fire();
+
+    if (network.connected) {
+      networkSendAccumulator += dt;
+      if (networkSendAccumulator >= 0.05) {
+        network.sendInput({ moveX: normalizedX, moveZ: normalizedZ, yaw, sprint: controls.sprint });
+        networkSendAccumulator %= 0.05;
+      }
+    }
+  }
+
+  const remoteBlend = 1 - Math.exp(-12 * dt);
+  for (const view of remotePlayers.values()) {
+    const current = view.root.getPosition();
+    const nextX = current.x + (view.targetX - current.x) * remoteBlend;
+    const nextZ = current.z + (view.targetZ - current.z) * remoteBlend;
+    view.root.setPosition(nextX, 0.04, nextZ);
+    view.root.setEulerAngles(0, view.targetYaw, 0);
   }
 
   const position = player.root.getPosition();
@@ -210,5 +297,9 @@ app.on('update', (dt: number) => {
   }
 });
 
-window.addEventListener('beforeunload', () => input.destroy(), { once: true });
+window.addEventListener('beforeunload', () => {
+  input.destroy();
+  void network.disconnect();
+}, { once: true });
+
 app.start();
