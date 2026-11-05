@@ -128,6 +128,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     if (!isRecord(payload)) return;
     const { sequence, moveX, moveZ, yaw } = payload;
     if (
+      !finiteNumber(sequence) ||
       !Number.isSafeInteger(sequence) ||
       !finiteNumber(moveX) ||
       !finiteNumber(moveZ) ||
@@ -168,8 +169,8 @@ export class FieldTestRoom extends Room<FieldTestState> {
     let nearest: TargetState | null = null;
     let nearestDistance = 70;
 
-    this.state.targets.forEach((target) => {
-      if (!target.active) return;
+    for (const target of this.state.targets.values()) {
+      if (!target.active) continue;
       const dx = target.x - player.x;
       const dz = target.z - player.z;
       const along = dx * forwardX + dz * forwardZ;
@@ -178,10 +179,10 @@ export class FieldTestRoom extends Room<FieldTestState> {
         nearest = target;
         nearestDistance = along;
       }
-    });
+    }
 
     if (nearest) {
-      const target = nearest as TargetState;
+      const target = nearest;
       target.health = Math.max(0, target.health - 34);
       if (target.health === 0) {
         target.active = false;
