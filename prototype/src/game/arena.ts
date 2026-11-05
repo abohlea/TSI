@@ -19,6 +19,8 @@ export interface PracticeTarget {
 export interface ArenaApi {
   targets: PracticeTarget[];
   obstacles: ArenaObstacle[];
+  vehicle: pc.Entity;
+  doors: pc.Entity[];
 }
 
 function material(color: pc.Color, options: { metalness?: number; roughness?: number; emissive?: pc.Color } = {}): pc.StandardMaterial {
@@ -75,6 +77,7 @@ export function createArena(app: pc.Application): ArenaApi {
   primitive(app.root, 'lane-mark-right', 'box', new pc.Vec3(7.7, 0.025, -18), new pc.Vec3(0.15, 0.03, 58), orange);
 
   const obstacles: ArenaObstacle[] = [];
+  const doors: pc.Entity[] = [];
   const buildings = [
     { x: -20, z: -12, w: 12, d: 16, h: 7 },
     { x: 20, z: -14, w: 13, d: 17, h: 9 },
@@ -92,7 +95,7 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'signal-panel', 'box', new pc.Vec3(0, 0.5, building.d / 2 + 0.035), new pc.Vec3(1.8, 0.7, 0.08), orange);
     // Facade details: recessed entrance, lintel, windows, sills and corner columns.
     const doorWidth = Math.min(1.7, building.w * 0.22);
-    primitive(root, 'entrance-door', 'box', new pc.Vec3(0, -building.h * 0.29, building.d / 2 + 0.055), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
+    const door = new pc.Entity('interactive-entrance-door');\n    door.setLocalPosition(-doorWidth / 2, -building.h * 0.29, building.d / 2 + 0.055);\n    root.addChild(door);\n    primitive(door, 'door-panel', 'box', new pc.Vec3(doorWidth / 2, 0, 0), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);\n    doors.push(door);
     primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
     primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
     const windowY = Math.min(building.h * 0.18, 1.55);
@@ -282,5 +285,5 @@ export function createArena(app: pc.Application): ArenaApi {
     target: targetSurface, accent: orange, dark
   }));
 
-  return { targets, obstacles };
+  return { targets, obstacles, vehicle: truck, doors };
 }
