@@ -9,7 +9,7 @@
 1. Le premier cas d'usage est l'avatar de joueur uniquement.
 2. Le client envoie un Firebase ID token au Media API TSI local.
 3. Le serveur vérifie le token avec Firebase Admin et contrôle le statut actif du compte.
-4. Le serveur génère un `public_id` unique sous `tsi/players/{uid}/avatars/` et signe les paramètres Cloudinary avec le SDK Node.js.
+4. Le serveur génère un `public_id` unique sous `tsi/players/{uid-encodé}/avatars/` et signe les paramètres Cloudinary avec le SDK Node.js.
 5. Le client téléverse le fichier directement vers l'Upload API Cloudinary ; les octets ne transitent pas par le serveur de jeu.
 6. Après l'upload, le serveur interroge l'API Admin Cloudinary, vérifie l'asset et enregistre ses identifiants et son URL HTTPS dans `playerProfiles/{uid}.avatar`.
 7. Le secret API Cloudinary reste dans l'environnement serveur. Le client ne reçoit que Cloud name, API Key et signature temporaire.
@@ -19,20 +19,20 @@
 
 - Ressource : `image`.
 - Formats : JPG, JPEG, PNG et WebP.
-- Taille maximum : 5 Mio.
-- Dimensions maximum : 4096 × 4096.
-- Upload preset requis : signé, avec mêmes restrictions.
-- Préfixe de stockage : `tsi/players/{uid}/avatars/`.
+- Taille maximale enregistrée dans le profil : 5 Mio.
+- Dimensions maximales enregistrées : 4096 × 4096.
+- Upload preset requis : signé, avec `allowed_formats` restreint aux formats autorisés.
+- Préfixe de stockage : `tsi/players/{uid-encodé}/avatars/`.
 - Limite de signature : 8 par joueur et par minute dans le processus local.
 - Origines Web autorisées : localhost et 127.0.0.1 sur le port Vite 5173 par défaut.
 
-Les contrôles du navigateur sont ergonomiques uniquement. Le preset et la validation côté serveur constituent les contrôles effectifs. Le serveur ne fait pas confiance aux URL ou métadonnées déclarées par le client.
+**Limite importante :** Cloudinary précise que les upload presets ne prennent pas en charge une limite de taille de fichier par preset. La limite de 5 Mio est donc vérifiée côté client pour l'ergonomie puis après upload côté serveur avant écriture dans Firestore. Le serveur tente de supprimer un asset invalide, mais le transfert a déjà eu lieu et peut avoir consommé des crédits. Un upload direct ne constitue pas une garantie de dépense maximale ; il faut un proxy à taille bornée ou un contrôle d'upload équivalent avant production.
 
 ## Raisons
 
 - Le secret API ne quitte jamais le serveur.
 - Les fichiers n'occupent pas la bande passante du serveur de partie.
-- Les répertoires sont isolés par UID Firebase.
+- Les répertoires sont isolés par UID Firebase sans supposer le format de l'UID.
 - Une vérification Admin Cloudinary est faite avant d'écrire la référence dans Firestore.
 - Les métadonnées stockées dans Firestore restent petites ; les fichiers binaires restent dans Cloudinary.
 
