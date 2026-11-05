@@ -44,6 +44,27 @@ interface ResponseLike {
 const ticketRequests = new Map<string, { count: number; resetAt: number }>();
 const TICKET_RATE_LIMIT = 10;
 const TICKET_RATE_WINDOW_MS = 60_000;
+const TICKET_RATE_MAX_IPS = 20_000;
+
+function allowTicketRequest(ip: string, now = Date.now()): boolean {
+  const bucket = ticketRequests.get(ip);
+  if (bucket && bucket.resetAt > now) {
+    if (bucket.count >= TICKET_RATE_LIMIT) return false;
+    bucket.count += 1;
+    return true;
+  }
+
+  // Bound memory use if requests arrive from many distinct source addresses.
+  if (!bucket && ticketRequests.size >= TICKET_RATE_MAX_IPS) {
+    for (const [key, entry] of ticketRequests) {
+      if (entry.resetAt <= now) ticketRequests.delete(key);
+    }
+  }
+  if (!bucket && ticketRequests.size >= TICKET_RATE_MAX_IPS) return false;
+
+  ticketRequests.set(ip, { count: 1, resetAt: now + TICKET_RATE_WINDOW_MS });
+  return true;
+}
 
 const server = defineServer({
   devMode: !isProduction,
@@ -90,15 +111,9 @@ const server = defineServer({
       }
       const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
       const now = Date.now();
-      const bucket = ticketRequests.get(ip);
-      if (bucket && bucket.resetAt > now && bucket.count >= TICKET_RATE_LIMIT) {
+      if (!allowTicketRequest(ip, now)) {
         response.status(429).json({ error: 'Too many session-ticket requests.' });
         return;
-      }
-      if (!bucket || bucket.resetAt <= now) {
-        ticketRequests.set(ip, { count: 1, resetAt: now + TICKET_RATE_WINDOW_MS });
-      } else {
-        bucket.count += 1;
       }
 
       const authorization = req.headers.authorization;
