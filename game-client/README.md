@@ -1,6 +1,6 @@
 # Ancien client TSI — référence historique
 
-<badge>ARCHIVÉ — NE PAS ÉTENDRE</badge>
+> **ARCHIVÉ — NE PAS ÉTENDRE**
 
 Ce dossier contient une ancienne implémentation PlayCanvas conservée pour consultation et récupération ciblée de code.
 
