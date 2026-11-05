@@ -1,6 +1,11 @@
 import { Client, Room } from "colyseus";
 import { FieldTestState, PlayerState, TargetState } from "../schema/FieldTestState.js";
-import { movePlayer, parsePlayerInput, type PlayerInput } from "../gameRules.js";
+import { movePlayer, parsePlayerInput, WORLD_BLOCKERS, type PlayerInput } from "../gameRules.js";
+import {
+  PLAYER_RESPAWN_SECONDS,
+  resolveAuthoritativeHit,
+  type CombatPlayer
+} from "../combat.js";
 
 interface SpawnPoint {
   x: number;
@@ -39,6 +44,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
   private readonly lastShots = new Map<string, number>();
   private readonly reloadEnds = new Map<string, number>();
   private readonly targetRespawns = new Map<number, number>();
+  private readonly playerRespawns = new Map<string, number>();
 
   onCreate(): void {
     if (process.env.NODE_ENV === "production") {
@@ -89,6 +95,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.lastSequences.delete(client.sessionId);
     this.lastShots.delete(client.sessionId);
     this.reloadEnds.delete(client.sessionId);
+    this.playerRespawns.delete(client.sessionId);
   }
 
   private handleInput(client: Client, payload: unknown): void {
@@ -100,47 +107,74 @@ export class FieldTestRoom extends Room<FieldTestState> {
   }
 
   private handleFire(client: Client): void {
-    const player = this.state.players.get(client.sessionId);
-    if (!player || player.ammo <= 0 || this.reloadEnds.has(client.sessionId)) return;
+    const shooter = this.state.players.get(client.sessionId);
+    if (!shooter || shooter.health <= 0 || shooter.ammo <= 0 || this.reloadEnds.has(client.sessionId)) return;
 
     const now = this.state.elapsedSeconds;
     const lastShot = this.lastShots.get(client.sessionId) ?? -10;
     if (now - lastShot < 0.135) return;
     this.lastShots.set(client.sessionId, now);
-    player.ammo -= 1;
+    shooter.ammo -= 1;
 
-    const radians = (player.yaw * Math.PI) / 180;
-    const forwardX = Math.sin(radians);
-    const forwardZ = -Math.cos(radians);
-    let nearest: TargetState | null = null;
-    let nearestDistance = 70;
+    const combatPlayers: CombatPlayer[] = [];
+    this.state.players.forEach((candidate, sessionId) => {
+      combatPlayers.push({
+        sessionId,
+        x: candidate.x,
+        z: candidate.z,
+        health: candidate.health,
+        setHealth: (health) => { candidate.health = health; }
+      });
+    });
 
-    for (const target of this.state.targets.values()) {
-      if (!target.active) continue;
-      const dx = target.x - player.x;
-      const dz = target.z - player.z;
-      const along = dx * forwardX + dz * forwardZ;
-      const miss = Math.abs(dx * forwardZ - dz * forwardX);
-      if (along > 0 && along < nearestDistance && miss <= 1.05) {
-        nearest = target;
-        nearestDistance = along;
+    const hit = resolveAuthoritativeHit(
+      shooter.x,
+      shooter.z,
+      shooter.yaw,
+      client.sessionId,
+      Array.from(this.state.targets.values()),
+      combatPlayers,
+      WORLD_BLOCKERS
+    );
+
+    if (hit.kind === "target" && hit.eliminated) {
+      shooter.eliminations += 1;
+      this.targetRespawns.set(hit.targetId, now + 3.2);
+    }
+
+    if (hit.kind === "player") {
+      const victim = this.state.players.get(hit.sessionId);
+      if (victim && hit.eliminated) {
+        shooter.eliminations += 1;
+        victim.deaths += 1;
+        this.playerRespawns.set(hit.sessionId, now + PLAYER_RESPAWN_SECONDS);
+        this.reloadEnds.delete(hit.sessionId);
+
+        const victimInput = this.inputs.get(hit.sessionId);
+        if (victimInput) {
+          this.inputs.set(hit.sessionId, {
+            ...victimInput,
+            moveX: 0,
+            moveZ: 0
+          });
+        }
       }
     }
 
-    if (nearest) {
-      const target = nearest;
-      target.health = Math.max(0, target.health - 34);
-      if (target.health === 0) {
-        target.active = false;
-        player.eliminations += 1;
-        this.targetRespawns.set(target.id, now + 3.2);
-      }
+    if (hit.kind !== "miss") {
+      this.broadcast("combat", {
+        shooterSessionId: client.sessionId,
+        hitType: hit.kind,
+        targetId: hit.kind === "target" ? hit.targetId : null,
+        victimSessionId: hit.kind === "player" ? hit.sessionId : null,
+        eliminated: hit.eliminated
+      });
     }
   }
 
   private handleReload(client: Client): void {
     const player = this.state.players.get(client.sessionId);
-    if (!player || player.ammo >= 30 || player.reserveAmmo <= 0 || this.reloadEnds.has(client.sessionId)) return;
+    if (!player || player.health <= 0 || player.ammo >= 30 || player.reserveAmmo <= 0 || this.reloadEnds.has(client.sessionId)) return;
     this.reloadEnds.set(client.sessionId, this.state.elapsedSeconds + 1.45);
   }
 
@@ -149,6 +183,27 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.state.elapsedSeconds += deltaSeconds;
 
     this.state.players.forEach((player, sessionId) => {
+      if (player.health <= 0) {
+        const respawnAt = this.playerRespawns.get(sessionId);
+        if (respawnAt !== undefined && this.state.elapsedSeconds >= respawnAt) {
+          const spawnIndex = Math.max(
+            0,
+            this.clients.findIndex((connected) => connected.sessionId === sessionId)
+          );
+          const spawn = PLAYER_SPAWNS[spawnIndex % PLAYER_SPAWNS.length]!;
+          player.x = spawn.x;
+          player.z = spawn.z;
+          player.yaw = 0;
+          player.health = 100;
+          player.ammo = 30;
+          player.reserveAmmo = 120;
+          this.reloadEnds.delete(sessionId);
+          this.playerRespawns.delete(sessionId);
+          this.broadcast("player:respawn", { sessionId, x: player.x, z: player.z });
+        }
+        return;
+      }
+
       const input = this.inputs.get(sessionId);
       if (input) {
         const next = movePlayer(player.x, player.z, input, deltaSeconds);
