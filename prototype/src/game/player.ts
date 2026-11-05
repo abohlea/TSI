@@ -29,6 +29,7 @@ function part(
 export interface PlayerRig {
   root: pc.Entity;
   weapon: pc.Entity;
+  setCameraMode(camera: pc.Entity, firstPerson: boolean): void;
   updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
   triggerShot(): void;
   playReload(): void;
@@ -90,6 +91,8 @@ export function createPlayer(app: pc.Application): PlayerRig {
   // AR-01 rifle blockout with sight, magazine, stock, handguard and muzzle.
   const weapon = new pc.Entity('ar-01-rifle');
   const weaponRest = new pc.Vec3(0.28, 1.27, -0.46);
+  const weaponFpsRest = new pc.Vec3(0.24, -0.27, -0.58);
+  let firstPersonView = false;
   weapon.setLocalPosition(weaponRest);
   root.addChild(weapon);
   part(weapon, 'receiver', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(0.17, 0.16, 0.62), dark);
@@ -131,10 +134,25 @@ export function createPlayer(app: pc.Application): PlayerRig {
   let hitTime = 0;
   const magazineRest = magazine.getLocalPosition().clone();
   const magazineBaseRest = magazineBase.getLocalPosition().clone();
+  const chargingHandle = weapon.findByName('charging-handle') as pc.Entity;
+  const magazineRotation = magazine.getLocalEulerAngles().clone();
+  const weaponRestRotation = new pc.Vec3(0, 0, 0);
 
   return {
     root,
     weapon,
+    setCameraMode(cameraEntity, firstPerson) {
+      firstPersonView = firstPerson;
+      if (firstPerson) {
+        weapon.reparent(cameraEntity);
+        weapon.setLocalPosition(weaponFpsRest);
+        weapon.setLocalEulerAngles(-1.5, -2.5, 0);
+      } else {
+        weapon.reparent(root);
+        weapon.setLocalPosition(weaponRest);
+        weapon.setLocalEulerAngles(weaponRestRotation);
+      }
+    },
     triggerShot() {
       muzzleTimer = 0.055;
       recoil = 1;
@@ -151,9 +169,17 @@ export function createPlayer(app: pc.Application): PlayerRig {
       reloadTime = Math.max(0, reloadTime - deltaTime);
       hitTime = Math.max(0, hitTime - deltaTime);
       const reloadProgress = reloadTime > 0 ? 1 - reloadTime / 1.25 : 0;
-      const reloadDip = reloadTime > 0 ? Math.sin(Math.min(1, reloadProgress * 1.7) * Math.PI) : 0;
-      magazine.setLocalPosition(magazineRest.x, magazineRest.y - reloadDip * 0.22, magazineRest.z);
-      magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y - reloadDip * 0.22, magazineBaseRest.z);
+      // Three readable reload beats: lower/remove, seat, then settle. This is a
+      // procedural placeholder until authored AR01_Reload animation data exists.
+      const remove = reloadProgress < 0.42 ? Math.sin(Math.min(1, reloadProgress / 0.42) * Math.PI * 0.5) : 0;
+      const insert = reloadProgress >= 0.58 && reloadProgress < 0.86
+        ? Math.sin(((reloadProgress - 0.58) / 0.28) * Math.PI * 0.5) : 0;
+      const magazineOffset = -remove * 0.28 + insert * 0.28;
+      magazine.setLocalPosition(magazineRest.x, magazineRest.y + magazineOffset, magazineRest.z);
+      magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y + magazineOffset, magazineBaseRest.z);
+      magazine.setLocalEulerAngles(magazineRotation.x + remove * 12, magazineRotation.y, magazineRotation.z);
+      magazineBase.setLocalEulerAngles(remove * 12, 0, 0);
+      if (chargingHandle) chargingHandle.setLocalPosition(0.095, 0.085, 0.105 + (reloadTime > 0 && reloadProgress > 0.84 ? 0.045 : 0));
       const rate = sprinting ? 13.5 : 9.5;
       const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
       const swing = Math.sin(animationTime * rate) * amplitude;
@@ -163,7 +189,9 @@ export function createPlayer(app: pc.Application): PlayerRig {
       armLeft.setLocalEulerAngles(-swing * 13 - hitFlinch * 18, 0, -5);
       armRight.setLocalEulerAngles(swing * 13 - hitFlinch * 18, 0, 5);
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
-      weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
+      const rest = firstPersonView ? weaponFpsRest : weaponRest;
+      weapon.setLocalPosition(rest.x, rest.y + bob * (firstPersonView ? 0.55 : 1), rest.z + recoil * (firstPersonView ? 0.11 : 0.075));
+      weapon.setLocalEulerAngles(-1.5 - recoil * 3.2, -2.5, Math.sin(animationTime * rate) * (moving ? 0.8 : 0.12));
       recoil = Math.max(0, recoil - deltaTime * 7.5);
       muzzleTimer = Math.max(0, muzzleTimer - deltaTime);
       if (muzzleTimer === 0) muzzleFlash.enabled = false;
