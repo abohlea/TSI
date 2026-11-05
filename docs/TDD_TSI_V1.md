@@ -95,11 +95,16 @@ Le client ne choisit jamais lui-même une victoire, un rang ou une récompense.
 
 **Retenu pour le prototype : PlayCanvas Engine 2.23.3**, utilisé directement depuis son package npm. Le moteur est publié sous licence MIT et prend en charge WebGL 2 et WebGPU. Le projet est organisé en TypeScript avec Vite ; le code est suivi dans GitHub et l'éditeur visuel en ligne n'est pas nécessaire pour compiler ou modifier les scènes.
 
-Versions épinglées dans le prototype :
+Versions déclarées dans les manifestes actuels :
 - PlayCanvas Engine 2.23.3 ;
-- TypeScript 7.0.2 ;
-- Vite 8.3.6 ;
-- Node.js 22.12 ou supérieur pour cette configuration Vite.
+- SDK Colyseus client 0.18.9 ;
+- TypeScript client : plage `^5.9.3` ;
+- Vite : plage `^7.1.12` ;
+- Node.js 22 recommandé pour les workflows CI ;
+- Colyseus serveur 0.18.10 et `@colyseus/schema` 5.0.44 ;
+- TypeScript serveur : plage `^5.9.3`.
+
+Les plages semver côté TypeScript/Vite/Node doivent être figées dans des fichiers `package-lock.json` avant une release candidate. Les versions ci-dessus décrivent les manifestes, pas nécessairement les versions exactes résolues dans chaque installation.
 
 Le rendu WebGL 2 est le chemin de compatibilité de base ; WebGPU peut être activé progressivement quand le navigateur et l'appareil le prennent en charge. Aucune fonction WebGPU ne doit être obligatoire pour lancer le jeu sur les appareils compatibles uniquement WebGL 2.
 
@@ -135,13 +140,12 @@ Les frontières de module doivent rester simples au début. Nous ne créerons pa
 
 ### 3.4 Organisation du prototype
 
-La première base de code se trouve dans `prototype/` :
-- `src/main.ts` : initialisation de l'application, caméra, lumière et boucle de jeu ;
-- `src/game/arena.ts` : géométrie procédurale de la zone d'entraînement ;
-- `src/game/player.ts` : modèle de personnage et arme de blocout ;
-- `src/game/input.ts` : clavier, souris et tactile ;
-- `src/game/combat.ts` : calcul local des touches sur les cibles de pratique ;
-- `src/ui/hud.ts` et `src/style.css` : interface.
+La base de code se trouve dans `game-client/` :
+- `src/main.ts` : initialisation de PlayCanvas et connexion locale facultative ;
+- `src/game/arena.ts` : terrain, bâtiments, balises, cibles et blocages procéduraux ;
+- `src/game/PlayerController.ts` : déplacement, caméra, commandes tactiles, tir et rechargement ;
+- `src/game/NetworkClient.ts` : connexion facultative à la room Colyseus locale ;
+- `src/game/GameHUD.ts` et `src/style.css` : interface et affichage du HUD.
 
 Le modèle du personnage et les structures sont volontairement des blocs 3D procéduraux. Ils ne sont pas des modèles AAA finaux, ne possèdent pas encore de squelette animé et servent à valider les dimensions et la boucle de jeu.
 
@@ -607,19 +611,19 @@ Les éléments suivants sont présents dans le dépôt :
 - Opérateur TSI et fusil AR-01 construits avec géométrie procédurale de blocout.
 - Caméra troisième personne, déplacements, collisions locales, sprint et commandes tactiles.
 - HUD, munitions, rechargement, cibles et tir local hors ligne.
-- Client Colyseus SDK 0.18.9 pour une connexion de développement facultative.
+- SDK Colyseus 0.18.9 pour une connexion de développement facultative ; la connexion client/room est implémentée, mais elle doit encore passer la CI et un test manuel à deux clients.
 
 ### Serveur Colyseus
 - Colyseus 0.18.10 avec room `field_test`, limitée à huit clients de test.
 - Écoute sur loopback uniquement en développement ; les joins sont refusés en mode production.
 - Jeton local d'au moins 24 caractères, stocké dans les fichiers d'environnement locaux non versionnés.
 - Synchronisation des positions et des orientations.
-- Validation des numéros de séquence, des valeurs finies, du pitch et de la magnitude des déplacements.
+- Validation des numéros de séquence, des valeurs finies et de la magnitude des déplacements ; le contrôle de rotation et la validation anti-aimbot restent à renforcer.
 - Collisions de déplacement vérifiées côté serveur pour le terrain d'entraînement.
 - Cadence de tir, chargeur et réserve gérés par le serveur.
-- Calcul serveur des impacts sur les six cibles, dégâts, score et réapparition des cibles.
+- Calcul serveur des impacts sur quatre cibles d'entraînement, dégâts, score privé et réapparition des cibles.
 - État privé (munitions/score) adressé au propriétaire ; état public (positions/cibles) diffusé à la room.
-- Tests unitaires pour les inputs, collisions, impacts, cibles et réapparition.
+- Tests unitaires des règles de déplacement/inputs et de résolution des tirs de pratique ; les tests d'intégration de room, reconnexion et charge restent à ajouter.
 - Workflow GitHub Actions pour typage, tests et build client/serveur.
 
 ### 22.1 Barrière de sécurité locale
@@ -648,11 +652,11 @@ Le tir local hors ligne reste un mode d'entraînement. Les tirs contre les cible
 - Colyseus serveur : 0.18.10
 - SDK Colyseus client : 0.18.9
 - @colyseus/schema : 5.0.44
-- TypeScript : 7.0.2
-- Vite : 8.3.6
+- TypeScript client et serveur : `^5.9.3` (plage déclarée dans les manifestes)
+- Vite : `^7.1.12` (plage déclarée dans le manifeste)
 - Node.js : 22.12 ou supérieur
 
-Le workflow GitHub Actions a réussi sur la révision 846574fda31f6a0b9fefecb273b7c52fc51a4c37 : typage et build du client PlayCanvas, typage/tests/compilation du serveur Colyseus, et tests des règles Firestore dans l'émulateur. Cela valide les contrôles CI du code de cette révision ; cela ne remplace pas les tests sur téléphones réels, les tests de charge ni une validation de production.
+Le workflow GitHub Actions contient maintenant trois jobs : build client PlayCanvas, vérification/tests du serveur Colyseus et tests des règles Firestore dans l'émulateur. Le statut de la dernière révision de code n'a pas encore été confirmé dans cette session. Aucun succès CI récent n'est revendiqué ici. Même une CI verte ne remplacerait pas les tests sur téléphones réels, les tests de charge ni une validation de production.
 
 
 
@@ -680,9 +684,9 @@ Les écritures sensibles restent réservées aux services de confiance. Les règ
 
 ### 23.1 Vérification CI
 
-La GitHub Action TSI validation a exécuté avec succès, sur la révision `846574fda31f6a0b9fefecb273b7c52fc51a4c37` :
-- vérification TypeScript et bundle de production PlayCanvas ;
-- typage strict, tests unitaires et compilation du serveur Colyseus ;
-- vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore.
+Le workflow actuel est configuré pour exécuter :
+- vérification TypeScript et build du client PlayCanvas ;
+- vérification TypeScript, tests unitaires et compilation du serveur Colyseus ;
+- vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore avec Java 21.
 
-Résultat : **succès CI pour ces trois jobs**. Cela ne certifie pas encore l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
+Le dernier statut CI n'a pas été confirmé dans cette session. Ces jobs ne certifieront pas à eux seuls l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
