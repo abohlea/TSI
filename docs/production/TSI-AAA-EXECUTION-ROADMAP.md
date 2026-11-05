@@ -63,6 +63,9 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Le serveur refuse le démarrage en production si `TSI_SESSION_TICKET_SECRET` ne contient pas au moins 32 caractères. L'endpoint autorise les requêtes navigateur par CORS avec bearer token ; les secrets Admin ne sont jamais exposés au client.
 - Tests unitaires ajoutés pour validité, expiration, réutilisation et altération du ticket.
 - Le serveur crée maintenant, dans une transaction Firestore idempotente au premier échange de ticket, les documents `users/{uid}`, `playerProfiles/{uid}` et `progression/{uid}` sans écraser les profils existants.
+- La room Colyseus conserve les statistiques des participants Firebase authentifiés et écrit à sa fermeture un document `matchSummaries/{roomId}` ainsi que les agrégats `playerStats/{uid}` dans une seule transaction Firestore. Les sessions locales avec jeton de développement sont exclues.
+- L'écriture est idempotente : un même identifiant de room ne peut incrémenter les statistiques qu'une fois. Les règles Firestore autorisent la lecture des statistiques uniquement à leur propriétaire et interdisent les écritures client.
+- Le module Cloudinary de la PR #5 a été porté dans `backend/realtime/` : signature dédiée par UID, upload direct navigateur, confirmation Admin API, validation asset et mise à jour du profil. Le client PlayCanvas a un sélecteur/aperçu d'avatar.
 - Un test d'intégration dédié vérifie la création et la préservation des données sur Firestore Emulator ; le job Firebase CI installe aussi les dépendances Colyseus pour exécuter ce test.
 - Limites : le registre des nonces et la limite de débit sont en mémoire (instance unique seulement) ; la connexion Google exige la configuration du projet Firebase et l'activation du fournisseur dans la console ; aucun déploiement ni test avec un vrai projet Firebase ; aucune écriture de résultat Firestore. Cette intégration n'est pas encore validée en exécution ni prête à l'exploitation multi-instance.
 - Commits clés : `12d8a18` (tickets), `501e3fb` (tests), `927e3e0` (endpoint), `64048bc` (consommation room), `34ae89f` (tests renforcés), `4d9c684` (SDK web), `c1332bb` (Firebase client), `0b2e0ba` (client ticket), `ba98a9e` (connexion UI), `92b2dbc` (CORS), `8621271` (documentation).
@@ -129,8 +132,8 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 - [x] Tickets de session signés, courts, à usage unique (45 secondes, single-process).
 - [x] Initialisation serveur des documents de compte, profil public et progression (idempotente).
 - [x] Règles Firestore et tests émulateur pour les accès clients ; test d'intégration d'initialisation du profil ajouté, en attente de run CI sur le nouveau HEAD.
-- [ ] Écriture des résultats uniquement après validation serveur, avec idempotence.
-- [ ] Cloudinary réservé aux médias et uploads autorisés.
+- [x] Écriture des résultats après validation serveur, avec idempotence et statistiques agrégées.
+- [x] Cloudinary réservé aux avatars : signatures serveur, contrôle du propriétaire, validation Admin API et interface client de sélection.
 - **Acceptation :** tests d'accès refusé, jetons expirés/réutilisés et résultats falsifiés rejetés.
 
 ### P6 — production et exploitation
@@ -174,4 +177,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit obtenir un run CI vert sur le HEAD après les corrections spawn/rate-limit et le test d'intégration profil. Ensuite, terminer l'écriture idempotente des résultats de match Firestore et porter le flux Cloudinary dans l'architecture PlayCanvas/Colyseus. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances. Les lockfiles npm restent bloquants pour une installation réellement reproductible.
+La prochaine livraison doit valider par CI le nouvel enregistrement idempotent des matchs, les règles `playerStats` et les tests de signature Cloudinary. Ensuite, il faudra tester avec de vrais projets Firebase/Cloudinary configurés, renforcer la gestion des sessions de match (manches explicites et fin contrôlée), puis préparer une API média publique durcie. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
