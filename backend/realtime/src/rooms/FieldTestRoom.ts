@@ -17,7 +17,6 @@ import {
   canOccupyPosition,
   createPracticeTargets,
   findSpawnPosition,
-  resolveAuthoritativeShot,
   SPRINT_SPEED,
   updateTargetRespawns,
   WALK_SPEED,
@@ -25,7 +24,7 @@ import {
   WEAPON_MAGAZINE_SIZE,
   WEAPON_STARTING_RESERVE,
   type ServerTarget,
-  resolveAuthoritativePlayerShot
+  resolveAuthoritativeCombatShot
 } from '../world.js';
 
 interface LocalAuth {
@@ -187,68 +186,32 @@ export class FieldTestRoom extends Room {
 
     player.ammo -= 1;
     player.nextShotAt = now + WEAPON_COOLDOWN_MS;
-    const playerHit = resolveAuthoritativePlayerShot(
-      player.playerId,
-      player.x,
-      1.55,
-      player.z,
-      player.yaw,
-      player.pitch,
-      Array.from(this.players.values())
+    const result = resolveAuthoritativeCombatShot(
+      player.playerId, player.x, 1.55, player.z, player.yaw, player.pitch,
+      Array.from(this.players.values()), this.targets, now
     );
-
-    if (playerHit.hit) {
-      const victim = Array.from(this.players.values()).find(
-        (candidate) => candidate.playerId === playerHit.targetPlayerId
-      );
-      if (playerHit.eliminated && victim) {
+    if (result.targetKind === 'player') {
+      const victim = Array.from(this.players.values()).find(candidate => candidate.playerId === result.targetId);
+      if (result.eliminated && victim) {
         victim.respawnAt = now + PLAYER_RESPAWN_DELAY_MS;
-        victim.moveX = 0;
-        victim.moveZ = 0;
+        victim.moveX = 0; victim.moveZ = 0;
         player.score += 1;
         const killerResult = this.participants.get(player.playerId);
         if (killerResult) { killerResult.score += 1; killerResult.kills += 1; }
         const victimResult = this.participants.get(victim.playerId);
         if (victimResult) victimResult.deaths += 1;
         this.queueCheckpoint();
-        this.broadcast('player-eliminated', {
-          killerId: player.playerId,
-          playerId: victim.playerId,
-          respawnAt: victim.respawnAt
-        });
+        this.broadcast('player-eliminated', { killerId: player.playerId, playerId: victim.playerId, respawnAt: victim.respawnAt });
       }
-      client.send('shot', {
-        accepted: true,
-        hit: true,
-        eliminated: playerHit.eliminated,
-        targetPlayerId: playerHit.targetPlayerId
-      });
-      this.sendPrivateState(client, player);
-      this.broadcastSnapshot();
-      return;
-    }
-
-    const result = resolveAuthoritativeShot(
-      player.x,
-      1.55,
-      player.z,
-      player.yaw,
-      player.pitch,
-      this.targets,
-      now
-    );
-
-    if (result.eliminated) {
+    } else if (result.targetKind === 'practice' && result.eliminated) {
       player.score += 1;
       const participant = this.participants.get(player.playerId);
       if (participant) participant.score += 1;
       this.queueCheckpoint();
     }
     client.send('shot', {
-      accepted: true,
-      hit: result.hit,
-      eliminated: result.eliminated,
-      targetId: result.targetId
+      accepted: true, hit: result.hit, eliminated: result.eliminated,
+      ...(result.targetKind === 'player' ? { targetPlayerId: result.targetId } : { targetId: result.targetId })
     });
     this.sendPrivateState(client, player);
   }
