@@ -19,7 +19,8 @@ import {
   WEAPON_COOLDOWN_MS,
   WEAPON_MAGAZINE_SIZE,
   WEAPON_STARTING_RESERVE,
-  type ServerTarget
+  type ServerTarget,
+  resolveAuthoritativePlayerShot
 } from '../world.js';
 
 interface LocalAuth {
@@ -37,11 +38,15 @@ interface ServerPlayer extends PlayerSnapshot {
   score: number;
   nextShotAt: number;
   reloadEndsAt: number;
+  spawnX: number;
+  spawnZ: number;
+  respawnAt: number;
 }
 
 const SERVER_STEP_MS = 50;
 const MAX_PLAYERS_PER_TEST_ROOM = 8;
 const RELOAD_DURATION_MS = 1350;
+const PLAYER_RESPAWN_DELAY_MS = 4000;
 
 export class FieldTestRoom extends Room {
   private readonly players = new Map<string, ServerPlayer>();
@@ -81,10 +86,12 @@ export class FieldTestRoom extends Room {
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
     const spawnIndex = this.players.size;
+    const spawnX = spawnIndex % 2 === 0 ? -2 : 2;
+    const spawnZ = 5 + Math.floor(spawnIndex / 2) * 2;
     const player: ServerPlayer = {
       playerId: auth.playerId,
-      x: spawnIndex % 2 === 0 ? -2 : 2,
-      z: 5 + Math.floor(spawnIndex / 2) * 2,
+      x: spawnX,
+      z: spawnZ,
       yaw: 0,
       pitch: -2.4,
       health: 100,
@@ -96,7 +103,10 @@ export class FieldTestRoom extends Room {
       reserve: WEAPON_STARTING_RESERVE,
       score: 0,
       nextShotAt: 0,
-      reloadEndsAt: 0
+      reloadEndsAt: 0,
+      spawnX,
+      spawnZ,
+      respawnAt: 0
     };
 
     this.players.set(client.sessionId, player);
@@ -157,6 +167,42 @@ export class FieldTestRoom extends Room {
 
     player.ammo -= 1;
     player.nextShotAt = now + WEAPON_COOLDOWN_MS;
+    const playerHit = resolveAuthoritativePlayerShot(
+      player.playerId,
+      player.x,
+      1.55,
+      player.z,
+      player.yaw,
+      player.pitch,
+      Array.from(this.players.values())
+    );
+
+    if (playerHit.hit) {
+      const victim = Array.from(this.players.values()).find(
+        (candidate) => candidate.playerId === playerHit.targetPlayerId
+      );
+      if (playerHit.eliminated && victim) {
+        victim.respawnAt = now + PLAYER_RESPAWN_DELAY_MS;
+        victim.moveX = 0;
+        victim.moveZ = 0;
+        player.score += 1;
+        this.broadcast('player-eliminated', {
+          killerId: player.playerId,
+          playerId: victim.playerId,
+          respawnAt: victim.respawnAt
+        });
+      }
+      client.send('shot', {
+        accepted: true,
+        hit: true,
+        eliminated: playerHit.eliminated,
+        targetPlayerId: playerHit.targetPlayerId
+      });
+      this.sendPrivateState(client, player);
+      this.broadcastSnapshot();
+      return;
+    }
+
     const result = resolveAuthoritativeShot(
       player.x,
       1.55,
@@ -182,6 +228,22 @@ export class FieldTestRoom extends Room {
     const now = Date.now();
 
     for (const [sessionId, player] of this.players) {
+      if (player.health <= 0) {
+        if (player.respawnAt > 0 && now >= player.respawnAt) {
+          player.health = 100;
+          player.x = player.spawnX;
+          player.z = player.spawnZ;
+          player.yaw = 0;
+          player.pitch = -2.4;
+          player.respawnAt = 0;
+          player.moveX = 0;
+          player.moveZ = 0;
+          player.sprint = false;
+          this.broadcast('player-respawned', { playerId: player.playerId });
+        }
+        continue;
+      }
+
       const speed = player.sprint ? SPRINT_SPEED : WALK_SPEED;
       const deltaX = player.moveX * speed * deltaSeconds;
       const deltaZ = player.moveZ * speed * deltaSeconds;
