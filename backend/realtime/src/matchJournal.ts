@@ -12,7 +12,8 @@ export interface MatchCheckpoint {
 }
 
 function validateCheckpoint(value: MatchCheckpoint): void {
-  if (!/^[A-Za-z0-9_-]{1,128}$/.test(value.matchId) ||
+  if ((value.mode !== 'field-test-ffa' && value.mode !== 'field-test-teams') ||
+      !/^[A-Za-z0-9_-]{1,128}$/.test(value.matchId) ||
       !Number.isSafeInteger(value.startedAt) || value.startedAt < 0 ||
       !Array.isArray(value.participants) || value.participants.length < 1 ||
       value.participants.length > (value.mode === 'field-test-teams' ? 10 : 8)) {
