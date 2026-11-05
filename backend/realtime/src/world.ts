@@ -226,6 +226,74 @@ export function resolveAuthoritativeShot(
   return { hit: true, eliminated, targetId: nearest.targetId };
 }
 
+
+export type CombatShotResolution =
+  | { hit: false; eliminated: false; targetKind: null; targetId: null }
+  | { hit: true; eliminated: boolean; targetKind: 'player'; targetId: string }
+  | { hit: true; eliminated: boolean; targetKind: 'practice'; targetId: string };
+
+/** Resolves players and practice targets on one ray, so the nearest visible
+ * combatant always receives the shot. Obstacles block either kind equally. */
+export function resolveAuthoritativeCombatShot(
+  shooterId: string,
+  originX: number,
+  originY: number,
+  originZ: number,
+  yawDegrees: number,
+  pitchDegrees: number,
+  players: ServerCombatant[],
+  targets: ServerTarget[],
+  now: number
+): CombatShotResolution {
+  const yaw = yawDegrees * Math.PI / 180;
+  const pitch = pitchDegrees * Math.PI / 180;
+  const horizontal = Math.cos(pitch);
+  const dirX = -Math.sin(yaw) * horizontal;
+  const dirY = Math.sin(pitch);
+  const dirZ = -Math.cos(yaw) * horizontal;
+  let nearestPlayer: ServerCombatant | null = null;
+  let nearestTarget: ServerTarget | null = null;
+  let nearestDistance = SHOT_RANGE;
+
+  const consider = (distance: number | null, blocked: boolean, kind: 'player' | 'practice',
+    candidate: ServerCombatant | ServerTarget): void => {
+    if (distance === null || blocked || distance >= nearestDistance) return;
+    nearestDistance = distance;
+    nearestPlayer = kind === 'player' ? candidate as ServerCombatant : null;
+    nearestTarget = kind === 'practice' ? candidate as ServerTarget : null;
+  };
+
+  for (const player of players) {
+    if (player.playerId === shooterId || player.health <= 0) continue;
+    const distance = raySphereDistance(originX, originY, originZ, dirX, dirY, dirZ,
+      player.x, 1.0, player.z, 0.68);
+    consider(distance, distance !== null && WORLD_OBSTACLES.some(obstacle =>
+      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)), 'player', player);
+  }
+  for (const target of targets) {
+    if (!target.active) continue;
+    const distance = raySphereDistance(originX, originY, originZ, dirX, dirY, dirZ,
+      target.x, 1.08, target.z, TARGET_RADIUS);
+    consider(distance, distance !== null && WORLD_OBSTACLES.some(obstacle =>
+      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)), 'practice', target);
+  }
+
+  if (nearestPlayer) {
+    nearestPlayer.health = clamp(nearestPlayer.health - WEAPON_DAMAGE, 0, 100);
+    return { hit: true, eliminated: nearestPlayer.health === 0, targetKind: 'player', targetId: nearestPlayer.playerId };
+  }
+  if (nearestTarget) {
+    nearestTarget.health = clamp(nearestTarget.health - WEAPON_DAMAGE, 0, 100);
+    const eliminated = nearestTarget.health === 0;
+    if (eliminated) {
+      nearestTarget.active = false;
+      nearestTarget.respawnAt = now + TARGET_RESPAWN_MS;
+    }
+    return { hit: true, eliminated, targetKind: 'practice', targetId: nearestTarget.targetId };
+  }
+  return { hit: false, eliminated: false, targetKind: null, targetId: null };
+}
+
 export function updateTargetRespawns(targets: ServerTarget[], now: number): void {
   for (const target of targets) {
     if (target.active || target.respawnAt <= 0 || now < target.respawnAt) continue;
