@@ -63,11 +63,13 @@ Health check: `http://localhost:2567/health`.
 ## Security limitations
 
 - The local token is only a development guard. It is delivered to the browser and is not a production credential. Production authentication uses Firebase ID tokens verified server-side.
-- Production joins require a valid Firebase Authentication ID token; local development-token authentication is disabled in production.
+- Production clients exchange a Firebase Authentication ID token for a 45-second signed game-session ticket at `POST /auth/session-ticket` using `Authorization: Bearer <Firebase-ID-token>`. The room accepts only that ticket; the ticket is consumed once during room authentication.
+- Configure `TSI_SESSION_TICKET_SECRET` with at least 32 random characters in the production runtime. Keep it outside GitHub and rotate it through the deployment secret manager.
+- The endpoint has a basic per-IP in-memory limit (10 requests/minute). The ticket nonce store is also in-memory and single-process only; before horizontal scaling, replace both with a shared atomic store such as Redis. Do not run multiple production instances with this prototype ticket store.
 - Do not expose this local server to the public internet or reuse the token for any other service.
 - Production joins now verify Firebase Authentication ID tokens with the Firebase Admin SDK, including revoked-token checks. The runtime must provide Application Default Credentials/workload identity and `FIREBASE_PROJECT_ID`.
-- Short-lived, single-use signed game-session tickets are not implemented yet; the current production room verifies the Firebase ID token directly at join.
-- The local room now includes experimental free-for-all player damage, health, eliminations and timed respawns. Teams, rounds, revives, hitbox animation/validation, lag compensation, full anti-cheat analysis, signed session tickets, persistent results and production matchmaking are not implemented yet.
+- The ticket endpoint and one-time room consumption are implemented in code, but still require deployment configuration and integration tests against a real Firebase project.
+- The local room now includes experimental free-for-all player damage, health, eliminations and timed respawns. Teams, rounds, revives, hitbox animation/validation, lag compensation, full anti-cheat analysis, persistent results and production matchmaking are not implemented yet.
 - Do not use this room for public or ranked matches.
 
 The room validates movement, practice-target combat and a first free-for-all PvP loop. Player hitboxes are simple spheres and the raycast uses the training world's obstacle boxes; this is not yet a complete physics or competitive combat simulation.
