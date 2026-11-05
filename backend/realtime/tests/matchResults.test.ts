@@ -23,8 +23,8 @@ test('match results are written once and update participant statistics atomicall
     startedAt: now - 60_000,
     endedAt: now,
     participants: [
-      { uid: uidA, score: 4, kills: 2, deaths: 0, joinedAt: now - 59_000 },
-      { uid: uidB, score: 1, kills: 0, deaths: 2, joinedAt: now - 58_000 }
+      { uid: uidA, score: 1, kills: 8, deaths: 0, joinedAt: now - 59_000 },
+      { uid: uidB, score: 4, kills: 1, deaths: 2, joinedAt: now - 58_000 }
     ]
   };
 
@@ -33,13 +33,13 @@ test('match results are written once and update participant statistics atomicall
     assert.equal(await persistMatchResult(input), false);
     const [match, playerA, playerB] = await Promise.all([matchRef.get(), statsA.get(), statsB.get()]);
     assert.deepEqual(match.get('participantUids'), [uidA, uidB]);
-    assert.equal(match.get('winnerUid'), uidA);
+    assert.equal(match.get('winnerUid'), uidB);
     assert.equal(match.get('durationMs'), 60_000);
     assert.equal(playerA.get('matchesPlayed'), 1);
     assert.equal(playerA.get('kills'), 2);
-    assert.equal(playerA.get('wins'), 1);
+    assert.equal(playerA.get('wins'), 0);
     assert.equal(playerB.get('deaths'), 2);
-    assert.equal(playerB.get('wins'), 0);
+    assert.equal(playerB.get('wins'), 1);
   } finally {
     await Promise.all([matchRef.delete(), statsA.delete(), statsB.delete()]);
   }
