@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - build/android-production-field-test
+      - build/android-content-expansion
     paths:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"
@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   build-apk:
-    name: Build TSI production-branch debug APK
+    name: Build TSI content-expanded Android debug APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,6 +39,9 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Download verified CC0 3D content
+        run: node scripts/fetch-cc0-assets.mjs
+
       - name: Typecheck and build web client
         run: npm run build
 
@@ -54,10 +57,19 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
 
+      - name: Report APK and asset sizes
+        working-directory: prototype
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          echo "APK bytes: $(stat -c%s "$APK")"
+          echo "APK MiB: $(du -m "$APK" | cut -f1)"
+          echo "Bundled asset MiB: $(du -sm public/assets/cc0 | cut -f1)"
+          echo "Target: at least 100 MiB of real bundled content; no filler files are permitted."
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: tsi-production-field-test-android-debug
+          name: tsi-content-expanded-android-debug
           path: prototype/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
