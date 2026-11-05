@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { Client, Room } from 'colyseus';
-import { clamp, isFiniteNumber, isRecord, type PlayerSnapshot, type RoomSnapshot } from '../types.js';
+import { clamp, type PlayerSnapshot, type RoomSnapshot } from '../types.js';
+import { parsePlayerInput } from '../validation.js';
 
 interface LocalAuth {
   playerId: string;
@@ -30,7 +31,7 @@ export class FieldTestRoom extends Room {
   onCreate(): void {
     this.setMetadata({ mode: 'field-test', build: '0.1.0' });
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
-    this.setSimulationInterval((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
+    this.setTimestep((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
   }
 
   onAuth(_client: Client, options: unknown): LocalAuth {
@@ -89,36 +90,16 @@ export class FieldTestRoom extends Room {
 
   private handleInput(client: Client, payload: unknown): void {
     const player = this.players.get(client.sessionId);
-    if (!player || !isRecord(payload)) return;
+    if (!player) return;
 
-    const sequence = payload.sequence;
-    const moveX = payload.moveX;
-    const moveZ = payload.moveZ;
-    const yaw = payload.yaw;
+    const input = parsePlayerInput(payload, player.lastSequence);
+    if (!input) return;
 
-    if (
-      !isFiniteNumber(sequence) ||
-      !Number.isSafeInteger(sequence) ||
-      sequence <= player.lastSequence ||
-      sequence - player.lastSequence > MAX_INPUT_STEP ||
-      !isFiniteNumber(moveX) ||
-      !isFiniteNumber(moveZ) ||
-      !isFiniteNumber(yaw) ||
-      typeof payload.sprint !== 'boolean'
-    ) {
-      return;
-    }
-
-    const normalizedX = clamp(moveX, -1, 1);
-    const normalizedZ = clamp(moveZ, -1, 1);
-    const magnitude = Math.hypot(normalizedX, normalizedZ);
-    const factor = magnitude > 1 ? 1 / magnitude : 1;
-
-    player.lastSequence = sequence;
-    player.moveX = normalizedX * factor;
-    player.moveZ = normalizedZ * factor;
-    player.yaw = ((yaw % 360) + 360) % 360;
-    player.sprint = payload.sprint;
+    player.lastSequence = input.sequence;
+    player.moveX = input.moveX;
+    player.moveZ = input.moveZ;
+    player.yaw = input.yaw;
+    player.sprint = input.sprint;
   }
 
   private simulate(deltaTimeMs: number): void {
