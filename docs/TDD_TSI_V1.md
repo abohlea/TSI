@@ -2,12 +2,12 @@
 
 Document technique de référence pour la préproduction. Version 1.0 — 5 novembre 2026.
 
-Firebase Authentication, Cloud Firestore et Cloudinary sont retenus. Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction. PlayCanvas Engine est retenu pour le prototype web ; le serveur de combat reste soumis à une preuve technique.
+Firebase Authentication, Cloud Firestore et Cloudinary sont retenus. Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction. PlayCanvas Engine est retenu pour le prototype web. La room Colyseus locale possède une première preuve de tirs autoritaires contre cibles et joueurs ; le netcode compétitif et l'exploitation publique restent à valider.
 
 
 ## 0. Statut et gouvernance
 
-Ce document explique comment TSI doit être construit, testé et exploité. Il ne signifie pas que les systèmes sont déjà développés : le dépôt contient aujourd'hui la documentation de conception, pas encore une version compilée et testée sur appareils réels, un serveur multijoueur en production ou le backend.
+Ce document explique comment TSI doit être construit, testé et exploité. Le dépôt contient une documentation de conception, un client PlayCanvas de prototype et une room Colyseus locale. Ces éléments ne constituent ni un serveur multijoueur de production, ni une validation sur appareils réels, ni une intégration opérationnelle de Firebase/Cloudinary.
 
 Légende : **RETENU** = choix approuvé ; **PROPOSÉ** = recommandation ; **À PROTOTYPER** = décision conditionnée par une mesure ; **POST-LANCEMENT** = élément différé.
 
@@ -30,7 +30,7 @@ Règles :
 | Base persistante | Cloud Firestore | Retenu |
 | Médias | Cloudinary | Retenu |
 | Protection des services | Firebase App Check en complément des règles | Proposé |
-| Simulation | Colyseus 0.18.10 ; room locale de déplacement implémentée, production à valider | Prototype en cours |
+| Simulation | Colyseus 0.18.10 ; room locale de déplacement, cibles et PvP expérimental implémentée, production à valider | Prototype en cours |
 | API sensible | Service serveur de confiance, hébergeur non choisi | À prototyper |
 | Render | Exclu | Retenu |
 | Préproduction | Émulateurs, quotas gratuits et serveurs locaux | Retenu |
@@ -149,7 +149,7 @@ Le modèle du personnage et les structures sont volontairement des blocs 3D proc
 
 ### 4.1 Candidat serveur
 
-**Colyseus 0.18.10 / Node.js / TypeScript est le candidat de référence pour les sessions de jeu autoritaires, les rooms et le matchmaking.** Une première room locale de test est présente dans le dépôt ; le SDK client est épinglé sur 0.18.9. Cette preuve ne valide pas encore la charge, le transport ou la capacité du Battle Royale final. Colyseus est publié sous licence MIT.
+**Colyseus 0.18.10 / Node.js / TypeScript est le candidat de référence pour les sessions de jeu autoritaires, les rooms et le matchmaking.** Une room locale est présente dans le dépôt ; le SDK client est épinglé sur 0.18.9. Elle synchronise les déplacements et fournit une première preuve de tirs hitscan autoritaires contre cibles et joueurs, avec santé, élimination et réapparition. Cette preuve ne valide ni la charge, ni le transport, ni la capacité du Battle Royale final. Colyseus est publié sous licence MIT.
 
 Ce choix n'est pas encore validé pour 60 joueurs de shooter. Il devra être mesuré sur le type de combat, le nombre d'acteurs, la fréquence des inputs et la qualité réseau cible.
 
@@ -215,6 +215,19 @@ Les 60 joueurs du GDD sont un objectif de conception, pas une capacité démontr
 ### 4.7 Déconnexion et reprise
 
 Prévoir une fenêtre de reconnexion configurable. Le serveur conserve temporairement l'état si le mode le permet. Les tickets expirés ou réutilisés sont rejetés. Les résultats et récompenses sont enregistrés une seule fois. Une déconnexion ne donne pas automatiquement la victoire à une autre équipe sans règle définie.
+
+### 4.8 État du prototype PvP local
+
+La room locale propose un mode de test « chacun pour soi » limité à huit connexions :
+- le serveur reconstruit le rayon de tir à partir des valeurs d'orientation validées et choisit l'impact visible le plus proche parmi les cibles et les joueurs ;
+- la cadence de tir, les munitions, les dégâts fixes, la santé et le score restent détenus par le serveur ;
+- un joueur à zéro point de vie ne se déplace plus et ne peut plus tirer ;
+- la réapparition est déclenchée par le serveur après un délai défini, avec restauration de santé et de munitions ;
+- les états de santé sont diffusés dans les snapshots, tandis que les munitions et le score restent privés.
+
+Cette preuve utilise des volumes sphériques simplifiés et les boîtes d'obstacles de la carte de test. Elle ne comprend pas les équipes, les réanimations, la compensation de latence, la physique complète, le matchmaking, Firebase Authentication, les tickets signés ou un système anti-triche de production. La room refuse les connexions lorsque l'environnement est en mode production. **Elle ne doit pas être exposée au public ni utilisée pour des matchs classés.**
+
+Avant de considérer le combat comme validé, la CI doit réussir les tests unitaires et les compilations ; des tests de réseau réels devront ensuite vérifier la cohérence du réticule, la latence, la gigue, les pertes et la charge.
 
 ## 5. Firebase Authentication
 
