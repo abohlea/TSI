@@ -3,6 +3,7 @@ import { FieldTestRoom } from './rooms/FieldTestRoom.js';
 import { verifyFirebasePlayerToken } from './firebaseAuth.js';
 import { issueSessionTicket } from './sessionTickets.js';
 import { provisionPlayerProfile } from './firebaseProfiles.js';
+import { startCloudinaryMediaApi } from './mediaApi.js';
 
 const port = Number.parseInt(process.env.PORT ?? '2567', 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -140,3 +141,5 @@ const server = defineServer({
 
 await server.listen(port, isProduction ? undefined : '127.0.0.1');
 console.info(`TSI local realtime prototype listening on port ${port}`);
+
+await startCloudinaryMediaApi();
