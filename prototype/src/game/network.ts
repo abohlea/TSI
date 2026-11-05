@@ -52,6 +52,7 @@ export interface NetworkTeamPlayer {
   yaw: number;
   health: number;
   score: number;
+  connected?: boolean;
 }
 
 export interface NetworkTeamMatchState {
@@ -225,7 +226,8 @@ export class TsiNetworkClient {
             ![candidate.x, candidate.z, candidate.yaw, candidate.health, candidate.score].every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
         players.push({ playerId: candidate.playerId, team: candidate.team,
           x: candidate.x as number, z: candidate.z as number, yaw: candidate.yaw as number,
-          health: candidate.health as number, score: candidate.score as number });
+          health: candidate.health as number, score: candidate.score as number,
+          ...(typeof candidate.connected === 'boolean' ? { connected: candidate.connected } : {}) });
       }
       callbacks.onTeamPlayers?.(players);
     });
@@ -302,6 +304,13 @@ export class TsiNetworkClient {
         ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {}),
         ...(typeof payload.targetPlayerId === 'string' ? { targetPlayerId: payload.targetPlayerId } : {})
       });
+    });
+
+    room.onDrop(() => {
+      callbacks.onStatus('Connexion interrompue · reconnexion automatique…');
+    });
+    room.onReconnect(() => {
+      callbacks.onStatus('Reconnexion réussie · session restaurée');
     });
 
     room.onLeave((code) => {
