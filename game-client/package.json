@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "playcanvas": "2.23.3",
-    "@colyseus/sdk": "0.18.9"
+    "@colyseus/sdk": "0.18.9",
+    "@colyseus/schema": "5.0.44"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
