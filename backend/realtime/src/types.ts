@@ -3,7 +3,9 @@ export interface PlayerInput {
   moveX: number;
   moveZ: number;
   yaw: number;
+  pitch: number;
   sprint: boolean;
+  shoot: boolean;
 }
 
 export interface PlayerSnapshot {
@@ -14,9 +16,22 @@ export interface PlayerSnapshot {
   health: number;
 }
 
+export interface TargetSnapshot {
+  targetId: string;
+  health: number;
+  active: boolean;
+}
+
+export interface PrivatePlayerSnapshot {
+  ammo: number;
+  reserve: number;
+  score: number;
+}
+
 export interface RoomSnapshot {
   serverTime: number;
   players: PlayerSnapshot[];
+  targets: TargetSnapshot[];
 }
 
 export function isRecord(value: unknown): value is Record<string, unknown> {
