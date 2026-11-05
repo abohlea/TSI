@@ -123,11 +123,10 @@ export function createArena(app: pc.Application): ArenaApi {
   return { targets, obstacles, surfaces: { ground, concrete } };
 }
 
+type Cc0TextureSet = { name: string; files: Array<{ map: string; file: string }> };
+
 interface Cc0TextureManifest {
-  textures?: Array<{
-    name: string;
-    files: Array<{ map: string; file: string }>;
-  }>;
+  textures?: Cc0TextureSet[];
 }
 
 export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): void {
@@ -140,7 +139,7 @@ export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): vo
       const textures = manifest.textures ?? [];
       const groundSet = textures.find((item) => /asphalt|gravel|ground|dirt|road/i.test(item.name)) ?? textures[0];
       const wallSet = textures.find((item) => /concrete|brick|stone/i.test(item.name)) ?? textures[1];
-      const applyMap = (set: Cc0TextureManifest['textures'][number] | undefined, target: pc.StandardMaterial, tiling: number) => {
+      const applyMap = (set: Cc0TextureSet | undefined, target: pc.StandardMaterial, tiling: number) => {
         const diffuse = set?.files.find((file) => /diffuse|albedo|color/i.test(file.map));
         if (!diffuse) return;
         app.assets.loadFromUrl(diffuse.file, 'texture', (error, asset) => {
