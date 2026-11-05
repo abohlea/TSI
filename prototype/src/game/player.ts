@@ -85,6 +85,41 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(root, 'earpiece-left', 'cylinder', new pc.Vec3(-0.23, 1.97, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
   part(root, 'earpiece-right', 'cylinder', new pc.Vec3(0.23, 1.97, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
 
+  // Layered field equipment: webbing, shoulder straps, pouches and utility gear.
+  const webbing = makeMaterial(new pc.Color(0.16, 0.2, 0.18), 0.02, 0.96);
+  const canvas = makeMaterial(new pc.Color(0.29, 0.32, 0.25), 0.01, 0.98);
+  const buckle = makeMaterial(new pc.Color(0.42, 0.44, 0.39), 0.72, 0.36);
+  const lens = makeMaterial(new pc.Color(0.025, 0.16, 0.19), 0.78, 0.16);
+
+  // MOLLE-style front pouches and belt kit.
+  for (let index = 0; index < 4; index += 1) {
+    const x = -0.24 + index * 0.16;
+    part(root, `front-mag-pouch-${index + 1}`, 'box', new pc.Vec3(x, 1.04, -0.31), new pc.Vec3(0.135, 0.22, 0.13), webbing);
+    part(root, `front-pouch-flap-${index + 1}`, 'box', new pc.Vec3(x, 1.16, -0.325), new pc.Vec3(0.13, 0.045, 0.14), canvas);
+    part(root, `front-pouch-tab-${index + 1}`, 'box', new pc.Vec3(x, 1.13, -0.401), new pc.Vec3(0.035, 0.035, 0.018), buckle);
+  }
+  for (const side of [-1, 1]) {
+    part(root, `shoulder-harness-${side}`, 'box', new pc.Vec3(side * 0.23, 1.52, -0.255), new pc.Vec3(0.105, 0.48, 0.075), webbing).setLocalEulerAngles(0, 0, side * -12);
+    part(root, `side-utility-pouch-${side}`, 'box', new pc.Vec3(side * 0.34, 0.77, 0.03), new pc.Vec3(0.18, 0.25, 0.24), canvas);
+    part(root, `thigh-drop-pouch-${side}`, 'box', new pc.Vec3(side * 0.2, 0.57, -0.17), new pc.Vec3(0.19, 0.2, 0.12), webbing);
+    part(root, `boot-ankle-strap-${side}`, 'box', new pc.Vec3(side * 0.18, 0.16, -0.08), new pc.Vec3(0.29, 0.055, 0.43), webbing);
+    part(root, `glove-${side}`, 'sphere', new pc.Vec3(side * 0.44, 0.79, -0.08), new pc.Vec3(0.2, 0.16, 0.19), rubber);
+    part(root, `elbow-pad-${side}`, 'box', new pc.Vec3(side * 0.45, 1.02, 0.02), new pc.Vec3(0.22, 0.2, 0.22), webbing);
+  }
+  part(root, 'rear-pack-main', 'box', new pc.Vec3(0, 1.38, 0.34), new pc.Vec3(0.48, 0.56, 0.3), canvas);
+  part(root, 'rear-pack-top', 'sphere', new pc.Vec3(0, 1.68, 0.35), new pc.Vec3(0.43, 0.22, 0.28), webbing);
+  part(root, 'rear-pack-front-pocket', 'box', new pc.Vec3(0, 1.28, 0.51), new pc.Vec3(0.34, 0.25, 0.08), webbing);
+  part(root, 'radio-screen', 'box', new pc.Vec3(-0.3, 1.28, -0.31), new pc.Vec3(0.11, 0.14, 0.025), dark);
+  part(root, 'flag-patch-border', 'box', new pc.Vec3(0.4, 1.49, -0.16), new pc.Vec3(0.14, 0.17, 0.025), dark);
+  part(root, 'flag-patch-color', 'box', new pc.Vec3(0.4, 1.49, -0.178), new pc.Vec3(0.105, 0.12, 0.012), orange);
+  part(root, 'helmet-side-rail-left', 'box', new pc.Vec3(-0.35, 2.11, 0.02), new pc.Vec3(0.12, 0.055, 0.28), dark);
+  part(root, 'helmet-side-rail-right', 'box', new pc.Vec3(0.35, 2.11, 0.02), new pc.Vec3(0.12, 0.055, 0.28), dark);
+  part(root, 'night-vision-mount', 'box', new pc.Vec3(0, 2.18, -0.29), new pc.Vec3(0.16, 0.12, 0.13), buckle);
+  part(root, 'goggle-left', 'box', new pc.Vec3(-0.105, 2.0, -0.222), new pc.Vec3(0.14, 0.105, 0.055), lens);
+  part(root, 'goggle-right', 'box', new pc.Vec3(0.105, 2.0, -0.222), new pc.Vec3(0.14, 0.105, 0.055), lens);
+  part(root, 'chin-strap', 'box', new pc.Vec3(0, 1.83, -0.17), new pc.Vec3(0.3, 0.045, 0.045), webbing);
+  part(root, 'neck-gaiter', 'cylinder', new pc.Vec3(0, 1.77, 0), new pc.Vec3(0.23, 0.17, 0.23), dark);
+
   // AR-01 rifle blockout with sight, magazine, stock, handguard and muzzle.
   const weapon = new pc.Entity('ar-01-rifle');
   const weaponRest = new pc.Vec3(0.28, 1.27, -0.46);
