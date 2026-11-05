@@ -185,7 +185,8 @@ export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): vo
       const applyMap = (set: Cc0TextureSet | undefined, target: pc.StandardMaterial, tiling: number) => {
         const maps = [
           { file: set?.files.find((item) => /diff|albedo|color/i.test(item.map)), kind: 'diffuse' as const },
-          { file: set?.files.find((item) => /normal|nor_gl|nor_dx|bump/i.test(item.map)), kind: 'normal' as const }
+          { file: set?.files.find((item) => /normal|nor_gl|nor_dx|bump/i.test(item.map)), kind: 'normal' as const },
+          { file: set?.files.find((item) => /(^|[_ .-])ao([_ .-]|$)|ambient.?occlusion/i.test(item.map)), kind: 'ao' as const }
         ];
         for (const entry of maps) {
           if (!entry.file) continue;
@@ -198,9 +199,12 @@ export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): vo
             if (entry.kind === 'diffuse') {
               target.diffuseMap = texture;
               target.diffuseMapTiling = new pc.Vec2(tiling, tiling);
-            } else {
+            } else if (entry.kind === 'normal') {
               target.normalMap = texture;
               target.normalMapTiling = new pc.Vec2(tiling, tiling);
+            } else {
+              target.aoMap = texture;
+              target.aoMapTiling = new pc.Vec2(tiling, tiling);
             }
             target.update();
           });
