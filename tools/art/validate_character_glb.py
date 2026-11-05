@@ -23,6 +23,11 @@ EXPECTED_FINGER_BONES = {
     for digit in ("thumb", "index", "middle", "ring", "pinky")
     for segment in ((1, 2) if digit == "thumb" else (1, 2, 3))
 }
+EXPECTED_DETAIL_MARKERS = {
+    "helmet_brow", "helmet_rear_rail", "neck_seal",
+    "respirator_filter_L", "respirator_filter_R",
+    "cheek_vent_L", "cheek_vent_R",
+}
 EXPECTED_SOCKETS = {
     "TSI001_weapon_hand_socket", "TSI001_back_gear_socket",
     "TSI001_head_camera_socket",
@@ -63,6 +68,8 @@ def main():
     names={o.name for o in objects}
     missing_sockets=EXPECTED_SOCKETS-names
     if missing_sockets: errors.append("missing sockets: "+", ".join(sorted(missing_sockets)))
+    missing_details=EXPECTED_DETAIL_MARKERS-names
+    if missing_details: errors.append("missing head detail markers: "+", ".join(sorted(missing_details)))
     weighted=False
     for mesh in meshes:
         group_names={g.name for g in mesh.vertex_groups}
@@ -74,6 +81,14 @@ def main():
                     deform_count+=1
                     break
         if deform_count: weighted=True
+        for vertex in mesh.data.vertices:
+            total=sum(a.weight for a in vertex.groups)
+            if vertex.groups and abs(total-1.0)>0.02:
+                errors.append("non-normalized skin weights on mesh %s vertex %d (sum %.3f)"%(mesh.name,vertex.index,total))
+                break
+        armature_modifiers=[m for m in mesh.modifiers if m.type=="ARMATURE"]
+        if not armature_modifiers:
+            errors.append("mesh has no armature modifier: "+mesh.name)
     if not weighted: errors.append("no weighted mesh vertices found")
     finger_weight_groups=set()
     for mesh in meshes:
