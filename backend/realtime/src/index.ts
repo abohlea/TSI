@@ -12,12 +12,16 @@ const isProduction = process.env.NODE_ENV === 'production';
 const localAuthEnabled = process.env.TSI_ENABLE_LOCAL_AUTH === 'true';
 const localToken = process.env.TSI_LOCAL_DEV_TOKEN ?? '';
 const ticketSecret = process.env.TSI_SESSION_TICKET_SECRET ?? '';
+const allowedOrigins = new Set((process.env.TSI_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean));
 
 if (isProduction && !process.env.FIREBASE_PROJECT_ID) {
   throw new Error('FIREBASE_PROJECT_ID is required in production.');
 }
 if (isProduction && localAuthEnabled) {
   throw new Error('TSI local development authentication must never be enabled in production.');
+}
+if (isProduction && allowedOrigins.size === 0) {
+  throw new Error('TSI_ALLOWED_ORIGINS must contain at least one trusted web origin.');
 }
 if (isProduction && ticketSecret.length < 32) {
   throw new Error('TSI_SESSION_TICKET_SECRET must contain at least 32 characters in production.');
@@ -27,7 +31,7 @@ if (!isProduction && localAuthEnabled && localToken.length < 24) {
 }
 
 interface RequestLike extends AsyncIterable<Uint8Array> {
-  headers: { authorization?: string | string[] };
+  headers: { authorization?: string | string[]; origin?: string | string[] };
   ip?: string;
   socket?: { remoteAddress?: string };
 }
@@ -56,8 +60,14 @@ const server = defineServer({
       });
     });
 
-    app.options('/auth/session-ticket', (_request: unknown, response: ResponseLike) => {
-      response.setHeader('Access-Control-Allow-Origin', '*');
+    app.options('/auth/session-ticket', (request: unknown, response: ResponseLike) => {
+      const origin = (request as RequestLike).headers.origin;
+      if (typeof origin !== 'string' || !allowedOrigins.has(origin)) {
+        response.status(403).json({ error: 'Origin not allowed.' });
+        return;
+      }
+      response.setHeader('Access-Control-Allow-Origin', origin);
+      response.setHeader('Vary', 'Origin');
       response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
       response.setHeader('Access-Control-Allow-Headers', 'Authorization');
       response.status(204).end();
@@ -68,8 +78,16 @@ const server = defineServer({
         response.status(404).json({ error: 'Session-ticket endpoint is production-only.' });
         return;
       }
-      response.setHeader('Access-Control-Allow-Origin', '*');
       const req = request as RequestLike;
+      const origin = req.headers.origin;
+      if (typeof origin === 'string') {
+        if (!allowedOrigins.has(origin)) {
+          response.status(403).json({ error: 'Origin not allowed.' });
+          return;
+        }
+        response.setHeader('Access-Control-Allow-Origin', origin);
+        response.setHeader('Vary', 'Origin');
+      }
       const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
       const now = Date.now();
       const bucket = ticketRequests.get(ip);
