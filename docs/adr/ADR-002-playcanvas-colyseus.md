@@ -10,7 +10,7 @@
 2. Le client est écrit en TypeScript, construit avec Vite et exécuté d'abord dans un navigateur. Un prototype de terrain d'entraînement et une room Colyseus locale sont présents dans le dépôt.
 3. Le projet utilise PlayCanvas Engine directement ; l'éditeur visuel PlayCanvas n'est pas un prérequis.
 4. La licence MIT du moteur est retenue comme base permissive pour le prototype et l'exploitation commerciale, sous réserve de respecter les licences et notices des dépendances et ressources tierces.
-5. **Colyseus 0.18.10 / Node.js / TypeScript** est implémenté pour une room locale de test. Le SDK client est épinglé sur **@colyseus/sdk 0.18.9**. Cette implémentation synchronise uniquement les déplacements ; elle ne constitue pas encore un combat multijoueur complet.
+5. **Colyseus 0.18.10 / Node.js / TypeScript** est implémenté pour une room locale de test. Le SDK client est épinglé sur **@colyseus/sdk 0.18.9**. Cette implémentation synchronise les déplacements, les collisions de la zone d'entraînement et les tirs sur cibles validés par le serveur ; elle ne constitue pas encore un combat joueur contre joueur complet.
 6. Firebase Authentication, Cloud Firestore et Cloudinary restent les services de compte, de données persistantes et de médias conformément à ADR-001.
 7. Render reste exclu.
 8. PlayCanvas n'est pas déclaré plus performant qu'Unreal Engine 6. Le choix est motivé par le workflow web, l'accès au code, la licence et la capacité à prototyper en TypeScript. La performance mobile et la capacité à porter le jeu final restent à prouver.
@@ -44,12 +44,15 @@ Le premier Field Test doit prouver :
 - build web reproductible ;
 - tests de performance de base sur téléphone.
 
-Le premier jalon réseau local implémenté permet de vérifier :
+Le jalon réseau local implémenté permet de vérifier :
 - un client PlayCanvas rejoint une room Colyseus locale ;
-- le serveur valide les séquences et normalise les inputs de déplacement ;
-- les snapshots permettent d'afficher des opérateurs distants.
+- le serveur valide les séquences, le pitch et normalise les inputs de déplacement ;
+- les collisions du terrain d'entraînement sont vérifiées côté serveur ;
+- le serveur gère cadence de tir, munitions, rechargement, impacts sur cibles, dégâts et réapparition ;
+- les snapshots permettent d'afficher des opérateurs distants et l'état des cibles ;
+- chaque joueur reçoit ses propres munitions et son score via un message privé.
 
-Cette preuve est limitée au réseau local et à huit clients de test maximum. Elle n'a pas encore été validée par un build npm réussi dans l'environnement de travail.
+Cette preuve est limitée au réseau local et à huit clients de test maximum. Elle ne couvre pas le PvP, les dégâts entre joueurs, la réanimation, Firebase ou le matchmaking de production. Elle n'a pas encore été validée par un build npm réussi dans l'environnement de travail.
 
 Le jalon réseau suivant doit prouver :
 - un client PlayCanvas rejoint une room locale ;
