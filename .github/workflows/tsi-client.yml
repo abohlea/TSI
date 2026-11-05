@@ -1,13 +1,15 @@
-name: TSI client checks
+name: TSI project checks
 
 on:
   push:
     paths:
       - "game-client/**"
+      - "server/**"
       - ".github/workflows/tsi-client.yml"
   pull_request:
     paths:
       - "game-client/**"
+      - "server/**"
       - ".github/workflows/tsi-client.yml"
 
 permissions:
@@ -15,6 +17,7 @@ permissions:
 
 jobs:
   client:
+    name: PlayCanvas client typecheck and build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -23,9 +26,29 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install dependencies
+      - name: Install client dependencies
         working-directory: game-client
         run: npm install --no-audit --no-fund
-      - name: Type check and build
+      - name: Type check and build client
         working-directory: game-client
         run: npm run build
+
+  server:
+    name: Colyseus server typecheck and tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install server dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
+      - name: Type check server
+        working-directory: server
+        run: npm run check
+      - name: Test and build server
+        working-directory: server
+        run: npm test
