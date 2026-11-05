@@ -30,12 +30,14 @@ export interface NetworkShotResult {
   accepted: boolean;
   hit?: boolean;
   eliminated?: boolean;
+  playerHit?: boolean;
   reason?: string;
 }
 
 export interface NetworkCallbacks {
   onStatus(message: string): void;
   onWelcome?(playerId: string, spawn: { x: number; z: number }): void;
+  onRespawn?(spawn: { x: number; z: number }): void;
   onSnapshot(snapshot: NetworkSnapshot): void;
   onSelf?(state: NetworkPrivateState): void;
   onShot?(result: NetworkShotResult): void;
@@ -130,6 +132,16 @@ export class TsiNetworkClient {
       callbacks.onStatus('SERVEUR LOCAL CONNECTÉ');
     });
 
+    room.onMessage('respawn', (payload: unknown) => {
+      if (!isRecord(payload)) return;
+      const { x, z } = payload;
+      if (
+        typeof x !== 'number' || !Number.isFinite(x) ||
+        typeof z !== 'number' || !Number.isFinite(z)
+      ) return;
+      callbacks.onRespawn?.({ x, z });
+    });
+
     room.onMessage('snapshot', (payload: unknown) => {
       const snapshot = parseSnapshot(payload);
       if (snapshot) callbacks.onSnapshot(snapshot);
@@ -146,6 +158,7 @@ export class TsiNetworkClient {
         accepted: payload.accepted,
         ...(typeof payload.hit === 'boolean' ? { hit: payload.hit } : {}),
         ...(typeof payload.eliminated === 'boolean' ? { eliminated: payload.eliminated } : {}),
+        ...(typeof payload.playerHit === 'boolean' ? { playerHit: payload.playerHit } : {}),
         ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {})
       });
     });
