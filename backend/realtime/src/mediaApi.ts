@@ -6,6 +6,7 @@ import { v2 as cloudinary } from 'cloudinary';
 import { getFirebaseAdminApp, verifyFirebasePlayerToken } from './firebaseAuth.js';
 import {
   cloudinaryPlayerAvatarPrefix,
+  isAllowedAvatarContent,
   configureCloudinary,
   readCloudinaryConfig,
   TSI_AVATAR_ALLOWED_FORMATS,
@@ -47,10 +48,7 @@ async function readAvatarBytes(request: IncomingMessage): Promise<Buffer> {
   }
   if (total < 1) throw new Error('Avatar is empty.');
   const data = Buffer.concat(chunks, total);
-  const isJpeg = data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
-  const isPng = data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-  const isWebp = data.length >= 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP';
-  if ((contentType === 'image/jpeg' && !isJpeg) || (contentType === 'image/png' && !isPng) || (contentType === 'image/webp' && !isWebp)) {
+  if (!isAllowedAvatarContent(contentType ?? '', data)) {
     throw new Error('Avatar content does not match its declared image type.');
   }
   return data;
