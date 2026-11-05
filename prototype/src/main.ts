@@ -296,6 +296,7 @@ app.on('update', (dt: number) => {
     player.root.setEulerAngles(0, yaw, 0);
 
     if (controls.reload) reload();
+    if (controls.firePressed && network.connected) network.sendFire();
     if (controls.shoot && !network.connected) fire();
 
     if (network.connected) {
