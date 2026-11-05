@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Client, Room } from 'colyseus';
-import { clamp, isRecord, type PlayerInput } from '../types.js';
+import { clamp, isRecord } from '../types.js';
 import { parsePlayerInput } from '../validation.js';
 import { consumeSessionTicket } from '../sessionTickets.js';
 import { persistMatchResult, type MatchParticipantResult } from '../matchResults.js';
@@ -104,7 +104,7 @@ export class TeamMatchRoom extends Room {
         uid: auth.playerId, team, score: 0, kills: 0, deaths: 0, joinedAt: Date.now()
       });
     }
-    client.send('team-welcome', { playerId: player.playerId, team, roomId: this.roomId });
+    client.send('team-welcome', { playerId: player.playerId, team, roomId: this.roomId, x: player.x, z: player.z });
     client.send('team-match-state', this.matchPayload());
     this.broadcastPlayers();
     this.broadcastMatchState();
