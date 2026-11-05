@@ -10,7 +10,7 @@
 2. Le client est écrit en TypeScript, construit avec Vite et exécuté d'abord dans un navigateur. Un prototype de terrain d'entraînement et une room Colyseus locale sont présents dans le dépôt.
 3. Le projet utilise PlayCanvas Engine directement ; l'éditeur visuel PlayCanvas n'est pas un prérequis.
 4. La licence MIT du moteur est retenue comme base permissive pour le prototype et l'exploitation commerciale, sous réserve de respecter les licences et notices des dépendances et ressources tierces.
-5. **Colyseus 0.18.10 / Node.js / TypeScript** est implémenté pour une room locale de test. Le SDK client est épinglé sur **@colyseus/sdk 0.18.9**. Cette implémentation synchronise les déplacements, les collisions de la zone d'entraînement et les tirs sur cibles validés par le serveur ; elle ne constitue pas encore un combat joueur contre joueur complet.
+5. **Colyseus 0.18.10 / Node.js / TypeScript** est implémenté dans `server/` pour une room locale de test. Le serveur valide les déplacements, les tirs sur cibles et une première résolution PvP hitscan, avec santé, élimination et réapparition. Le client `game-client/` n'est toutefois pas encore raccordé à cette room.
 6. Firebase Authentication, Cloud Firestore et Cloudinary restent les services de compte, de données persistantes et de médias conformément à ADR-001.
 7. Render reste exclu.
 8. PlayCanvas n'est pas déclaré plus performant qu'Unreal Engine 6. Le choix est motivé par le workflow web, l'accès au code, la licence et la capacité à prototyper en TypeScript. La performance mobile et la capacité à porter le jeu final restent à prouver.
@@ -52,14 +52,15 @@ Le jalon réseau local implémenté permet de vérifier :
 - les snapshots permettent d'afficher des opérateurs distants et l'état des cibles ;
 - chaque joueur reçoit ses propres munitions et son score via un message privé.
 
-Cette preuve est limitée au réseau local et à huit clients de test maximum. Elle ne couvre pas le PvP, les dégâts entre joueurs, la réanimation, Firebase ou le matchmaking de production. Elle n'a pas encore été validée par un build npm réussi dans l'environnement de travail.
+Cette preuve est limitée au réseau local et à huit clients de test maximum. Le PvP utilise des volumes circulaires 2D sur le plan XZ et les obstacles statiques de la carte d'entraînement. Elle ne couvre ni les hit zones verticales, ni le lag compensation, ni les équipes, ni l'anti-triche complet, ni l'authentification Firebase ou le matchmaking de production. Le client actuel n'est pas encore relié à la room PvP.
 
 Le jalon réseau suivant doit prouver :
-- un client PlayCanvas rejoint une room locale ;
-- le serveur valide les inputs et l'état du joueur ;
-- les autres clients reçoivent un état synchronisé ;
-- les tirs et dégâts sont calculés côté serveur ;
-- les résultats ne peuvent pas être modifiés depuis le client.
+- raccordement du client PlayCanvas `game-client/` au protocole PvP de `server/` ;
+- synchronisation et interpolation des états des opérateurs ;
+- validation visuelle des impacts, de la santé et des réapparitions ;
+- cohérence de la visée troisième personne avec le rayon de tir calculé côté serveur ;
+- tests avec latence, gigue et perte de paquets ;
+- authentification Firebase et tickets de session signés avant tout test distant.
 
 ## Conditions de reconsidération
 
