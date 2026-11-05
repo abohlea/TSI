@@ -7,11 +7,14 @@ export interface MatchParticipantResult {
   kills: number;
   deaths: number;
   joinedAt: number;
+  team?: 'alpha' | 'bravo';
 }
 
 export interface MatchResultInput {
   matchId: string;
-  mode: 'field-test-ffa';
+  mode: 'field-test-ffa' | 'field-test-teams';
+  winnerTeam?: 'alpha' | 'bravo' | null;
+  teamWins?: { alpha: number; bravo: number };
   startedAt: number;
   endedAt: number;
   participants: MatchParticipantResult[];
@@ -39,7 +42,7 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
   }
 
   const ranked = [...participants].sort((a, b) => b.score - a.score || b.kills - a.kills);
-  const winnerUid = ranked.length > 0 && (
+  const winnerUid = input.mode === 'field-test-teams' ? null : ranked.length > 0 && (
     ranked.length === 1 || ranked[0]!.score > ranked[1]!.score ||
     (ranked[0]!.score === ranked[1]!.score && ranked[0]!.kills > ranked[1]!.kills)
   ) ? ranked[0]!.uid : null;
@@ -63,6 +66,8 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
       durationMs: input.endedAt - input.startedAt,
       participantUids: participants.map((participant) => participant.uid),
       winnerUid,
+      winnerTeam: input.winnerTeam ?? null,
+      teamWins: input.teamWins ?? null,
       results: participants.map((participant) => ({
         uid: participant.uid,
         score: participant.score,
@@ -80,7 +85,7 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
         kills: FieldValue.increment(participant.kills),
         deaths: FieldValue.increment(participant.deaths),
         score: FieldValue.increment(participant.score),
-        wins: FieldValue.increment(participant.uid === winnerUid ? 1 : 0),
+        wins: FieldValue.increment(input.winnerTeam ? participant.team === input.winnerTeam ? 1 : 0 : participant.uid === winnerUid ? 1 : 0),
         updatedAt: FieldValue.serverTimestamp()
       };
       if (previous.exists) transaction.set(ref, incremented, { merge: true });
@@ -90,7 +95,7 @@ export async function persistMatchResult(input: MatchResultInput): Promise<boole
         kills: participant.kills,
         deaths: participant.deaths,
         score: participant.score,
-        wins: participant.uid === winnerUid ? 1 : 0,
+        wins: input.winnerTeam ? participant.team === input.winnerTeam ? 1 : 0 : participant.uid === winnerUid ? 1 : 0,
         updatedAt: FieldValue.serverTimestamp()
       });
     });
