@@ -23,7 +23,7 @@ const server = defineServer({
     field_test: defineRoom(FieldTestRoom)
   },
   express: (app) => {
-    app.get('/health', (_request, response) => {
+    app.get('/health', (_request: unknown, response: { status(code: number): { json(body: Record<string, string>): unknown } }) => {
       response.status(200).json({
         service: 'tsi-realtime',
         status: 'ok',
