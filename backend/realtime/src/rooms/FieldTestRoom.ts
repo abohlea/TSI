@@ -13,6 +13,7 @@ import { consumeSessionTicket } from '../sessionTickets.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
+  findSpawnPosition,
   resolveAuthoritativeShot,
   SPRINT_SPEED,
   updateTargetRespawns,
@@ -89,13 +90,13 @@ export class FieldTestRoom extends Room {
   }
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
-    const spawnIndex = this.players.size;
-    const spawnX = spawnIndex % 2 === 0 ? -2 : 2;
-    const spawnZ = 5 + Math.floor(spawnIndex / 2) * 2;
+    const spawn = findSpawnPosition(Array.from(this.players.values()));
+    if (!spawn) throw new Error('No free player spawn position is available.');
+
     const player: ServerPlayer = {
       playerId: auth.playerId,
-      x: spawnX,
-      z: spawnZ,
+      x: spawn.x,
+      z: spawn.z,
       yaw: 0,
       pitch: -2.4,
       health: 100,
@@ -108,8 +109,6 @@ export class FieldTestRoom extends Room {
       score: 0,
       nextShotAt: 0,
       reloadEndsAt: 0,
-      spawnX,
-      spawnZ,
       respawnAt: 0
     };
 
@@ -234,9 +233,14 @@ export class FieldTestRoom extends Room {
     for (const [sessionId, player] of this.players) {
       if (player.health <= 0) {
         if (player.respawnAt > 0 && now >= player.respawnAt) {
+          const spawn = findSpawnPosition(
+            Array.from(this.players.values()).filter((candidate) => candidate !== player)
+          );
+          if (!spawn) continue;
+
           player.health = 100;
-          player.x = player.spawnX;
-          player.z = player.spawnZ;
+          player.x = spawn.x;
+          player.z = spawn.z;
           player.yaw = 0;
           player.pitch = -2.4;
           player.respawnAt = 0;
