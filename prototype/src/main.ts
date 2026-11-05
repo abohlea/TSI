@@ -2,7 +2,7 @@ import * as pc from 'playcanvas';
 import { createArena } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
-import { createPlayer, createRemotePlayer } from './game/player';
+import { createPlayer, createRemotePlayer, type RemotePlayerRig } from './game/player';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { createHud } from './ui/hud';
 import './style.css';
@@ -88,9 +88,14 @@ let reloadTimer = 0;
 let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
+let drivingVehicle = false;
+let vehicleWheelRotation = 0;
+let vehicleSteering = 0;
+const openedDoors = new Set<pc.Entity>();
+const collectedCrates = new Set<pc.Entity>();
 let serverTargetPosition = { x: 0, z: 0 };
 const playerRadius = 0.58;
-const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
+const remotePlayers = new Map<string, { rig: RemotePlayerRig; targetX: number; targetZ: number; targetYaw: number }>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -112,6 +117,7 @@ function aimPointForPlayer(): pc.Vec3 {
 }
 
 function reload(): void {
+  player.triggerReload();
   if (network.connected) {
     network.sendReload();
     hud.toast('DEMANDE DE RECHARGEMENT');
@@ -171,8 +177,8 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
 
     let view = remotePlayers.get(remote.playerId);
     if (!view) {
-      const root = createRemotePlayer(app, remote.playerId);
-      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw };
+      const rig = createRemotePlayer(app, remote.playerId);
+      view = { rig, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw };
       remotePlayers.set(remote.playerId, view);
     }
 
@@ -192,7 +198,7 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
 
   for (const [id, view] of remotePlayers) {
     if (visibleRemoteIds.has(id)) continue;
-    view.root.destroy();
+    view.rig.root.destroy();
     remotePlayers.delete(id);
   }
 }
@@ -268,6 +274,40 @@ app.on('update', (dt: number) => {
   if (active) {
     const controls = input.read();
     yaw += controls.yawDelta;
+    if (controls.interactPressed) {
+      const playerPosition = player.root.getPosition();
+      const vehiclePosition = arena.vehicle.getPosition();
+      const vehicleDistance = playerPosition.distance(vehiclePosition);
+      if (drivingVehicle) {
+        drivingVehicle = false;
+        player.root.enabled = true;
+        player.root.setPosition(vehiclePosition.x + 2.6, 0.04, vehiclePosition.z);
+        hud.toast('VÉHICULE QUITTÉ');
+      } else if (vehicleDistance < 5.2) {
+        drivingVehicle = true;
+        player.root.enabled = false;
+        hud.toast('VÉHICULE ACTIVÉ · E POUR SORTIR');
+      } else {
+        const nearbyCrate = arena.crates.find((crate) => !collectedCrates.has(crate) && playerPosition.distance(crate.getPosition()) < 3.2);
+        if (nearbyCrate) {
+          collectedCrates.add(nearbyCrate);
+          nearbyCrate.enabled = false;
+          reserve += 30;
+          hud.setAmmo(ammo, reserve);
+          hud.toast('CAISSE RÉCUPÉRÉE · +30 MUNITIONS');
+        } else {
+        const nearbyDoor = arena.doors.find((door) => playerPosition.distance(door.getPosition()) < 3.2);
+        if (nearbyDoor) {
+          const isOpen = openedDoors.has(nearbyDoor);
+          if (isOpen) { nearbyDoor.setLocalEulerAngles(0, 0, 0); openedDoors.delete(nearbyDoor); }
+          else { nearbyDoor.setLocalEulerAngles(0, -100, 0); openedDoors.add(nearbyDoor); }
+          hud.toast(isOpen ? 'PORTE FERMÉE' : 'PORTE OUVERTE');
+        } else {
+          hud.toast('APPROCHE-TOI D’UNE CAISSE, PORTE OU DU CAMION');
+        }
+        }
+      }
+    }
     pitch = clamp(pitch + controls.pitchDelta, -27, 13);
     const radians = yaw * Math.PI / 180;
     const forwardX = -Math.sin(radians);
@@ -279,9 +319,16 @@ app.on('update', (dt: number) => {
     const moveLength = Math.hypot(moveX, moveZ);
     const normalizedX = moveLength > 1 ? moveX / moveLength : moveX;
     const normalizedZ = moveLength > 1 ? moveZ / moveLength : moveZ;
-    const speed = controls.sprint ? 8.2 : 5.2;
-    movingForAnimation = moveLength > 0.01;
-    sprintingForAnimation = controls.sprint;
+    const speed = drivingVehicle ? (controls.sprint ? 15 : 10) : (controls.sprint ? 8.2 : 5.2);
+    movingForAnimation = moveLength > 0.01 && !drivingVehicle;
+    sprintingForAnimation = controls.sprint && !drivingVehicle;
+    const steeringTarget = drivingVehicle && moveLength > 0.01 ? clamp(controls.moveX, -1, 1) * 28 : 0;
+    vehicleSteering += (steeringTarget - vehicleSteering) * Math.min(1, dt * 7);
+    arena.steeringWheel.setLocalEulerAngles(90, 0, vehicleSteering);
+    if (drivingVehicle && moveLength > 0.01) {
+      vehicleWheelRotation += speed * dt * 42 * (controls.moveY >= 0 ? 1 : -1);
+      for (const wheel of arena.wheels) wheel.setLocalEulerAngles(vehicleWheelRotation, 0, 90);
+    }
 
     if (moveLength > 0.01) {
       const stepX = normalizedX * speed * dt;
@@ -289,9 +336,19 @@ app.on('update', (dt: number) => {
       const current = player.root.getPosition().clone();
       const nextX = current.x + stepX;
       const nextZ = current.z + stepZ;
-      if (!isBlocked(nextX, current.z)) player.root.setPosition(nextX, current.y, current.z);
-      const afterX = player.root.getPosition();
-      if (!isBlocked(afterX.x, nextZ)) player.root.setPosition(afterX.x, current.y, nextZ);
+      if (drivingVehicle) {
+        const vehiclePosition = arena.vehicle.getPosition();
+        const vehicleX = vehiclePosition.x + stepX;
+        const vehicleZ = vehiclePosition.z + stepZ;
+        if (!isBlocked(vehicleX, vehicleZ)) {
+          arena.vehicle.setPosition(vehicleX, 0, vehicleZ);
+          player.root.setPosition(vehicleX, current.y, vehicleZ);
+        }
+      } else {
+        if (!isBlocked(nextX, current.z)) player.root.setPosition(nextX, current.y, current.z);
+        const afterX = player.root.getPosition();
+        if (!isBlocked(afterX.x, nextZ)) player.root.setPosition(afterX.x, current.y, nextZ);
+      }
     }
     player.root.setEulerAngles(0, yaw, 0);
 
@@ -325,11 +382,15 @@ app.on('update', (dt: number) => {
   player.updateAnimation(dt, movingForAnimation, sprintingForAnimation);
   const remoteBlend = 1 - Math.exp(-12 * dt);
   for (const view of remotePlayers.values()) {
-    const current = view.root.getPosition();
-    const nextX = current.x + (view.targetX - current.x) * remoteBlend;
-    const nextZ = current.z + (view.targetZ - current.z) * remoteBlend;
-    view.root.setPosition(nextX, 0.04, nextZ);
-    view.root.setEulerAngles(0, view.targetYaw, 0);
+    const current = view.rig.root.getPosition();
+    const deltaX = view.targetX - current.x;
+    const deltaZ = view.targetZ - current.z;
+    const moving = Math.hypot(deltaX, deltaZ) > 0.035;
+    const nextX = current.x + deltaX * remoteBlend;
+    const nextZ = current.z + deltaZ * remoteBlend;
+    view.rig.root.setPosition(nextX, 0.04, nextZ);
+    view.rig.root.setEulerAngles(0, view.targetYaw, 0);
+    view.rig.updateAnimation(dt, moving, false);
   }
 
   const position = player.root.getPosition();

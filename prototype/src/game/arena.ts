@@ -19,6 +19,11 @@ export interface PracticeTarget {
 export interface ArenaApi {
   targets: PracticeTarget[];
   obstacles: ArenaObstacle[];
+  vehicle: pc.Entity;
+  doors: pc.Entity[];
+  crates: pc.Entity[];
+  wheels: pc.Entity[];
+  steeringWheel: pc.Entity;
 }
 
 function material(color: pc.Color, options: { metalness?: number; roughness?: number; emissive?: pc.Color } = {}): pc.StandardMaterial {
@@ -64,6 +69,10 @@ export function createArena(app: pc.Application): ArenaApi {
   const orange = material(new pc.Color(1, 0.34, 0.075), { metalness: 0.28, roughness: 0.42, emissive: new pc.Color(0.15, 0.025, 0.005) });
   const targetSurface = material(new pc.Color(0.16, 0.42, 0.48), { metalness: 0.42, roughness: 0.48 });
   const lane = material(new pc.Color(0.7, 0.72, 0.62));
+  // Shared facade materials: avoid allocating identical GPU materials per building.
+  const facade = material(new pc.Color(0.22, 0.27, 0.27), { roughness: 0.96 });
+  const glass = material(new pc.Color(0.035, 0.17, 0.2), { metalness: 0.38, roughness: 0.28 });
+  const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
 
   primitive(app.root, 'training-ground', 'box', new pc.Vec3(0, -0.35, -2), new pc.Vec3(110, 0.7, 110), ground);
   primitive(app.root, 'central-lane', 'box', new pc.Vec3(0, 0.012, -18), new pc.Vec3(16, 0.025, 58), lane);
@@ -71,6 +80,8 @@ export function createArena(app: pc.Application): ArenaApi {
   primitive(app.root, 'lane-mark-right', 'box', new pc.Vec3(7.7, 0.025, -18), new pc.Vec3(0.15, 0.03, 58), orange);
 
   const obstacles: ArenaObstacle[] = [];
+  const doors: pc.Entity[] = [];
+  const crates: pc.Entity[] = [];
   const buildings = [
     { x: -20, z: -12, w: 12, d: 16, h: 7 },
     { x: 20, z: -14, w: 13, d: 17, h: 9 },
@@ -86,6 +97,25 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'building-mass', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(building.w, building.h, building.d), concrete);
     primitive(root, 'roof-trim', 'box', new pc.Vec3(0, building.h / 2 + 0.08, 0), new pc.Vec3(building.w + 0.25, 0.16, building.d + 0.25), dark);
     primitive(root, 'signal-panel', 'box', new pc.Vec3(0, 0.5, building.d / 2 + 0.035), new pc.Vec3(1.8, 0.7, 0.08), orange);
+    // Facade details: recessed entrance, lintel, windows, sills and corner columns.
+    const doorWidth = Math.min(1.7, building.w * 0.22);
+    const door = new pc.Entity('interactive-entrance-door');
+    door.setLocalPosition(-doorWidth / 2, -building.h * 0.29, building.d / 2 + 0.055);
+    root.addChild(door);
+    primitive(door, 'door-panel', 'box', new pc.Vec3(doorWidth / 2, 0, 0), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
+    doors.push(door);
+    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
+    primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
+    const windowY = Math.min(building.h * 0.18, 1.55);
+    for (const side of [-1, 1]) {
+      const windowX = side * building.w * 0.29;
+      primitive(root, `front-window-${side}`, 'box', new pc.Vec3(windowX, windowY, building.d / 2 + 0.045), new pc.Vec3(Math.min(1.55, building.w * 0.2), 1.15, 0.075), glass);
+      primitive(root, `window-frame-${side}`, 'box', new pc.Vec3(windowX, windowY, building.d / 2 + 0.09), new pc.Vec3(Math.min(1.72, building.w * 0.22), 1.3, 0.055), trim);
+      primitive(root, `window-sill-${side}`, 'box', new pc.Vec3(windowX, windowY - 0.68, building.d / 2 + 0.12), new pc.Vec3(Math.min(1.85, building.w * 0.24), 0.12, 0.2), facade);
+      primitive(root, `corner-pillar-${side}`, 'box', new pc.Vec3(side * (building.w / 2 - 0.22), 0, building.d / 2 + 0.07), new pc.Vec3(0.28, building.h - 0.25, 0.18), facade);
+    }
+    primitive(root, 'roof-parapet-front', 'box', new pc.Vec3(0, building.h / 2 + 0.24, building.d / 2 - 0.08), new pc.Vec3(building.w + 0.2, 0.32, 0.24), facade);
+    primitive(root, 'roof-vent', 'box', new pc.Vec3(building.w * 0.28, building.h / 2 + 0.22, 0), new pc.Vec3(1.1, 0.38, 0.85), dark);
     obstacles.push({
       minX: building.x - building.w / 2 - 0.8, maxX: building.x + building.w / 2 + 0.8,
       minZ: building.z - building.d / 2 - 0.8, maxZ: building.z + building.d / 2 + 0.8
@@ -99,12 +129,172 @@ export function createArena(app: pc.Application): ArenaApi {
     obstacles.push({ minX: x - 1.35, maxX: x + 1.35, minZ: z - 0.95, maxZ: z + 0.95 });
   }
 
+  // Defensive wall sections and sandbag emplacements around the training lanes.
+  const wallSurface = material(new pc.Color(0.31, 0.34, 0.32), { roughness: 0.98 });
+  const sandbagSurface = material(new pc.Color(0.43, 0.39, 0.29), { roughness: 1 });
+  const wallTrim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
+  const metalSurface = material(new pc.Color(0.12, 0.16, 0.16), { metalness: 0.58, roughness: 0.72 });
+  const wallRuns = [
+    { x: -34, z: -22, length: 17, rotation: 0 },
+    { x: 34, z: -25, length: 20, rotation: 0 },
+    { x: 0, z: -52, length: 26, rotation: 90 }
+  ];
+  wallRuns.forEach((wall, index) => {
+    const root = new pc.Entity(`defensive-wall-${index + 1}`);
+    root.setPosition(wall.x, 0, wall.z);
+    root.setEulerAngles(0, wall.rotation, 0);
+    app.root.addChild(root);
+    primitive(root, 'wall-core', 'box', new pc.Vec3(0, 1.05, 0), new pc.Vec3(wall.length, 2.1, 0.62), wallSurface);
+    primitive(root, 'wall-top-cap', 'box', new pc.Vec3(0, 2.13, 0), new pc.Vec3(wall.length + 0.22, 0.14, 0.78), dark);
+    for (let segment = 0; segment < Math.floor(wall.length / 2); segment += 1) {
+      const x = -wall.length / 2 + 1 + segment * 2;
+      primitive(root, `wall-panel-seam-${segment}`, 'box', new pc.Vec3(x, 1.05, -0.32), new pc.Vec3(0.055, 2.0, 0.025), wallTrim);
+      primitive(root, `wall-support-${segment}`, 'box', new pc.Vec3(x, 0.55, 0.38), new pc.Vec3(0.16, 1.1, 0.24), metalSurface);
+    }
+    obstacles.push({
+      minX: wall.x - (wall.rotation === 90 ? 0.65 : wall.length / 2 + 0.55),
+      maxX: wall.x + (wall.rotation === 90 ? 0.65 : wall.length / 2 + 0.55),
+      minZ: wall.z - (wall.rotation === 90 ? wall.length / 2 + 0.55 : 0.65),
+      maxZ: wall.z + (wall.rotation === 90 ? wall.length / 2 + 0.55 : 0.65)
+    });
+  });
+
+  const sandbagPositions = [
+    { x: -12, z: -16 }, { x: 12, z: -16 }, { x: -18, z: -31 }, { x: 18, z: -31 }
+  ];
+  sandbagPositions.forEach((position, index) => {
+    const root = new pc.Entity(`sandbag-emplacement-${index + 1}`);
+    root.setPosition(position.x, 0, position.z);
+    app.root.addChild(root);
+    for (let row = 0; row < 2; row += 1) {
+      for (let bag = 0; bag < 4 - row; bag += 1) {
+        primitive(root, `sandbag-${row}-${bag}`, 'capsule',
+          new pc.Vec3((bag - 1.5 + row * 0.5) * 0.62, 0.28 + row * 0.42, 0),
+          new pc.Vec3(0.58, 0.34, 0.38), sandbagSurface);
+      }
+    }
+    obstacles.push({ minX: position.x - 1.55, maxX: position.x + 1.55, minZ: position.z - 0.65, maxZ: position.z + 0.65 });
+  });
+
+  // Roadside concrete jersey barriers.
+  for (let index = 0; index < 5; index += 1) {
+    const x = -24 + index * 12;
+    primitive(app.root, `road-barrier-${index + 1}`, 'box', new pc.Vec3(x, 0.48, -3), new pc.Vec3(4.4, 0.96, 0.72), wallSurface);
+    primitive(app.root, `road-barrier-stripe-${index + 1}`, 'box', new pc.Vec3(x, 0.5, -3.38), new pc.Vec3(0.42, 0.72, 0.035), orange);
+    obstacles.push({ minX: x - 2.35, maxX: x + 2.35, minZ: -3.55, maxZ: -2.45 });
+  }
+
   for (let index = 0; index < 8; index += 1) {
     const x = index < 4 ? -43 : 43;
     const z = -48 + (index % 4) * 16;
     primitive(app.root, `beacon-${index + 1}`, 'cylinder', new pc.Vec3(x, 1.8, z), new pc.Vec3(0.28, 3.6, 0.28), dark);
     primitive(app.root, `beacon-light-${index + 1}`, 'sphere', new pc.Vec3(x, 3.75, z), new pc.Vec3(0.38, 0.38, 0.38), orange);
   }
+
+  // Watchtowers give the perimeter vertical landmarks and additional cover.
+  const towerSurface = material(new pc.Color(0.24, 0.29, 0.27), { roughness: 0.94 });
+  const towerMetal = material(new pc.Color(0.095, 0.13, 0.13), { metalness: 0.62, roughness: 0.58 });
+  for (const side of [-1, 1]) {
+    const x = side * 49;
+    const z = -39;
+    const tower = new pc.Entity(side < 0 ? 'west-watchtower' : 'east-watchtower');
+    tower.setPosition(x, 0, z);
+    app.root.addChild(tower);
+    primitive(tower, 'tower-platform', 'box', new pc.Vec3(0, 3.05, 0), new pc.Vec3(3.2, 0.28, 3.2), towerSurface);
+    for (const dx of [-1.35, 1.35]) for (const dz of [-1.35, 1.35]) {
+      primitive(tower, 'tower-leg', 'box', new pc.Vec3(dx, 1.5, dz), new pc.Vec3(0.2, 3, 0.2), towerMetal);
+    }
+    primitive(tower, 'tower-roof', 'box', new pc.Vec3(0, 5.15, 0), new pc.Vec3(3.5, 0.18, 3.5), towerMetal);
+    for (const dx of [-1.45, 1.45]) {
+      primitive(tower, 'tower-rail-side', 'box', new pc.Vec3(dx, 3.65, 0), new pc.Vec3(0.12, 0.9, 3.0), towerMetal);
+    }
+    primitive(tower, 'tower-rail-back', 'box', new pc.Vec3(0, 3.65, 1.45), new pc.Vec3(3.0, 0.9, 0.12), towerMetal);
+    // Ladder is visual only; the tower footprint is kept as a single collision area.
+    for (let rung = 0; rung < 9; rung += 1) {
+      primitive(tower, 'tower-ladder-rung', 'box', new pc.Vec3(-1.78, 0.35 + rung * 0.31, 0), new pc.Vec3(0.08, 0.055, 0.72), orange);
+    }
+    obstacles.push({ minX: x - 1.8, maxX: x + 1.8, minZ: z - 1.8, maxZ: z + 1.8 });
+  }
+
+  // Perimeter fence rails connect the existing boundary posts into a readable arena edge.
+  const fenceSurface = material(new pc.Color(0.13, 0.18, 0.17), { metalness: 0.52, roughness: 0.76 });
+  primitive(app.root, 'perimeter-fence-top-rail', 'box', new pc.Vec3(0, 1.95, -57), new pc.Vec3(90, 0.1, 0.1), fenceSurface);
+  primitive(app.root, 'perimeter-fence-mid-rail', 'box', new pc.Vec3(0, 1.1, -57), new pc.Vec3(90, 0.08, 0.08), fenceSurface);
+  for (let index = 0; index < 18; index += 1) {
+    const x = -42 + index * 4.95;
+    primitive(app.root, `perimeter-post-${index + 1}`, 'box', new pc.Vec3(x, 1.1, -57), new pc.Vec3(0.25, 2.2, 0.25), dark);
+  }
+
+  // Reusable environmental props: trees, supply crates, fuel drums and a parked utility truck.
+  const bark = material(new pc.Color(0.22, 0.14, 0.085), { roughness: 1 });
+  const foliage = material(new pc.Color(0.12, 0.23, 0.13), { roughness: 1 });
+  const foliageLight = material(new pc.Color(0.2, 0.3, 0.16), { roughness: 1 });
+  const crateSurface = material(new pc.Color(0.34, 0.27, 0.16), { roughness: 0.96 });
+  const crateMetal = material(new pc.Color(0.11, 0.15, 0.14), { metalness: 0.48, roughness: 0.74 });
+  const drumSurface = material(new pc.Color(0.25, 0.31, 0.29), { metalness: 0.35, roughness: 0.7 });
+  const truckBody = material(new pc.Color(0.2, 0.25, 0.18), { roughness: 0.86 });
+  const rubber = material(new pc.Color(0.035, 0.04, 0.038), { roughness: 1 });
+
+  const treeSpots = [
+    [-47, -8], [-48, -25], [-45, -47], [-34, -52], [-20, -53],
+    [47, -8], [48, -25], [45, -49], [33, -53], [18, -53],
+    [-48, 17], [-32, 24], [32, 22], [48, 15]
+  ];
+  treeSpots.forEach(([x, z], index) => {
+    const tree = new pc.Entity(`training-tree-${index + 1}`);
+    tree.setPosition(x, 0, z);
+    app.root.addChild(tree);
+    primitive(tree, 'trunk', 'cylinder', new pc.Vec3(0, 1.25, 0), new pc.Vec3(0.34, 2.5, 0.34), bark);
+    primitive(tree, 'lower-canopy', 'sphere', new pc.Vec3(0, 3.0, 0), new pc.Vec3(2.5, 2.2, 2.5), foliage);
+    primitive(tree, 'upper-canopy', 'sphere', new pc.Vec3(0.25, 4.05, 0.1), new pc.Vec3(1.8, 1.8, 1.8), foliageLight);
+    obstacles.push({ minX: x - 0.55, maxX: x + 0.55, minZ: z - 0.55, maxZ: z + 0.55 });
+  });
+
+  const crateSpots = [[-9, -10], [9, -10], [-29, -29], [29, -30], [-9, -43], [9, -43]];
+  crateSpots.forEach(([x, z], index) => {
+    const crate = new pc.Entity(`supply-crate-${index + 1}`);
+    crate.setPosition(x, 0, z);
+    crates.push(crate);
+    app.root.addChild(crate);
+    primitive(crate, 'crate-body', 'box', new pc.Vec3(0, 0.62, 0), new pc.Vec3(1.35, 1.24, 1.15), crateSurface);
+    for (const side of [-1, 1]) {
+      primitive(crate, 'crate-reinforcement', 'box', new pc.Vec3(side * 0.57, 0.62, 0.59), new pc.Vec3(0.12, 1.2, 0.08), crateMetal);
+    }
+    primitive(crate, 'crate-lid-band', 'box', new pc.Vec3(0, 1.25, 0), new pc.Vec3(1.38, 0.1, 1.18), crateMetal);
+    obstacles.push({ minX: x - 0.85, maxX: x + 0.85, minZ: z - 0.72, maxZ: z + 0.72 });
+  });
+
+  const drumSpots = [[-15, -5], [15, -5], [-31, -46], [31, -46], [-5, -50], [5, -50]];
+  drumSpots.forEach(([x, z], index) => {
+    const drum = new pc.Entity(`fuel-drum-${index + 1}`);
+    drum.setPosition(x, 0, z);
+    app.root.addChild(drum);
+    primitive(drum, 'drum-body', 'cylinder', new pc.Vec3(0, 0.58, 0), new pc.Vec3(0.72, 1.16, 0.72), drumSurface);
+    for (const y of [0.22, 0.9]) primitive(drum, 'drum-rim', 'cylinder', new pc.Vec3(0, y, 0), new pc.Vec3(0.76, 0.07, 0.76), crateMetal);
+    obstacles.push({ minX: x - 0.5, maxX: x + 0.5, minZ: z - 0.5, maxZ: z + 0.5 });
+  });
+
+  const wheels: pc.Entity[] = [];
+  const truck = new pc.Entity('parked-utility-truck');
+  truck.setPosition(0, 0, 8);
+  app.root.addChild(truck);
+  primitive(truck, 'truck-chassis', 'box', new pc.Vec3(0, 0.78, 0), new pc.Vec3(3.1, 0.48, 6.2), crateMetal);
+  primitive(truck, 'truck-cabin', 'box', new pc.Vec3(0, 1.75, -1.25), new pc.Vec3(2.85, 1.65, 2.5), truckBody);
+  primitive(truck, 'truck-windshield', 'box', new pc.Vec3(0, 2.0, 0.02), new pc.Vec3(2.45, 0.92, 0.055), glass);
+  primitive(truck, 'truck-cargo-bed', 'box', new pc.Vec3(0, 1.18, 1.75), new pc.Vec3(2.75, 0.65, 2.25), truckBody);
+  for (const x of [-1.52, 1.52]) for (const z of [-2.0, 2.0]) {
+    const wheel = primitive(truck, 'truck-wheel', 'cylinder', new pc.Vec3(x, 0.55, z), new pc.Vec3(0.82, 0.42, 0.82), rubber);
+    wheel.setLocalEulerAngles(0, 0, 90);
+    wheels.push(wheel);
+  }
+  // Visible seated driver silhouette: the controllable soldier is hidden while driving.
+  const driver = new pc.Entity('truck-driver-seat');
+  driver.setLocalPosition(0, 1.18, -1.72);
+  truck.addChild(driver);
+  primitive(driver, 'driver-torso', 'capsule', new pc.Vec3(0, 0.38, 0), new pc.Vec3(0.48, 0.62, 0.34), crateMetal);
+  primitive(driver, 'driver-head', 'sphere', new pc.Vec3(0, 0.92, -0.02), new pc.Vec3(0.34, 0.38, 0.34), dark);
+  const steeringWheel = primitive(truck, 'truck-steering-wheel', 'cylinder', new pc.Vec3(0, 1.58, -2.02), new pc.Vec3(0.52, 0.07, 0.52), dark);
+  steeringWheel.setLocalEulerAngles(90, 0, 0);
 
   const targetPositions = [
     new pc.Vec3(-5, 0, -22), new pc.Vec3(0, 0, -29), new pc.Vec3(5, 0, -22),
@@ -114,10 +304,5 @@ export function createArena(app: pc.Application): ArenaApi {
     target: targetSurface, accent: orange, dark
   }));
 
-  for (let index = 0; index < 18; index += 1) {
-    const x = -42 + index * 4.95;
-    primitive(app.root, `perimeter-post-${index + 1}`, 'box', new pc.Vec3(x, 1.1, -57), new pc.Vec3(0.25, 2.2, 0.25), dark);
-  }
-
-  return { targets, obstacles };
+  return { targets, obstacles, vehicle: truck, doors, crates, wheels, steeringWheel };
 }
