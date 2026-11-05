@@ -81,3 +81,8 @@ jobs:
         run: npm run typecheck
       - name: Run Firestore rules tests
         run: npm test
+      - name: Install realtime server dependencies
+        working-directory: backend/realtime
+        run: npm install --no-audit --no-fund
+      - name: Test server-owned Firestore player provisioning
+        run: npm run test:server-integration
