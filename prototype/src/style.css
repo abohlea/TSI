@@ -109,3 +109,16 @@ button { font: inherit; }
 #avatar-preview { display: block; width: 64px; height: 64px; margin: 0 auto 12px; border: 2px solid var(--cyan); border-radius: 50%; object-fit: cover; }
 #avatar-preview[hidden] { display: none; }
 #avatar-file-input { display: none; }
+
+
+.team-scoreboard { position:absolute; top:82px; right:22px; width:min(260px,calc(100vw - 32px)); padding:12px 14px; color:#eaf4f4; background:rgba(5,15,22,.86); border:1px solid rgba(121,214,219,.3); backdrop-filter:blur(12px); font-variant-numeric:tabular-nums; pointer-events:none; }
+.team-scoreboard[hidden] { display:none; }
+.team-score-head { display:flex; justify-content:space-between; align-items:center; padding-bottom:8px; margin-bottom:7px; border-bottom:1px solid rgba(255,255,255,.12); color:#9db4ba; font-size:9px; font-weight:900; letter-spacing:.13em; }
+.team-score-head strong { color:#fff; font-size:18px; letter-spacing:.04em; }
+.team-score-row { display:grid; grid-template-columns:9px 1fr auto auto; gap:8px; align-items:center; min-height:28px; font-size:10px; letter-spacing:.08em; }
+.team-score-row strong { font-size:19px; }
+.team-score-row small { min-width:56px; color:#9db4ba; text-align:right; font-size:9px; }
+.alpha-dot,.bravo-dot { width:7px; height:7px; border-radius:50%; background:#62c8e8; }
+.bravo-dot { background:#ff8758; }
+.team-roster { padding-top:7px; margin-top:6px; border-top:1px solid rgba(255,255,255,.1); color:#91a8ad; font-size:9px; line-height:1.5; }
+@media(max-width:760px) { .team-scoreboard { top:68px; right:10px; width:164px; padding:8px 9px; } .team-score-row { gap:5px; font-size:8px; } .team-score-row strong { font-size:15px; } .team-score-row small { min-width:42px; font-size:8px; } .team-score-head strong { font-size:15px; } }
