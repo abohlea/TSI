@@ -686,3 +686,39 @@ La GitHub Action TSI validation a exécuté avec succès, sur la révision `8465
 - vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore.
 
 Résultat : **succès CI pour ces trois jobs**. Cela ne certifie pas encore l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
+
+---
+
+## 24. Jalon PvP autoritaire — preuve locale
+
+La branche de travail ajoute une première implémentation PvP à la room `server/` actuelle. Cette section complète et actualise les limites décrites dans les sections antérieures du Field Test.
+
+### 24.1 Règles appliquées par le serveur
+
+- Le client envoie uniquement le message de tir ; il ne transmet ni identifiant de victime, ni quantité de dégâts.
+- Le serveur reconstruit un rayon horizontal à partir de la position et du yaw autoritaires du tireur.
+- Le serveur compare les cibles d'entraînement et les joueurs adverses, puis retient le point d'impact visible le plus proche.
+- Les obstacles statiques de la carte d'entraînement bloquent le rayon lorsqu'ils se trouvent avant la cible.
+- Les dégâts sont fixés à 34 par impact. À 100 points de vie, trois impacts validés éliminent donc un joueur.
+- Le serveur met à jour santé, éliminations et décès. Un joueur éliminé ne peut ni se déplacer, ni tirer, ni recharger.
+- La réapparition est déclenchée après quatre secondes par le serveur, qui restaure 100 points de vie et le chargement de départ.
+
+### 24.2 Limites précises de cette preuve
+
+Cette implémentation est une preuve locale FFA, limitée à huit connexions de développement. Les volumes de touche sont des cercles 2D dans le plan XZ ; le rayon n'évalue pas encore la hauteur du corps, la tête, les membres ou l'inclinaison verticale de la visée. La ligne de vue utilise les boîtes statiques de la carte d'entraînement, et non une simulation physique complète.
+
+Le système ne comprend pas encore les équipes, les assists, la réanimation, le lag compensation, l'interpolation/prédiction client, une protection anti-triche complète, le matchmaking, les tickets Firebase, les résultats persistants ou les serveurs publics. Le client `game-client/` n'est pas encore relié à cette room PvP : cette livraison côté serveur ne constitue donc pas encore une partie jouable de bout en bout.
+
+Le serveur local continue de refuser le mode production et d'écouter sur loopback. Ne pas l'exposer à Internet et ne pas l'utiliser pour des matchs classés.
+
+### 24.3 Validation automatisée
+
+Le job `Authoritative server checks` ajouté au workflow GitHub Actions exécute :
+- le typecheck strict du serveur ;
+- la compilation TypeScript ;
+- les tests de déplacement existants ;
+- les tests du résolveur de tirs PvP (impact le plus proche, exclusion du tireur, dégâts, élimination, blocage par obstacle et rejet des joueurs éliminés).
+
+La règle de lecture de `matchSummaries` utilise désormais une condition de participation explicite avec `request.auth.uid in resource.data.participantUids`, afin que la requête Firestore filtrée par `array-contains` soit vérifiable par les règles. Le test d'émulateur doit confirmer ce comportement dans la CI.
+
+**Critère de sortie du prochain jalon :** connecter réellement le client courant à la room, valider l'alignement de la visée, puis tester les échanges sur un réseau avec latence, gigue et pertes contrôlées. Aucun objectif de capacité Battle Royale n'est validé par ce jalon.
