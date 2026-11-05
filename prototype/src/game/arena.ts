@@ -92,7 +92,7 @@ export function createArena(app: pc.Application): ArenaApi {
     const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
     const doorWidth = Math.min(1.7, building.w * 0.22);
     primitive(root, 'entrance-door', 'box', new pc.Vec3(0, -building.h * 0.29, building.d / 2 + 0.055), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
-    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
+    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), wallTrim);
     primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
     const windowY = Math.min(building.h * 0.18, 1.55);
     for (const side of [-1, 1]) {
@@ -120,6 +120,7 @@ export function createArena(app: pc.Application): ArenaApi {
   // Defensive wall sections and sandbag emplacements around the training lanes.
   const wallSurface = material(new pc.Color(0.31, 0.34, 0.32), { roughness: 0.98 });
   const sandbagSurface = material(new pc.Color(0.43, 0.39, 0.29), { roughness: 1 });
+  const wallTrim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
   const metalSurface = material(new pc.Color(0.12, 0.16, 0.16), { metalness: 0.58, roughness: 0.72 });
   const wallRuns = [
     { x: -34, z: -22, length: 17, rotation: 0 },
