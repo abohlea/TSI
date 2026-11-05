@@ -229,21 +229,14 @@ export function resolveAuthoritativeShot(
 
 export type CombatShotResolution =
   | { hit: false; eliminated: false; targetKind: null; targetId: null }
-  | { hit: true; eliminated: boolean; targetKind: 'player'; targetId: string }
-  | { hit: true; eliminated: boolean; targetKind: 'practice'; targetId: string };
+  | { hit: true; eliminated: boolean; targetKind: 'player' | 'practice'; targetId: string };
 
 /** Resolves players and practice targets on one ray, so the nearest visible
  * combatant always receives the shot. Obstacles block either kind equally. */
 export function resolveAuthoritativeCombatShot(
-  shooterId: string,
-  originX: number,
-  originY: number,
-  originZ: number,
-  yawDegrees: number,
-  pitchDegrees: number,
-  players: ServerCombatant[],
-  targets: ServerTarget[],
-  now: number
+  shooterId: string, originX: number, originY: number, originZ: number,
+  yawDegrees: number, pitchDegrees: number, players: ServerCombatant[],
+  targets: ServerTarget[], now: number
 ): CombatShotResolution {
   const yaw = yawDegrees * Math.PI / 180;
   const pitch = pitchDegrees * Math.PI / 180;
@@ -251,47 +244,45 @@ export function resolveAuthoritativeCombatShot(
   const dirX = -Math.sin(yaw) * horizontal;
   const dirY = Math.sin(pitch);
   const dirZ = -Math.cos(yaw) * horizontal;
-  let nearestPlayer: ServerCombatant | null = null;
-  let nearestTarget: ServerTarget | null = null;
+  let nearest: { kind: 'player'; value: ServerCombatant } |
+    { kind: 'practice'; value: ServerTarget } | null = null;
   let nearestDistance = SHOT_RANGE;
-
-  const consider = (distance: number | null, blocked: boolean, kind: 'player' | 'practice',
-    candidate: ServerCombatant | ServerTarget): void => {
-    if (distance === null || blocked || distance >= nearestDistance) return;
-    nearestDistance = distance;
-    nearestPlayer = kind === 'player' ? candidate as ServerCombatant : null;
-    nearestTarget = kind === 'practice' ? candidate as ServerTarget : null;
-  };
 
   for (const player of players) {
     if (player.playerId === shooterId || player.health <= 0) continue;
     const distance = raySphereDistance(originX, originY, originZ, dirX, dirY, dirZ,
       player.x, 1.0, player.z, 0.68);
-    consider(distance, distance !== null && WORLD_OBSTACLES.some(obstacle =>
-      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)), 'player', player);
+    if (distance === null || distance >= nearestDistance) continue;
+    if (WORLD_OBSTACLES.some(obstacle => rayIntersectsObstacle(
+      originX, originZ, dirX, dirZ, obstacle, distance))) continue;
+    nearest = { kind: 'player', value: player };
+    nearestDistance = distance;
   }
+
   for (const target of targets) {
     if (!target.active) continue;
     const distance = raySphereDistance(originX, originY, originZ, dirX, dirY, dirZ,
       target.x, 1.08, target.z, TARGET_RADIUS);
-    consider(distance, distance !== null && WORLD_OBSTACLES.some(obstacle =>
-      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)), 'practice', target);
+    if (distance === null || distance >= nearestDistance) continue;
+    if (WORLD_OBSTACLES.some(obstacle => rayIntersectsObstacle(
+      originX, originZ, dirX, dirZ, obstacle, distance))) continue;
+    nearest = { kind: 'practice', value: target };
+    nearestDistance = distance;
   }
 
-  if (nearestPlayer) {
-    nearestPlayer.health = clamp(nearestPlayer.health - WEAPON_DAMAGE, 0, 100);
-    return { hit: true, eliminated: nearestPlayer.health === 0, targetKind: 'player', targetId: nearestPlayer.playerId };
+  if (!nearest) return { hit: false, eliminated: false, targetKind: null, targetId: null };
+  if (nearest.kind === 'player') {
+    nearest.value.health = clamp(nearest.value.health - WEAPON_DAMAGE, 0, 100);
+    return { hit: true, eliminated: nearest.value.health === 0,
+      targetKind: 'player', targetId: nearest.value.playerId };
   }
-  if (nearestTarget) {
-    nearestTarget.health = clamp(nearestTarget.health - WEAPON_DAMAGE, 0, 100);
-    const eliminated = nearestTarget.health === 0;
-    if (eliminated) {
-      nearestTarget.active = false;
-      nearestTarget.respawnAt = now + TARGET_RESPAWN_MS;
-    }
-    return { hit: true, eliminated, targetKind: 'practice', targetId: nearestTarget.targetId };
+  nearest.value.health = clamp(nearest.value.health - WEAPON_DAMAGE, 0, 100);
+  const eliminated = nearest.value.health === 0;
+  if (eliminated) {
+    nearest.value.active = false;
+    nearest.value.respawnAt = now + TARGET_RESPAWN_MS;
   }
-  return { hit: false, eliminated: false, targetKind: null, targetId: null };
+  return { hit: true, eliminated, targetKind: 'practice', targetId: nearest.value.targetId };
 }
 
 export function updateTargetRespawns(targets: ServerTarget[], now: number): void {
