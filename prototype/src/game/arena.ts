@@ -8,6 +8,7 @@ export interface ArenaObstacle {
 }
 
 export interface PracticeTarget {
+  targetId: string;
   entity: pc.Entity;
   health: number;
   active: boolean;
@@ -53,7 +54,7 @@ function createTarget(app: pc.Application, position: pc.Vec3, index: number, sur
   primitive(root, 'target-body', 'cylinder', new pc.Vec3(0, 0.95, 0), new pc.Vec3(0.5, 1.55, 0.5), surfaces.target);
   primitive(root, 'target-head', 'sphere', new pc.Vec3(0, 1.92, 0), new pc.Vec3(0.48, 0.48, 0.48), surfaces.accent);
   primitive(root, 'target-base', 'cylinder', new pc.Vec3(0, 0.12, 0), new pc.Vec3(0.9, 0.18, 0.9), surfaces.dark);
-  return { entity: root, health: 100, active: true, respawnAt: 0, radius: 0.95 };
+  return { targetId: `target-${index + 1}`, entity: root, health: 100, active: true, respawnAt: 0, radius: 0.95 };
 }
 
 export function createArena(app: pc.Application): ArenaApi {
