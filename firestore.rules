@@ -42,10 +42,7 @@ service cloud.firestore {
         resource.data.participantUids is list &&
         request.auth.uid in resource.data.participantUids;
       allow list: if signedIn() &&
-        request.query.limit != null &&
-        request.query.limit <= 20 &&
-        resource.data.participantUids is list &&
-        request.auth.uid in resource.data.participantUids;
+        resource.data.participantUids.hasAny([request.auth.uid]);
       allow create, update, delete: if false;
     }
 
