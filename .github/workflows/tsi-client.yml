@@ -85,3 +85,14 @@ jobs:
       - name: Run Firestore rules emulator tests
         working-directory: backend/firebase
         run: npm test
+
+      - name: Install TSI server dependencies
+        working-directory: server
+        run: npm install --no-audit --no-fund
+      - name: Verify Firebase Auth tokens and Firestore provisioning
+        working-directory: backend/firebase
+        env:
+          FIREBASE_PROJECT_ID: demo-tsi-local
+          FIREBASE_AUTH_EMULATOR_HOST: 127.0.0.1:9099
+          FIRESTORE_EMULATOR_HOST: 127.0.0.1:8080
+        run: npx firebase --config ../../firebase.json emulators:exec --project demo-tsi-local --only auth,firestore "cd ../../server && npm run test:firebase-integration"
