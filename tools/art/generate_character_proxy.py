@@ -3,9 +3,8 @@ Usage:
   blender --background --factory-startup --python tools/art/generate_character_proxy.py
   blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb
 
-Génère un proxy de validation (pas le héros final). Les pièces sont rigides et parentées
-aux os; le skinning organique, les doigts détaillés, UV/PBR et animations mocap restent
-des étapes de production séparées.
+Génère un proxy de validation détaillé (pas le héros final). Les volumes restent segmentés;
+retopologie, UV/PBR texturés et animations mocap restent des étapes séparées.
 """
 import bpy, math, os, sys
 from mathutils import Vector
