@@ -10,7 +10,7 @@ Les personnages militaires du pack human004 déclarent notamment des clips Idle,
 
 Le build utilise également l'API publique de Poly Haven (https://api.polyhaven.com) pour récupérer six matériaux de terrain et de construction ainsi que deux environnements HDRI extérieurs. Les ressources Poly Haven sont CC0 ; l'écran d'accueil affiche le crédit demandé par leur API : « Powered by Poly Haven ».
 
-Pour éviter un APK démesuré, le pipeline privilégie les textures 2K (1K en secours) et conserve uniquement les cartes albédo, normale et rugosité. Les cartes non utilisées par le rendu mobile ne sont pas embarquées. Le manifeste conserve les URL source, tailles et empreintes MD5.
+Pour éviter un APK démesuré, le pipeline privilégie les textures 2K (1K en secours) et conserve uniquement les cartes albédo et normale, effectivement appliquées aux matériaux du terrain et des murs. Les cartes non utilisées par le rendu mobile ne sont pas embarquées. Le manifeste conserve les URL source, tailles et empreintes MD5.
 
 ## Génération Android
 
