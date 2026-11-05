@@ -297,3 +297,39 @@ Cloudinary indique 25 crédits mensuels sur son offre Free. Un crédit correspon
 
 Sources : [Cloudinary Pricing](https://cloudinary.com/pricing) et [Billing and Plans](https://cloudinary.com/documentation/billing_and_plans).
 
+
+
+## 9. Hébergement des serveurs — Render exclu
+
+L'hébergeur de partie devra prendre en charge un processus Linux persistant, UDP et ports configurables, CPU soutenu, mémoire suffisante, démarrage/arrêt de sessions, logs par instance, supervision, isolation des matchs, protection réseau, régions testables et gestion sécurisée des secrets.
+
+Un hébergement de site web ou HTTP uniquement ne répond pas automatiquement à ces besoins.
+
+**Développement :** serveur Unreal dédié lancé sur la machine du développeur.
+
+**Laboratoire :** machine ou VM de test à durée limitée, uniquement après comparaison de la latence, du CPU, de la mémoire, des ports UDP et du coût réel.
+
+**Bêta et production :** fournisseur à choisir après mesures. Render reste exclu. Aucun fournisseur ne sera qualifié de haut de gamme ou de gratuit sans vérification de ses conditions et performances.
+
+### Réalité du 100 % gratuit
+
+Le zéro dépense est réaliste pour la documentation, les outils locaux, les prototypes et certains services auxiliaires sous quotas. Il n'est pas possible de garantir gratuitement des serveurs dédiés haut de gamme, persistants, à faible latence et disponibles à grande échelle.
+
+Règles :
+- aucune dépense sans autorisation du fondateur ;
+- pas d'activation silencieuse d'un service payant ;
+- développement local tant que le budget serveur n'est pas approuvé ;
+- calcul du coût par partie et par joueur avant toute bêta externe ;
+- aucune promesse de capacité ou disponibilité non mesurée.
+
+## 10. Environnements
+
+Trois environnements distincts sont requis.
+
+**Development :** projet Firebase de développement, émulateurs, données fictives, Cloudinary de test, serveur Unreal local et logs détaillés.
+
+**Staging :** projet Firebase distinct, comptes de test, API privée, serveurs de test, build bêta interne et vérification des migrations.
+
+**Production :** projet Firebase distinct, accès d'administration limité, secrets séparés, Cloudinary de production, serveurs dédiés, alertes, sauvegardes et procédure de retour arrière.
+
+Ne pas mélanger comptes, clés, médias et données entre les environnements.
