@@ -148,7 +148,7 @@ export class FieldTestRoom extends Room {
 
   private handleReload(client: Client): void {
     const player = this.players.get(client.sessionId);
-    if (!player || player.reloadEndsAt > Date.now()) return;
+    if (!player || player.health <= 0 || player.reloadEndsAt > Date.now()) return;
     if (player.ammo >= WEAPON_MAGAZINE_SIZE || player.reserve <= 0) return;
 
     player.reloadEndsAt = Date.now() + RELOAD_DURATION_MS;
@@ -157,7 +157,7 @@ export class FieldTestRoom extends Room {
 
   private handleShot(client: Client, player: ServerPlayer): void {
     const now = Date.now();
-    if (player.reloadEndsAt > now || now < player.nextShotAt) return;
+    if (player.health <= 0 || player.reloadEndsAt > now || now < player.nextShotAt) return;
 
     if (player.ammo <= 0) {
       client.send('shot', { accepted: false, reason: 'empty' });
