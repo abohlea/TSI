@@ -51,6 +51,7 @@ export class FieldTestRoom extends Room<{ state: FieldTestState }> {
   private readonly privatePlayers = new Map<string, PrivatePlayerState>();
   private readonly targetRespawns = new Map<number, number>();
   private readonly authenticatedPlayers = new Map<string, AuthenticatedPlayer>();
+  private readonly firebaseUidBySession = new Map<string, string>();
 
   override onCreate(): void {
     if (process.env.NODE_ENV === "production") {
@@ -110,6 +111,7 @@ export class FieldTestRoom extends Room<{ state: FieldTestState }> {
     player.z = spawn.z;
     player.yaw = 0;
     this.state.players.set(client.sessionId, player);
+    this.firebaseUidBySession.set(client.sessionId, identity.uid);
     this.playerInputs.set(client.sessionId, { sequence: 0, moveX: 0, moveZ: 0, yaw: 0 });
     this.privatePlayers.set(client.sessionId, { ammo: 30, reserveAmmo: 120, eliminations: 0, shots: 0, hits: 0 });
     this.sendPrivateState(client);
@@ -117,6 +119,7 @@ export class FieldTestRoom extends Room<{ state: FieldTestState }> {
 
   override onLeave(client: Client): void {
     this.authenticatedPlayers.delete(client.sessionId);
+    this.firebaseUidBySession.delete(client.sessionId);
     this.state.players.delete(client.sessionId);
     this.playerInputs.delete(client.sessionId);
     this.lastSequences.delete(client.sessionId);
