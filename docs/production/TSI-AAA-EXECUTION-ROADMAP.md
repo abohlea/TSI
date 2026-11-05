@@ -54,14 +54,14 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Commit `34b8fd8287fdfc8a25b892ae609218e6fe530984` : tests de portée maximale, cibles inactives et exclusion des joueurs déjà éliminés.
 - Ces tests sont ajoutés au code ; leur passage doit être confirmé par une exécution CI après ces commits avant d'être déclarés validés.
 
-### Complément P5 — authentification Firebase du serveur (5 novembre 2026)
-- Ajout de `firebase-admin@14.5.0` au serveur Colyseus (Node.js 22+).
-- Le join en production exige désormais un Firebase Authentication ID token ; le serveur le vérifie via Firebase Admin avec contrôle de révocation.
-- Le projet Firebase est fourni par `FIREBASE_PROJECT_ID` et les identifiants doivent venir d'Application Default Credentials / workload identity du runtime. Aucun fichier de clé de service n'est commité.
-- Le jeton local reste limité au développement ; la configuration production refuse son activation.
-- Tests ajoutés pour rejeter les tokens manifestement malformés avant initialisation des credentials.
-- Limites : aucun ticket de session court à usage unique, aucun compte Firebase client configuré dans le prototype, aucune écriture de progression/résultat depuis le backend, aucun déploiement ou test avec un vrai projet Firebase. Cette étape est une intégration de code, pas une mise en service production.
-- Commits : `bce0628` (dépendance), `63fb65b` (vérification), `c7ddeb7` (join), `e22c750` (configuration production), `85e9fcf` (tests), `5657215` (documentation).
+### Complément P5 — authentification Firebase et tickets de session (5 novembre 2026)
+- Le serveur utilise `firebase-admin@14.5.0`, vérifie les ID tokens Firebase avec contrôle de révocation et exige `FIREBASE_PROJECT_ID` ainsi que des credentials ADC/workload identity côté runtime.
+- Le prototype web intègre le SDK Firebase `13.2.0` et une connexion Google via Firebase Authentication ; les paramètres publics de l'application Web sont fournis par `VITE_FIREBASE_*`.
+- Le client échange l'ID token dans `POST /auth/session-ticket`. Le serveur renvoie un ticket HMAC-SHA256 valable 45 secondes ; le hook `onAuth` Colyseus consomme ce ticket une seule fois.
+- Le serveur refuse le démarrage en production si `TSI_SESSION_TICKET_SECRET` ne contient pas au moins 32 caractères. L'endpoint autorise les requêtes navigateur par CORS avec bearer token ; les secrets Admin ne sont jamais exposés au client.
+- Tests unitaires ajoutés pour validité, expiration, réutilisation et altération du ticket.
+- Limites : le registre des nonces et la limite de débit sont en mémoire (instance unique seulement) ; la connexion Google exige la configuration du projet Firebase et l'activation du fournisseur dans la console ; aucun déploiement ni test avec un vrai projet Firebase ; aucune écriture de résultat Firestore. Cette intégration n'est pas encore validée en exécution ni prête à l'exploitation multi-instance.
+- Commits clés : `12d8a18` (tickets), `501e3fb` (tests), `927e3e0` (endpoint), `64048bc` (consommation room), `34ae89f` (tests renforcés), `4d9c684` (SDK web), `c1332bb` (Firebase client), `0b2e0ba` (client ticket), `ba98a9e` (connexion UI), `92b2dbc` (CORS), `8621271` (documentation).
 
 ## 2. Périmètre prioritaire : vertical slice
 
@@ -121,8 +121,8 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 - **Acceptation :** carte complète, lisible et équilibrée ; aucun bug de collision/spawn bloquant.
 
 ### P5 — identité, comptes et persistance
-- [ ] Firebase Authentication et vérification des ID tokens côté backend.
-- [ ] Tickets de session signés, courts, à usage unique.
+- [x] Intégration de code Firebase Authentication (Google côté client, vérification ID token côté serveur).
+- [x] Tickets de session signés, courts, à usage unique (45 secondes, single-process).
 - [ ] API de confiance pour profil et progression.
 - [ ] Règles Firestore et tests émulateur.
 - [ ] Écriture des résultats uniquement après validation serveur, avec idempotence.
@@ -170,4 +170,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit commencer par P0 : inspecter les scripts et lockfiles, installer/valider la chaîne de build, mettre en place les tests automatisés et une CI reproductible. Ensuite seulement, poursuivre le combat serveur P1.
+La prochaine livraison doit valider en CI la nouvelle intégration Firebase/tickets, configurer un vrai projet Firebase et tester la connexion de bout en bout. Ensuite : persistance idempotente des résultats Firestore, puis Cloudinary. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances.
