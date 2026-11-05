@@ -22,7 +22,7 @@ Pour choisir explicitement le chemin de sortie :
 blender --background --factory-startup --python tools/art/generate_ar01_blockout.py -- --output ./prototype/public/assets/weapons/TSI-WPN-AR-01-blockout.glb
 ```
 
-Le script génère une silhouette fictive avec receiver, garde-main, canon, crosse, poignée, chargeur amovible, optique et accents TSI. Les nœuds visibles utilisent le préfixe `AR01_`. Le root et les points d'attache sont également préfixés.
+Le script génère une silhouette fictive avec receiver, panneaux latéraux, fixations, nervures de refroidissement, rail supérieur segmenté, canon, crosse, poignée, chargeur nervuré, optique et accents TSI. Les nœuds visibles utilisent le préfixe `AR01_`. Le root et les points d'attache sont également préfixés. Les objets Empty des sockets sont inclus dans la sélection d'export.
 
 ## Convention de scène
 
@@ -37,18 +37,21 @@ Les coordonnées des sockets sont des valeurs de départ. Elles doivent être aj
 
 ## Ce que cette base apporte
 
-- Une géométrie de blockout paramétrique, modifiable dans Blender.
+- Une géométrie de blockout paramétrique enrichie de détails hard-surface, modifiable dans Blender.
 - Des pièces isolées pour préparer les animations, notamment le chargeur.
-- Une palette graphite, polymère, métal sombre et orange de sécurité.
+- Une palette de matériaux Principled avec paramètres métalliques et rugosité distincts : graphite, polymère, métal sombre, verre teinté et orange de sécurité.
+- Les sockets Empty inclus dans la sélection d'export.
 - Un export GLB reproductible.
+
+Le blockout runtime PlayCanvas a également reçu des détails visuels correspondants (plaques latérales, évents, crans de rail, nervures du chargeur et commandes). Il reste une géométrie procédurale de secours, pas le GLB final.
 
 ## Ce qui reste à faire avant G1
 
 1. Ouvrir le résultat dans Blender et vérifier l'échelle, les normales, les pivots et les hiérarchies.
 2. Remplacer les volumes simples par un vrai modèle hard-surface high/medium/low, avec bevels contrôlés et détails non destructifs.
-3. Créer des UV propres et des textures PBR optimisées.
+3. Créer des UV propres, des textures PBR optimisées et des micro-détails de surface (roughness/normal) ; les matériaux Principled actuels ne sont pas des textures PBR finales.
 4. Aligner les sockets sur les mains, la caméra et les effets du jeu.
-5. Construire les animations `AR01_Idle`, `AR01_Fire`, `AR01_Reload`, `AR01_Equip`, `AR01_Unequip`, `AR01_Aim` et `AR01_Sprint`.
+5. Construire et exporter les clips `AR01_Idle`, `AR01_Fire`, `AR01_Reload`, `AR01_Equip`, `AR01_Unequip`, `AR01_Aim` et `AR01_Sprint` ; aucun de ces clips n'est encore livré dans le générateur Blender.
 6. Importer le GLB dans une scène de test PlayCanvas, vérifier FPS et TPS, puis profiler sur Android réel.
 7. Archiver le `.blend`, le GLB final, les captures et le rapport de recette.
 
