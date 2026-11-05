@@ -43,7 +43,7 @@ export function sanitizePlayerDisplayName(value: string): string {
   return sanitized || "OPERATOR";
 }
 
-function getTsiAdminApp() {
+export function getTsiAdminApp() {
   const existing = getApps().find((app) => app.name === APP_NAME);
   if (existing) return existing;
 
