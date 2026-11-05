@@ -80,8 +80,46 @@ def build():
     for n,(h,t,parent) in bones.items():
         b=arm_data.edit_bones.new(n); b.head=h; b.tail=t
         if parent: b.parent=arm_data.edit_bones[parent]
+
+    # Articulated finger chains (three phalanges per digit, thumb two).
+    finger_names=("thumb","index","middle","ring","pinky")
+    for side,sign in (("L",1),("R",-1)):
+        for digit,index in zip(finger_names,range(5)):
+            spread=(index-2)*0.027
+            start=Vector((0.075,sign*(0.43+spread),0.955-(0.012 if index in (0,4) else 0)))
+            lengths=(0.045,0.035) if digit=="thumb" else (0.052,0.043,0.032)
+            parent="hand."+side
+            for segment,length in enumerate(lengths):
+                name="finger_%s_%s_%d"%(digit,side,segment+1)
+                head=start.copy()
+                tail=head+Vector((length,0,0))
+                bone=arm_data.edit_bones.new(name); bone.head=head; bone.tail=tail
+                bone.parent=arm_data.edit_bones[parent]
+                parent=name; start=tail
     bpy.ops.object.mode_set(mode="OBJECT")
     arm.show_in_front=True
+
+    # Hand IK targets and pole controls; artists can reposition these in Blender.
+    ik_controls=[]
+    for side,sign in (("L",1),("R",-1)):
+        target=bpy.data.objects.new(PREFIX+"hand_ik_target_"+side,None)
+        bpy.context.collection.objects.link(target)
+        target.location=(.12,sign*.43,1.02)
+        target.empty_display_type="SPHERE"; target.empty_display_size=.055
+        pole=bpy.data.objects.new(PREFIX+"elbow_pole_"+side,None)
+        bpy.context.collection.objects.link(pole)
+        pole.location=(-.22,sign*.58,1.28)
+        pole.empty_display_type="CIRCLE"; pole.empty_display_size=.07
+        ik_controls.append((side,target,pole))
+    for side,target,pole in ik_controls:
+        constraint=arm.pose.bones["lower_arm."+side].constraints.new("IK")
+        constraint.name="TSI001_Hand_IK_"+side
+        constraint.target=target
+        constraint.pole_target=pole
+        constraint.chain_count=2
+        constraint.use_stretch=False
+        constraint.iterations=64
+        constraint.influence=1.0
 
     parts=[]
     def E(*a,**k): parts.append(ellipsoid(*a,**k))
