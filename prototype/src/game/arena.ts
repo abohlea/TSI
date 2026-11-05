@@ -21,6 +21,7 @@ export interface ArenaApi {
   obstacles: ArenaObstacle[];
   vehicle: pc.Entity;
   doors: pc.Entity[];
+  crates: pc.Entity[];
 }
 
 function material(color: pc.Color, options: { metalness?: number; roughness?: number; emissive?: pc.Color } = {}): pc.StandardMaterial {
@@ -78,6 +79,7 @@ export function createArena(app: pc.Application): ArenaApi {
 
   const obstacles: ArenaObstacle[] = [];
   const doors: pc.Entity[] = [];
+  const crates: pc.Entity[] = [];
   const buildings = [
     { x: -20, z: -12, w: 12, d: 16, h: 7 },
     { x: 20, z: -14, w: 13, d: 17, h: 9 },
@@ -95,7 +97,11 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'signal-panel', 'box', new pc.Vec3(0, 0.5, building.d / 2 + 0.035), new pc.Vec3(1.8, 0.7, 0.08), orange);
     // Facade details: recessed entrance, lintel, windows, sills and corner columns.
     const doorWidth = Math.min(1.7, building.w * 0.22);
-    const door = new pc.Entity('interactive-entrance-door');\n    door.setLocalPosition(-doorWidth / 2, -building.h * 0.29, building.d / 2 + 0.055);\n    root.addChild(door);\n    primitive(door, 'door-panel', 'box', new pc.Vec3(doorWidth / 2, 0, 0), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);\n    doors.push(door);
+    const door = new pc.Entity('interactive-entrance-door');
+    door.setLocalPosition(-doorWidth / 2, -building.h * 0.29, building.d / 2 + 0.055);
+    root.addChild(door);
+    primitive(door, 'door-panel', 'box', new pc.Vec3(doorWidth / 2, 0, 0), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
+    doors.push(door);
     primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
     primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
     const windowY = Math.min(building.h * 0.18, 1.55);
@@ -246,6 +252,7 @@ export function createArena(app: pc.Application): ArenaApi {
   crateSpots.forEach(([x, z], index) => {
     const crate = new pc.Entity(`supply-crate-${index + 1}`);
     crate.setPosition(x, 0, z);
+    crates.push(crate);
     app.root.addChild(crate);
     primitive(crate, 'crate-body', 'box', new pc.Vec3(0, 0.62, 0), new pc.Vec3(1.35, 1.24, 1.15), crateSurface);
     for (const side of [-1, 1]) {
@@ -284,5 +291,5 @@ export function createArena(app: pc.Application): ArenaApi {
     target: targetSurface, accent: orange, dark
   }));
 
-  return { targets, obstacles, vehicle: truck, doors };
+  return { targets, obstacles, vehicle: truck, doors, crates };
 }
