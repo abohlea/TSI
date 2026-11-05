@@ -242,6 +242,7 @@ export class FieldTestRoom extends Room {
       player.score += 1;
       const participant = this.participants.get(player.playerId);
       if (participant) participant.score += 1;
+      this.queueCheckpoint();
     }
     client.send('shot', {
       accepted: true,
