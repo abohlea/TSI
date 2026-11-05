@@ -85,7 +85,7 @@ for (const [id, metadata] of textureCandidates) {
   // 2K keeps the Android package practical while retaining enough detail for mobile.
   // Bundle only the three maps that are useful to the current PBR renderer.
   const resolution = files.some((file) => file.path.includes('2k')) ? '2k' : '1k';
-  const mapPatterns = [/diff|albedo|color/i, /normal/i, /rough/i];
+  const mapPatterns = [/diff|albedo|color/i, /normal|nor_gl|nor_dx|bump/i];
   const maps = mapPatterns.flatMap((pattern) => files.filter((file) =>
     file.path.includes(resolution) &&
     /\.(jpg|jpeg|png)$/i.test(new URL(file.url).pathname) &&
