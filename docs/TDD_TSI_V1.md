@@ -690,3 +690,48 @@ Le workflow actuel est configuré pour exécuter :
 - vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore avec Java 21.
 
 Le dernier statut CI n'a pas été confirmé dans cette session. Ces jobs ne certifieront pas à eux seuls l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
+
+ 
+---
+
+## 24. Firebase Authentication et provisionnement Firestore — préproduction locale
+
+Le dépôt dispose maintenant d'une première intégration Firebase entre le client PlayCanvas et la room Colyseus locale.
+
+### 24.1 Authentification
+
+- Le client initialise le SDK Firebase Web.
+- En préproduction, le client reprend une session anonyme persistante ou en crée une via `signInAnonymously`.
+- Le client récupère un ID token Firebase et l'envoie lors du `joinOrCreate` Colyseus.
+- Le serveur vérifie ce jeton avec Firebase Admin via `verifyIdToken(token, true)`.
+- L'UID utilisé par le serveur provient exclusivement du jeton vérifié.
+- Les connexions sans jeton valide sont refusées.
+
+### 24.2 Documents initiaux Firestore
+
+Au premier accès d'un joueur, le serveur utilise Admin SDK pour créer si nécessaire :
+- `users/{uid}` : nom d'affichage, statut `active`, dates ;
+- `playerProfiles/{uid}` : nom public et niveau initial ;
+- `progression/{uid}` : niveau 1 et expérience 0.
+
+Les écritures sont effectuées par transaction serveur. Les règles Firestore continuent de refuser les écritures sensibles depuis le client. Le client ne doit jamais utiliser Admin SDK.
+
+### 24.3 Environnement local et secrets
+
+- Auth Emulator : `127.0.0.1:9099`.
+- Firestore Emulator : `127.0.0.1:8080`.
+- Le client utilise les paramètres Web Firebase de l'émulateur et un token anonyme.
+- Le serveur exige `FIREBASE_PROJECT_ID`, `FIREBASE_AUTH_EMULATOR_HOST` et `FIRESTORE_EMULATOR_HOST`.
+- Le serveur refuse le mode production et écoute uniquement en loopback.
+- Aucun credential de compte de service n'est requis dans le workflow local.
+- En hébergement futur, utiliser Application Default Credentials / identité de charge de travail ; ne jamais committer de clé JSON.
+
+### 24.4 Limites non encore levées
+
+- La session anonyme est provisoire ; l'inscription email/Google et la liaison d'identité permanente restent à développer.
+- Le client n'a pas encore d'écran de connexion ni de récupération de compte.
+- L'intégration avec un projet Firebase réel reste à valider après configuration du projet et activation du fournisseur Anonymous.
+- La persistance des résultats de match, de la progression après partie, du classement et de l'inventaire n'est pas encore implémentée.
+- Cloudinary n'est pas encore raccordé.
+
+**Critère de sortie :** tests d'émulateur Auth + Firestore réussis, client et serveur reliés, puis vérification sur un projet Firebase réel distinct de l'environnement de production.
