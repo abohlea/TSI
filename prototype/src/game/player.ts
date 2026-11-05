@@ -97,13 +97,29 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(weapon, 'barrel', 'cylinder', new pc.Vec3(0, 0.015, -0.42), new pc.Vec3(0.045, 0.38, 0.045), helmet).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'muzzle-device', 'cylinder', new pc.Vec3(0, 0.015, -0.68), new pc.Vec3(0.065, 0.12, 0.065), metal).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'handguard', 'box', new pc.Vec3(0, 0, -0.26), new pc.Vec3(0.14, 0.13, 0.34), armor);
+  // Side armor plates, cooling ribs and a segmented top rail improve silhouette readability.
+  for (const side of [-1, 1]) {
+    part(weapon, `receiver-side-plate-${side}`, 'box', new pc.Vec3(side * 0.086, 0.005, -0.015), new pc.Vec3(0.012, 0.105, 0.34), metal);
+    for (let index = 0; index < 5; index += 1) {
+      part(weapon, `handguard-vent-${side}-${index}`, 'box', new pc.Vec3(side * 0.075, 0.008, -0.17 - index * 0.045), new pc.Vec3(0.008, 0.055, 0.018), dark);
+    }
+  }
+  for (let index = 0; index < 7; index += 1) {
+    part(weapon, `top-rail-notch-${index}`, 'box', new pc.Vec3(0, 0.105, -0.21 + index * 0.045), new pc.Vec3(0.075, 0.012, 0.012), metal);
+  }
   part(weapon, 'stock', 'box', new pc.Vec3(0, 0.005, 0.38), new pc.Vec3(0.13, 0.17, 0.32), dark);
   const magazine = part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
   const magazineBase = part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
+  for (let index = 0; index < 4; index += 1) {
+    part(weapon, `magazine-rib-${index}`, 'box', new pc.Vec3(0, -0.105, -0.025 + index * 0.045), new pc.Vec3(0.105, 0.008, 0.012), metal);
+  }
   part(weapon, 'optic-mount', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.14, 0.035, 0.2), dark);
   part(weapon, 'optic', 'box', new pc.Vec3(0, 0.21, -0.02), new pc.Vec3(0.1, 0.12, 0.13), orange);
   part(weapon, 'optic-glass', 'box', new pc.Vec3(0, 0.215, -0.091), new pc.Vec3(0.07, 0.07, 0.015), glass);
   part(weapon, 'foregrip', 'box', new pc.Vec3(0, -0.12, -0.23), new pc.Vec3(0.09, 0.22, 0.1), rubber);
+  part(weapon, 'charging-handle', 'box', new pc.Vec3(0.095, 0.085, 0.105), new pc.Vec3(0.045, 0.025, 0.11), metal);
+  part(weapon, 'selector-mark', 'box', new pc.Vec3(0.095, 0.015, 0.045), new pc.Vec3(0.012, 0.025, 0.055), orange);
+  part(weapon, 'muzzle-ring', 'cylinder', new pc.Vec3(0, 0.015, -0.72), new pc.Vec3(0.073, 0.035, 0.073), orange).setLocalEulerAngles(90, 0, 0);
 
   const muzzleFlash = part(weapon, 'muzzle-flash', 'sphere', new pc.Vec3(0, 0.015, -0.78), new pc.Vec3(0.16, 0.16, 0.28), orange);
   muzzleFlash.enabled = false;
