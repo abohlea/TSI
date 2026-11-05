@@ -6,9 +6,6 @@ export class PlayerState extends Schema {
   @type("number") z = 0;
   @type("number") yaw = 0;
   @type("number") health = 100;
-  @type("number") ammo = 30;
-  @type("number") reserveAmmo = 120;
-  @type("number") eliminations = 0;
 }
 
 export class TargetState extends Schema {
