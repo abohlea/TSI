@@ -401,3 +401,85 @@ Outils envisagés :
 Mesures à suivre : connexions réussies/échouées, attente et erreurs de matchmaking, serveurs actifs, CPU/mémoire/bande passante par serveur, ping/gigue/perte, crashs par appareil, opérations Firestore et crédits Cloudinary.
 
 Ne jamais enregistrer mots de passe, jetons, secrets ou données personnelles inutiles.
+
+
+## 15. Tests et critères d'acceptation
+
+### 15.1 Tests automatisés
+- règles de déplacement et de combat ;
+- transitions d'état ;
+- validation des tickets ;
+- calcul des résultats et récompenses ;
+- idempotence ;
+- règles Firestore ;
+- API avec comptes autorisés, anonymes, suspendus et non autorisés.
+
+### 15.2 Tests réseau
+- latence élevée ;
+- gigue et perte de paquets ;
+- déconnexion et reconnexion ;
+- paquets répétés ou désordonnés ;
+- client envoyant trop de requêtes ;
+- serveur surchargé ;
+- arrêt inattendu du processus.
+
+### 15.3 Tests de charge
+Progresser par paliers : 2, 8, 20, 40, puis objectif 60 joueurs si les étapes précédentes réussissent. Mesurer CPU, mémoire, bande passante, latence et cohérence de simulation. Tester plusieurs combats simultanés et les pires cas, pas uniquement les déplacements.
+
+### 15.4 Tests appareils
+Couvrir Android entrée/milieu/haut de gamme, plusieurs générations d'iPhone supportées, mémoire limitée, réseau mobile instable, passage en arrière-plan et longues sessions avec échauffement.
+
+### 15.5 Porte de validation
+Un jalon n'est accepté que si le build est reproductible, les tests obligatoires passent, aucun défaut critique connu n'affecte comptes ou résultats, les performances sont mesurées et les régressions sont documentées.
+
+## 16. Build et livraison
+
+- Build client Android.
+- Build client iOS sur environnement macOS compatible.
+- Build serveur Linux dédié.
+- Identifiant de build partagé entre client et serveur.
+- Tests automatisés de scripts, règles, secrets et backend.
+- Publication staging avant production.
+- Migration Firestore documentée.
+- Procédure de retour arrière préparée.
+
+GitHub peut automatiser les contrôles et tests. La compilation Unreal complète peut nécessiter des runners adaptés et beaucoup de stockage ; ne pas supposer qu'un runner gratuit standard suffira.
+
+## 17. Phases techniques
+
+### Phase A — preuve de faisabilité
+
+Projet Unreal minimal, cible serveur, compilation mobile, Firebase Authentication de test, Firestore Emulator, règles de base, premier média Cloudinary et connexion client vers serveur local.
+
+**Acceptation :** un joueur authentifié rejoint le serveur local sans exposer de secret.
+
+### Phase B — prototype de combat réseau
+
+Déplacement, caméra, une arme, intention de tir, validation serveur, dégâts, élimination et mesure mobile.
+
+**Acceptation :** le client ne peut pas imposer un résultat de combat.
+
+### Phase C — persistance
+
+Profils, inventaire cosmétique, progression de test, sauvegarde idempotente, règles Firestore et API de confiance.
+
+**Acceptation :** un client non autorisé ne modifie ni récompense, ni progression, ni résultat.
+
+### Phase D — vertical slice
+
+Scène représentative, un personnage, armes, interface, son, un objectif Réseau de Front et serveur dédié Linux.
+
+**Acceptation :** qualité visuelle, sensation, performances et réseau démontrés.
+
+### Phase E — alpha Battle Royale
+
+Carte, équipes, matchmaking, butin, zone, sauvegarde et supervision.
+
+**Acceptation :** tests de charge réussis par paliers et absence de faille critique connue.
+
+### Phase F — bêta et production
+
+Serveurs financés ou infrastructure opérée, support, modération, procédures d'incident, tests de sécurité et validations des plateformes.
+
+Ne pas lancer publiquement avec des quotas gratuits non maîtrisés ou un hébergement improvisé.
+
