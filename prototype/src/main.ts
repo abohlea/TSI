@@ -4,6 +4,7 @@ import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
+import { getFirebaseIdToken, hasFirebaseUser, isFirebaseConfigured, signInWithGoogle } from './game/firebase';
 import { createHud } from './ui/hud';
 import './style.css';
 
@@ -63,6 +64,7 @@ const network = new TsiNetworkClient();
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
 const connectButton = document.getElementById('connect-button') as HTMLButtonElement | null;
+const firebaseLoginButton = document.getElementById('firebase-login-button') as HTMLButtonElement | null;
 const connectionStatus = document.getElementById('connection-status');
 const touchControls = document.getElementById('touch-controls');
 const mobileLike = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
@@ -70,7 +72,8 @@ if (touchControls && mobileLike) touchControls.classList.add('active');
 
 const serverUrl = import.meta.env.VITE_TSI_SERVER_URL ?? 'http://localhost:2567';
 const localDevToken = import.meta.env.VITE_TSI_LOCAL_DEV_TOKEN ?? '';
-if (connectButton && (!serverUrl || localDevToken.length < 24)) {
+if (firebaseLoginButton) firebaseLoginButton.disabled = !isFirebaseConfigured();
+if (connectButton && (!serverUrl || (localDevToken.length < 24 && !isFirebaseConfigured()))) {
   connectButton.disabled = true;
   if (connectionStatus) {
     connectionStatus.textContent = 'Serveur non configuré · voir prototype/.env.example';
@@ -208,6 +211,19 @@ function setStarted(): void {
 
 startButton?.addEventListener('click', setStarted);
 
+firebaseLoginButton?.addEventListener('click', async () => {
+  if (!connectionStatus || !firebaseLoginButton) return;
+  firebaseLoginButton.disabled = true;
+  try {
+    await signInWithGoogle();
+    connectionStatus.textContent = 'Compte Firebase connecté · connexion au serveur…';
+    connectButton?.click();
+  } catch (error) {
+    connectionStatus.textContent = error instanceof Error ? error.message : 'Connexion Firebase impossible.';
+    firebaseLoginButton.disabled = false;
+  }
+});
+
 connectButton?.addEventListener('click', async () => {
   if (!connectionStatus || !connectButton) return;
   connectButton.disabled = true;
@@ -242,7 +258,7 @@ connectButton?.addEventListener('click', async () => {
         else if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
       },
       onSnapshot: applyNetworkSnapshot
-    });
+    }, isFirebaseConfigured() && hasFirebaseUser() ? getFirebaseIdToken : undefined);
     setStarted();
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Erreur de connexion au serveur local.';
