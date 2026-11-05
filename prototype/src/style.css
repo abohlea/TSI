@@ -61,6 +61,14 @@ button { font: inherit; }
 .overlay-card p { color: #aabdc2; font-size: 13px; line-height: 1.6; max-width: 360px; }
 .overlay-card button { width: 100%; margin: 15px 0 11px; padding: 15px; border: 0; color: #07111c; background: linear-gradient(100deg,#ffa16a,#ff713b); font-size: 11px; font-weight: 950; letter-spacing: .13em; cursor: pointer; }
 .overlay-card button:hover { filter: brightness(1.08); }
+.overlay-card button.secondary-action {
+  margin: 0 0 11px;
+  color: #d8e8e9;
+  background: rgba(53, 95, 105, .34);
+  border: 1px solid rgba(121, 214, 219, .42);
+}
+.overlay-card button.secondary-action:hover { background: rgba(53, 95, 105, .55); }
+.overlay-card button:disabled { opacity: .48; cursor: not-allowed; filter: none; }
 .overlay-card small { display: block; color: #788d93; font-size: 10px; text-align: center; }
 .touch-controls { display: none; position: absolute; inset: auto 0 0; height: 215px; pointer-events: none; }
 .touch-controls.active { display: block; }
