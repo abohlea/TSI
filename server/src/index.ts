@@ -1,6 +1,7 @@
 import "dotenv/config";
 import { defineRoom, defineServer } from "colyseus";
 import { FieldTestRoom } from "./rooms/FieldTestRoom.js";
+import { startCloudinaryMediaApi } from "./media/mediaApi.js";
 
 if (process.env.NODE_ENV === "production") {
   throw new Error("The TSI Field Test server is local-development only; production startup is blocked.");
@@ -29,3 +30,4 @@ const server = defineServer({
 
 await server.listen(port, "127.0.0.1");
 console.log(`[TSI] Local Field Test server listening at ws://127.0.0.1:${port}`);
+await startCloudinaryMediaApi();
