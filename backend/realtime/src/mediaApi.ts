@@ -116,7 +116,8 @@ export async function startCloudinaryMediaApi(): Promise<void> {
     return;
   }
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('The current Cloudinary Media API is local-preproduction only; production startup is blocked.');
+    console.warn('[TSI Media API] Disabled in production until a hardened public deployment is implemented.');
+    return;
   }
 
   const port = Number.parseInt(process.env.TSI_MEDIA_API_PORT ?? '2568', 10);
