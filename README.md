@@ -10,9 +10,9 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
 - [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
-- `backend/realtime/` — room Colyseus locale avec déplacement, collisions de terrain, tirs sur cibles et dégâts validés côté serveur.
+- `backend/realtime/` — room Colyseus locale avec déplacement, tirs sur cibles et première boucle PvP FFA (dégâts, élimination et réapparition) validés côté serveur.
 
-**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles, la cadence, les munitions, le rechargement, les collisions du terrain et la réapparition des cibles. Cette room n'implémente pas encore le combat joueur contre joueur, les comptes Firebase, la persistance Firestore, les médias Cloudinary ou le matchmaking de production.
+**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions du terrain, les dégâts, les éliminations et la réapparition après quatre secondes. Le PvP reste un prototype FFA : hitboxes simplifiées, pas de manches/équipes ni de compensation de latence. Les comptes Firebase, la persistance Firestore, les médias Cloudinary et le matchmaking de production ne sont pas encore intégrés.
 
 ## Stack du prototype
 
@@ -58,7 +58,7 @@ Le serveur Colyseus est volontairement protégé pour le développement local. I
 4. Démarrer Vite avec `npm run dev`.
 5. Ouvrir deux fenêtres du navigateur sur la même machine et cliquer sur **REJOINDRE LE SERVEUR DE TEST**.
 
-Les deux clients doivent utiliser le même serveur local. Les déplacements et tirs sur les cibles de pratique sont validés par la room ; le score et les munitions proviennent du serveur. Le combat entre joueurs n'est pas encore implémenté. Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
+Les deux clients doivent utiliser le même serveur local. Les déplacements et tirs sur les cibles de pratique sont validés par la room ; le score et les munitions proviennent du serveur. Le combat joueur contre joueur est maintenant disponible en version expérimentale locale (FFA, hitbox sphérique simplifiée et réapparition temporisée). Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
 
 ## Commandes de test
 
