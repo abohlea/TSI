@@ -111,14 +111,30 @@ export class TsiNetworkClient {
     return this._playerId;
   }
 
-  async connect(url: string, devToken: string, callbacks: NetworkCallbacks): Promise<void> {
+  async connect(url: string, devToken: string, callbacks: NetworkCallbacks, getIdToken?: () => Promise<string>): Promise<void> {
     if (this.room) return;
     if (!url.trim()) throw new Error('URL du serveur local absente.');
-    if (devToken.length < 24) throw new Error('Le jeton local doit contenir au moins 24 caractères.');
+    if (!getIdToken && devToken.length < 24) throw new Error('Le jeton local doit contenir au moins 24 caractères.');
 
     callbacks.onStatus('Connexion au serveur de test…');
     const client = new Client(url);
-    const room = await client.joinOrCreate('field_test', { devToken });
+    let room: Room;
+    if (getIdToken) {
+      const idToken = await getIdToken();
+      const ticketUrl = new URL('/auth/session-ticket', url).toString();
+      const response = await fetch(ticketUrl, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + idToken }
+      });
+      if (!response.ok) throw new Error('Échec de création du ticket de session (HTTP ' + response.status + ').');
+      const payload: unknown = await response.json();
+      if (!isRecord(payload) || typeof payload.sessionTicket !== 'string') {
+        throw new Error('Réponse de ticket de session invalide.');
+      }
+      room = await client.joinOrCreate('field_test', { sessionTicket: payload.sessionTicket });
+    } else {
+      room = await client.joinOrCreate('field_test', { devToken });
+    }
     this.room = room;
     this.sequence = 0;
 
