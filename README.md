@@ -122,6 +122,10 @@ Ces fichiers structurent les références de contenu ; les sons, modèles et eff
 
 - [TSI-CHAR-001 — Character de référence : opérateur principal](docs/art/TSI-CHAR-001-operator-alpha.md) — spécification du modèle, PBR, rig, animations, intégration GLB/PlayCanvas et critères de validation. Le modèle 3D final n'est pas encore produit.
 
+## Architecture retenue
+
+Le chemin actif du prototype est `prototype/` + `backend/realtime/`. Les anciens dossiers `game-client/` et `server/` ne doivent pas recevoir de nouvelles fonctionnalités : leur workflow CI dédié a été retiré de cette branche pour éviter de valider deux architectures concurrentes. Les fonctions encore utiles de ces branches doivent être portées vers l'architecture active avant toute fusion.
+
 ## Prochaines étapes
 
 1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
