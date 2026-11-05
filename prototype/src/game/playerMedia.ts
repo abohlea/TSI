@@ -8,18 +8,6 @@ export interface PlayerAvatarAsset {
   bytes: number;
 }
 
-interface SignedAvatarUpload {
-  cloudName: string;
-  apiKey: string;
-  uploadUrl: string;
-  resourceType: 'image';
-  timestamp: number;
-  publicId: string;
-  uploadPreset: string;
-  overwrite: false;
-  signature: string;
-}
-
 const MAX_AVATAR_BYTES = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -41,40 +29,15 @@ async function readJson<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
-async function requestSignature(idToken: string): Promise<SignedAvatarUpload> {
-  const response = await fetch(mediaApiUrl() + '/v1/media/avatar/signature', {
-    method: 'POST',
-    headers: { Authorization: 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ purpose: 'avatar' })
-  });
-  return readJson<SignedAvatarUpload>(response);
-}
-
 export async function uploadPlayerAvatar(file: File, idToken: string): Promise<PlayerAvatarAsset> {
   if (!ALLOWED_MIME_TYPES.has(file.type)) throw new Error('Avatar : seuls les formats JPG, PNG et WebP sont acceptés.');
   if (file.size < 1 || file.size > MAX_AVATAR_BYTES) throw new Error('Avatar : la taille doit être comprise entre 1 octet et 5 Mio.');
 
-  const signed = await requestSignature(idToken);
-  const form = new FormData();
-  form.append('file', file);
-  form.append('api_key', signed.apiKey);
-  form.append('timestamp', String(signed.timestamp));
-  form.append('public_id', signed.publicId);
-  form.append('upload_preset', signed.uploadPreset);
-  form.append('overwrite', String(signed.overwrite));
-  form.append('signature', signed.signature);
-
-  const uploadResponse = await fetch(signed.uploadUrl, { method: 'POST', body: form });
-  const uploaded = await readJson<{ asset_id?: string; public_id?: string }>(uploadResponse);
-  if (typeof uploaded.asset_id !== 'string' || uploaded.public_id !== signed.publicId) {
-    throw new Error('Cloudinary n’a pas retourné un identifiant d’asset valide.');
-  }
-
-  const confirmedResponse = await fetch(mediaApiUrl() + '/v1/media/avatar/confirm', {
+  const response = await fetch(mediaApiUrl() + '/v1/media/avatar/upload', {
     method: 'POST',
-    headers: { Authorization: 'Bearer ' + idToken, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ publicId: uploaded.public_id, assetId: uploaded.asset_id })
+    headers: { Authorization: 'Bearer ' + idToken, 'Content-Type': file.type },
+    body: file
   });
-  const confirmed = await readJson<{ avatar: PlayerAvatarAsset }>(confirmedResponse);
+  const confirmed = await readJson<{ avatar: PlayerAvatarAsset }>(response);
   return confirmed.avatar;
 }
