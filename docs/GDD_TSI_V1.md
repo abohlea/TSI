@@ -668,7 +668,7 @@ Les choix suivants doivent être traités dans des réunions de décision ou des
 3. **Caméra :** troisième personne comme référence ; validation de la visée et des optiques.
 4. **Mode phare :** Battle Royale en escouade comme priorité.
 5. **Population :** objectif initial de 60 joueurs, soumis aux tests.
-6. **Moteur et version :** Unreal Engine 5 est la piste recommandée ; version exacte à confirmer selon stabilité, licence, performances mobiles et compétences disponibles.
+6. **Moteur et version :** PlayCanvas Engine 2.23.3 est retenu pour le prototype web ; sa validation comme moteur de production dépendra des tests Android/iOS, du rendu et des performances réelles.
 7. **Services en ligne :** comparer une solution gérée et une infrastructure opérée par l'équipe avant de choisir.
 8. **Régions de serveurs :** décision fondée sur les mesures de latence des marchés visés et les coûts.
 9. **Style artistique final :** validation à travers un personnage, une arme et une zone représentatifs.
