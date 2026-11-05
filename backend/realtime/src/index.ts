@@ -2,6 +2,7 @@ import { defineRoom, defineServer } from 'colyseus';
 import { FieldTestRoom } from './rooms/FieldTestRoom.js';
 import { verifyFirebasePlayerToken } from './firebaseAuth.js';
 import { issueSessionTicket } from './sessionTickets.js';
+import { provisionPlayerProfile } from './firebaseProfiles.js';
 
 const port = Number.parseInt(process.env.PORT ?? '2567', 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -126,6 +127,7 @@ const server = defineServer({
       }
       try {
         const identity = await verifyFirebasePlayerToken(match[1]!);
+        await provisionPlayerProfile(identity.playerId);
         const sessionTicket = issueSessionTicket(identity.playerId);
         response.status(200).json({ sessionTicket, expiresInMs: 45_000 });
       } catch {
