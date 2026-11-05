@@ -137,7 +137,7 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 - [x] Initialisation serveur des documents de compte, profil public et progression (idempotente).
 - [x] Règles Firestore et tests émulateur pour les accès clients ; test d'intégration d'initialisation du profil ajouté, en attente de run CI sur le nouveau HEAD.
 - [x] Écriture des résultats après validation serveur, avec idempotence et statistiques agrégées.
-- [x] Cloudinary réservé aux avatars : signatures serveur, contrôle du propriétaire, validation Admin API et interface client de sélection.
+- [x] Cloudinary réservé aux avatars : transfert via API authentifiée, limite de 5 Mio et signature binaire vérifiées avant Cloudinary, validation de l'asset et profil.
 - **Acceptation :** tests d'accès refusé, jetons expirés/réutilisés et résultats falsifiés rejetés.
 
 ### P6 — production et exploitation
@@ -181,4 +181,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit valider par CI le cycle FFA et les résultats idempotents, puis ajouter équipes/manches successives et tests multi-clients. Les projets Firebase/Cloudinary réels, les secrets de déploiement, le stockage partagé, les lockfiles npm et les essais Android/iOS restent des validations externes ou de préparation avant production. L'API média reste volontairement désactivée en production tant qu'une architecture publique avec TLS, App Check, limites distribuées et contrôle de taille avant transfert n'est pas déployée. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
+La prochaine livraison doit valider par CI le cycle FFA et les résultats idempotents, puis ajouter équipes/manches successives et tests multi-clients. Les projets Firebase/Cloudinary réels, les secrets de déploiement, le stockage partagé, les lockfiles npm et les essais Android/iOS restent des validations externes ou de préparation avant production. L'API média reste volontairement désactivée en production tant qu'une architecture publique avec TLS, App Check, limites distribuées, délais d'expiration et supervision n'est pas déployée. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
