@@ -44,6 +44,19 @@ export interface NetworkShotResult {
   targetPlayerId?: string;
 }
 
+export interface NetworkTeamMatchState {
+  mode: 'teams-5v5';
+  phase: 'active' | 'intermission' | 'finished';
+  round: number;
+  roundWins: { alpha: number; bravo: number };
+  roundScore: { alpha: number; bravo: number };
+  matchScore: { alpha: number; bravo: number };
+  roundEndsAt: number;
+  intermissionEndsAt: number | null;
+  winner: 'alpha' | 'bravo' | null;
+  remainingMs: number;
+}
+
 export interface NetworkCallbacks {
   onStatus(message: string): void;
   onWelcome?(playerId: string, spawn: { x: number; z: number }): void;
@@ -52,6 +65,8 @@ export interface NetworkCallbacks {
   onShot?(result: NetworkShotResult): void;
   onMatchState?(state: NetworkMatchState): void;
   onMatchEnded?(state: NetworkMatchState): void;
+  onTeamMatchState?(state: NetworkTeamMatchState): void;
+  onTeamWelcome?(team: 'alpha' | 'bravo'): void;
 }
 
 export function getSessionTicketEndpoint(serverUrl: string): string {
@@ -148,7 +163,7 @@ export class TsiNetworkClient {
     return this._playerId;
   }
 
-  async connect(url: string, devToken: string, callbacks: NetworkCallbacks, getIdToken?: () => Promise<string>): Promise<void> {
+  async connect(url: string, devToken: string, callbacks: NetworkCallbacks, getIdToken?: () => Promise<string>, roomName: 'field_test' | 'team_match' = 'field_test'): Promise<void> {
     if (this.room) return;
     if (!url.trim()) throw new Error('URL du serveur local absente.');
     if (!getIdToken && devToken.length < 24) throw new Error('Le jeton local doit contenir au moins 24 caractères.');
@@ -168,12 +183,41 @@ export class TsiNetworkClient {
       if (!isRecord(payload) || typeof payload.sessionTicket !== 'string') {
         throw new Error('Réponse de ticket de session invalide.');
       }
-      room = await client.joinOrCreate('field_test', { sessionTicket: payload.sessionTicket });
+      room = await client.joinOrCreate(roomName, { sessionTicket: payload.sessionTicket });
     } else {
-      room = await client.joinOrCreate('field_test', { devToken });
+      room = await client.joinOrCreate(roomName, { devToken });
     }
     this.room = room;
     this.sequence = 0;
+
+    room.onMessage('team-welcome', (payload: unknown) => {
+      if (!isRecord(payload) || (payload.team !== 'alpha' && payload.team !== 'bravo')) return;
+      if (typeof payload.playerId === 'string') this._playerId = payload.playerId;
+      callbacks.onTeamWelcome?.(payload.team);
+      callbacks.onStatus('CONNECTÉ · ÉQUIPE ' + payload.team.toUpperCase());
+    });
+
+    room.onMessage('team-match-state', (payload: unknown) => {
+      if (!isRecord(payload) || payload.mode !== 'teams-5v5' ||
+          (payload.phase !== 'active' && payload.phase !== 'intermission' && payload.phase !== 'finished') ||
+          typeof payload.round !== 'number' || !isRecord(payload.roundWins) ||
+          !isRecord(payload.roundScore) || !isRecord(payload.matchScore) ||
+          typeof payload.roundEndsAt !== 'number' || typeof payload.remainingMs !== 'number') return;
+      const alphaWins = payload.roundWins.alpha; const bravoWins = payload.roundWins.bravo;
+      const alphaRound = payload.roundScore.alpha; const bravoRound = payload.roundScore.bravo;
+      const alphaMatch = payload.matchScore.alpha; const bravoMatch = payload.matchScore.bravo;
+      if (![alphaWins, bravoWins, alphaRound, bravoRound, alphaMatch, bravoMatch].every((v) => typeof v === 'number' && Number.isFinite(v))) return;
+      callbacks.onTeamMatchState?.({
+        mode: 'teams-5v5', phase: payload.phase, round: payload.round,
+        roundWins: { alpha: alphaWins as number, bravo: bravoWins as number },
+        roundScore: { alpha: alphaRound as number, bravo: bravoRound as number },
+        matchScore: { alpha: alphaMatch as number, bravo: bravoMatch as number },
+        roundEndsAt: payload.roundEndsAt,
+        intermissionEndsAt: typeof payload.intermissionEndsAt === 'number' ? payload.intermissionEndsAt : null,
+        winner: payload.winner === 'alpha' || payload.winner === 'bravo' ? payload.winner : null,
+        remainingMs: payload.remainingMs
+      });
+    });
 
     room.onMessage('welcome', (payload: unknown) => {
       if (!isRecord(payload) || typeof payload.playerId !== 'string') return;
