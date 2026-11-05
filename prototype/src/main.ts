@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { createArena } from './game/arena';
+import { applyCc0ArenaMaterials, createArena } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
@@ -57,6 +57,7 @@ fill.setEulerAngles(18, -145, 0);
 app.root.addChild(fill);
 
 const arena = createArena(app);
+applyCc0ArenaMaterials(app, arena);
 const player = createPlayer(app);
 void loadCc0Operator(app, player.root).catch((error: unknown) => {
   console.warn('CC0 operator asset unavailable; using the local TSI blockout:', error);
