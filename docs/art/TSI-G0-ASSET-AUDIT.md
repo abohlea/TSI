@@ -54,7 +54,7 @@ Les références d'assets dans les catalogues VFX/SFX sont des identifiants de c
 - [x] Identifier les chemins de runtime et les principaux fichiers de présentation.
 - [x] Séparer les assets réels, placeholders, données de catalogue et scripts de téléchargement.
 - [x] Formaliser la direction réaliste FPS/TPS dans `docs/ART_DIRECTION_TSI.md`.
-- [x] Ajouter un premier sélecteur de caméra FPS/TPS au prototype.
+- [x] Ajouter un premier sélecteur de caméra FPS/TPS au prototype (touche V sur desktop, bouton dans le HUD, caméra FPS à hauteur des yeux et masquage du corps local hors arme).
 - [ ] Vérifier le build TypeScript/Vite et les workflows Android sur le commit de cette branche.
 - [ ] Exécuter une revue visuelle du GLB et de tous ses clips réels dans le moteur.
 - [ ] Vérifier FPS/TPS sur navigateur tactile et appareil Android physique.
