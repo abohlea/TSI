@@ -253,3 +253,24 @@ Mesures d'économie :
 - surveiller lectures, écritures, stockage et transfert.
 
 Attention : sur Spark, certains dépassements de quotas arrêtent le service concerné jusqu'au cycle suivant. Il ne faut pas supposer que l'application continue automatiquement en mode payant.
+
+
+## 7. API de confiance TSI
+
+L'API de confiance vérifie les ID tokens, contrôle l'état du compte, applique les sanctions, gère les pseudonymes, crée les tickets de matchmaking, sélectionne les serveurs, signe les tickets, vérifie la provenance des résultats, écrit les données dans Firestore et applique l'idempotence.
+
+Contrats logiques prévus :
+- initialiser et lire un profil autorisé ;
+- créer et consulter un ticket de matchmaking ;
+- recevoir un résultat depuis un serveur de confiance ;
+- enregistrer un signalement ;
+- produire une signature Cloudinary pour un upload autorisé.
+
+Ces opérations ne sont pas encore implémentées. Chaque action sensible doit vérifier l'identité, l'autorisation, le format et la fréquence des appels.
+
+### Limite du plan gratuit Firebase
+
+Cloud Functions for Firebase nécessite actuellement le plan Blaze. Les quotas gratuits disponibles sur Blaze ne signifient donc pas que le déploiement est possible sur Spark sans compte de facturation. Voir [Firebase Pricing Plans](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans) et [Cloud Functions FAQ](https://firebase.google.com/docs/functions/faq-and-troubleshooting).
+
+Pendant la préproduction, exécuter l'API localement et utiliser les émulateurs lorsque possible. Avant une bêta publique, sélectionner une solution serveur de confiance. Ne jamais contourner ce besoin en accordant trop de droits au client.
+
