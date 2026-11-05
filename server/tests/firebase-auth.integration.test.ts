@@ -30,9 +30,9 @@ test("Firebase Auth ID token provisions only server-owned Firestore documents", 
   assert.ok(signUp.localId);
   assert.ok(signUp.idToken);
 
-  const identity = await authenticateFirebasePlayer(signUp.idToken, "TSI Test Operator");
+  const identity = await authenticateFirebasePlayer(signUp.idToken, "TSI Test Ops");
   assert.equal(identity.uid, signUp.localId);
-  assert.equal(identity.displayName, "TSI Test Operator");
+  assert.equal(identity.displayName, "TSI Test Ops");
 
   const app = getApps().find((candidate) => candidate.name === "tsi-server");
   assert.ok(app, "Firebase Admin app should be initialized by authentication.");
@@ -45,8 +45,8 @@ test("Firebase Auth ID token provisions only server-owned Firestore documents", 
   ]);
 
   assert.equal(account.get("accountStatus"), "active");
-  assert.equal(account.get("displayName"), "TSI Test Operator");
-  assert.equal(profile.get("publicName"), "TSI Test Operator");
+  assert.equal(account.get("displayName"), "TSI Test Ops");
+  assert.equal(profile.get("publicName"), "TSI Test Ops");
   assert.equal(profile.get("level"), 1);
   assert.equal(progression.get("level"), 1);
   assert.equal(progression.get("experience"), 0);
