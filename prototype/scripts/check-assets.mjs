@@ -18,7 +18,7 @@ async function scan(dir) {
   for (const entry of entries) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) result.push(...await scan(path));
-    if (entry.isFile()) result.push(path);
+    if (entry.isFile() && entry.name.toLowerCase() !== 'readme.md') result.push(path);
   }
   return result;
 }
