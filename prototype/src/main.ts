@@ -286,6 +286,14 @@ connectButton?.addEventListener('click', async () => {
         hud.setScore(kills, arena.targets.length);
       },
       onTeamPlayers(players) {
+        const scoreboard = document.getElementById('team-scoreboard');
+        const roster = document.getElementById('team-roster');
+        if (scoreboard) scoreboard.hidden = false;
+        if (roster) {
+          const alpha = players.filter((entry) => entry.team === 'alpha');
+          const bravo = players.filter((entry) => entry.team === 'bravo');
+          roster.textContent = 'ALPHA ' + alpha.length + '/5 · BRAVO ' + bravo.length + '/5';
+        }
         applyNetworkSnapshot({
           serverTime: Date.now(),
           players: players.map(({ playerId, x, z, yaw, health }) => ({ playerId, x, z, yaw, health })),
@@ -293,12 +301,27 @@ connectButton?.addEventListener('click', async () => {
         });
       },
       onTeamWelcome(team) {
+        const scoreboard = document.getElementById('team-scoreboard');
+        if (scoreboard) scoreboard.hidden = false;
         hud.toast('ÉQUIPE ' + team.toUpperCase() + ' · MODE 5V5');
       },
       onTeamMatchState(state) {
         const stateKey = state.phase + ':' + state.round + ':' + (state.winner ?? '');
         if (stateKey === lastTeamStateKey) return;
         lastTeamStateKey = stateKey;
+        const scoreboard = document.getElementById('team-scoreboard');
+        if (scoreboard) scoreboard.hidden = false;
+        const setText = (id: string, value: string) => {
+          const element = document.getElementById(id);
+          if (element) element.textContent = value;
+        };
+        const seconds = Math.max(0, Math.ceil(state.remainingMs / 1000));
+        setText('team-round', 'MANCHE ' + state.round + '/3 · ' + state.phase.toUpperCase());
+        setText('team-clock', String(Math.floor(seconds / 60)).padStart(2, '0') + ':' + String(seconds % 60).padStart(2, '0'));
+        setText('team-alpha-score', String(state.roundScore.alpha));
+        setText('team-bravo-score', String(state.roundScore.bravo));
+        setText('team-alpha-wins', state.matchScore.alpha + ' manche(s)');
+        setText('team-bravo-wins', state.matchScore.bravo + ' manche(s)');
         if (state.phase === 'active') {
           hud.toast('MANCHE ' + state.round + '/3 · ALPHA ' + state.matchScore.alpha + ' — BRAVO ' + state.matchScore.bravo);
         } else if (state.phase === 'intermission') {
