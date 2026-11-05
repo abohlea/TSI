@@ -24,9 +24,9 @@ EXPECTED_FINGER_BONES = {
     for segment in ((1, 2) if digit == "thumb" else (1, 2, 3))
 }
 EXPECTED_DETAIL_MARKERS = {
-    "helmet_brow", "helmet_rear_rail", "neck_seal",
-    "respirator_filter_L", "respirator_filter_R",
-    "cheek_vent_L", "cheek_vent_R",
+    "TSI001_helmet_brow", "TSI001_helmet_rear_rail", "TSI001_neck_seal",
+    "TSI001_respirator_filter_L", "TSI001_respirator_filter_R",
+    "TSI001_cheek_vent_L", "TSI001_cheek_vent_R",
 }
 EXPECTED_SOCKETS = {
     "TSI001_weapon_hand_socket", "TSI001_back_gear_socket",
