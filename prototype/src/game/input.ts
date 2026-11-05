@@ -59,6 +59,7 @@ export class GameInput {
     this.bind(sprint, 'pointerup', this.onSprintEnd as EventListener);
     this.bind(sprint, 'pointercancel', this.onSprintEnd as EventListener);
     this.bind(this.required('reload-button'), 'pointerdown', this.onReload as EventListener);
+    this.bind(this.required('interact-button'), 'pointerdown', this.onInteract as EventListener);
     this.bind(window, 'mouseup', this.onMouseUp as EventListener);
   }
 
@@ -76,7 +77,8 @@ export class GameInput {
   private onKeyDown = (event: KeyboardEvent): void => {
     this.keys.add(event.code);
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
-    if (event.code === 'KeyR' && !event.repeat) this.frame.reload = true;\n    if (event.code === 'KeyE' && !event.repeat) this.frame.interactPressed = true;
+    if (event.code === 'KeyR' && !event.repeat) this.frame.reload = true;
+    if (event.code === 'KeyE' && !event.repeat) this.frame.interactPressed = true;
   };
 
   private onKeyUp = (event: KeyboardEvent): void => { this.keys.delete(event.code); };
@@ -173,6 +175,7 @@ export class GameInput {
   private onSprintStart = (event: PointerEvent): void => { this.sprintHeld = true; event.preventDefault(); };
   private onSprintEnd = (event: PointerEvent): void => { this.sprintHeld = false; event.preventDefault(); };
   private onReload = (event: PointerEvent): void => { this.frame.reload = true; event.preventDefault(); };
+  private onInteract = (event: PointerEvent): void => { this.frame.interactPressed = true; event.preventDefault(); };
 
   read(): InputFrame {
     const forward = this.keys.has('KeyW') || this.keys.has('ArrowUp') || this.keys.has('KeyZ');
@@ -194,7 +197,9 @@ export class GameInput {
     this.frame.yawDelta = 0;
     this.frame.pitchDelta = 0;
     this.frame.reload = false;
-    this.frame.firePressed = false;\n    this.frame.interactPressed = false;\n    return result;
+    this.frame.firePressed = false;
+    this.frame.interactPressed = false;
+    return result;
   }
 
   destroy(): void {
