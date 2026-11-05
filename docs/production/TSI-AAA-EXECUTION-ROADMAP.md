@@ -49,6 +49,11 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Le client affiche les opérateurs éliminés/réapparus à partir de leur santé serveur.
 - Limites restantes : équipes, manches, score de manche, hitboxes articulées, compensation de latence, tests multi-clients automatisés et anti-triche avancée.
 
+### Complément P1 — durcissement des tests serveur (5 novembre 2026)
+- Commit `15d333b066835840b1adb83088a570c2d0bfaeac` : tests de validation des séquences non sûres, valeurs non finies, bornes de pitch et séquences régressives.
+- Commit `34b8fd8287fdfc8a25b892ae609218e6fe530984` : tests de portée maximale, cibles inactives et exclusion des joueurs déjà éliminés.
+- Ces tests sont ajoutés au code ; leur passage doit être confirmé par une exécution CI après ces commits avant d'être déclarés validés.
+
 ## 2. Périmètre prioritaire : vertical slice
 
 Ne pas produire simultanément tous les modes. Le premier objectif de production est une tranche jouable complète qui prouve la qualité de bout en bout :
