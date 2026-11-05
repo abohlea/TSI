@@ -103,6 +103,10 @@ backend/realtime/
 - Les combats publics nécessiteront un serveur dédié autoritaire.
 - Aucun service payant ne doit être activé sans validation du propriétaire du projet.
 
+## Production AAA — premier asset personnage
+
+- [TSI-CHAR-001 — Character de référence : opérateur principal](docs/art/TSI-CHAR-001-operator-alpha.md) — spécification du modèle, PBR, rig, animations, intégration GLB/PlayCanvas et critères de validation. Le modèle 3D final n'est pas encore produit.
+
 ## Prochaines étapes
 
 1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
