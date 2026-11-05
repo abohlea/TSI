@@ -105,3 +105,7 @@ button { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+
+#avatar-preview { display: block; width: 64px; height: 64px; margin: 0 auto 12px; border: 2px solid var(--cyan); border-radius: 50%; object-fit: cover; }
+#avatar-preview[hidden] { display: none; }
+#avatar-file-input { display: none; }
