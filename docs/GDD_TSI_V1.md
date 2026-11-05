@@ -15,6 +15,8 @@
 
 Ce GDD décrit **ce que TSI doit être du point de vue du joueur** : vision, règles, modes, univers, contenu, progression et critères de qualité. Il ne remplace pas les documents techniques détaillés qui suivront :
 
+Documents associés : [TDD TSI V1 — Architecture technique](TDD_TSI_V1.md) ; [ADR-001 — Backend, médias et hébergement](adr/ADR-001-backend-media-hosting.md).
+
 - **TDD / Architecture technique :** moteur, code, réseau, services, données, sécurité et déploiement.
 - **Art Bible :** style visuel, matériaux, personnages, armes, environnements et effets.
 - **Audio Bible :** identité sonore, mixage, spatialisation et musique.
