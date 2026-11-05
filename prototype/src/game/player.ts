@@ -4,7 +4,7 @@ function makeMaterial(color: pc.Color, metalness = 0.1, roughness = 0.72, emissi
   const material = new pc.StandardMaterial();
   material.diffuse = color;
   material.metalness = metalness;
-  material.roughness = roughness;
+  material.gloss = 1 - roughness;
   if (emissive) material.emissive = emissive;
   material.update();
   return material;
