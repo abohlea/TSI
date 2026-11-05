@@ -1,5 +1,6 @@
 import { defineRoom, defineServer } from 'colyseus';
 import { FieldTestRoom } from './rooms/FieldTestRoom.js';
+import { TeamMatchRoom } from './rooms/TeamMatchRoom.js';
 import { verifyFirebasePlayerToken } from './firebaseAuth.js';
 import { issueSessionTicket } from './sessionTickets.js';
 import { provisionPlayerProfile } from './firebaseProfiles.js';
@@ -72,7 +73,8 @@ function allowTicketRequest(ip: string, now = Date.now()): boolean {
 const server = defineServer({
   devMode: !isProduction,
   rooms: {
-    field_test: defineRoom(FieldTestRoom)
+    field_test: defineRoom(FieldTestRoom),
+    team_match: defineRoom(TeamMatchRoom)
   },
   express: (app) => {
     app.get('/health', (_request: unknown, response: ResponseLike) => {
