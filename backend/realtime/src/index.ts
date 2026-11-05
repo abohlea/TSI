@@ -34,5 +34,5 @@ const server = defineServer({
   }
 });
 
-await server.listen(port);
+await server.listen(port, isProduction ? undefined : '127.0.0.1');
 console.info(`TSI local realtime prototype listening on port ${port}`);
