@@ -1,10 +1,11 @@
 import * as pc from 'playcanvas';
 
-function makeMaterial(color: pc.Color, metalness = 0.1, roughness = 0.72): pc.StandardMaterial {
+function makeMaterial(color: pc.Color, metalness = 0.1, roughness = 0.72, emissive?: pc.Color): pc.StandardMaterial {
   const material = new pc.StandardMaterial();
   material.diffuse = color;
   material.metalness = metalness;
   material.roughness = roughness;
+  if (emissive) material.emissive = emissive;
   material.update();
   return material;
 }
@@ -28,6 +29,8 @@ function part(
 export interface PlayerRig {
   root: pc.Entity;
   weapon: pc.Entity;
+  updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
+  triggerShot(): void;
 }
 
 export function createPlayer(app: pc.Application): PlayerRig {
@@ -39,37 +42,99 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const fabric = makeMaterial(new pc.Color(0.23, 0.29, 0.27), 0.03, 0.94);
   const helmet = makeMaterial(new pc.Color(0.075, 0.11, 0.13), 0.48, 0.42);
   const visor = makeMaterial(new pc.Color(0.05, 0.42, 0.49), 0.62, 0.25);
-  const orange = makeMaterial(new pc.Color(1, 0.29, 0.055), 0.25, 0.42);
+  const orange = makeMaterial(new pc.Color(1, 0.29, 0.055), 0.25, 0.42, new pc.Color(0.25, 0.055, 0.008));
   const dark = makeMaterial(new pc.Color(0.035, 0.045, 0.05), 0.62, 0.38);
+  const rubber = makeMaterial(new pc.Color(0.018, 0.025, 0.028), 0.04, 0.98);
+  const glass = makeMaterial(new pc.Color(0.045, 0.32, 0.39), 0.72, 0.2);
+  const metal = makeMaterial(new pc.Color(0.32, 0.37, 0.38), 0.8, 0.32);
 
+  // Torso and armored silhouette.
   part(root, 'torso', 'capsule', new pc.Vec3(0, 1.18, 0), new pc.Vec3(0.62, 0.95, 0.36), armor);
   part(root, 'chest-plate', 'box', new pc.Vec3(0, 1.28, -0.19), new pc.Vec3(0.54, 0.42, 0.12), fabric);
+  part(root, 'upper-chest-armor', 'box', new pc.Vec3(0, 1.52, -0.18), new pc.Vec3(0.5, 0.17, 0.1), armor);
+  part(root, 'utility-belt', 'box', new pc.Vec3(0, 0.82, -0.03), new pc.Vec3(0.62, 0.14, 0.4), dark);
+  part(root, 'chest-pouch-left', 'box', new pc.Vec3(-0.2, 1.18, -0.285), new pc.Vec3(0.15, 0.19, 0.09), dark);
+  part(root, 'chest-pouch-right', 'box', new pc.Vec3(0.2, 1.18, -0.285), new pc.Vec3(0.15, 0.19, 0.09), dark);
+  part(root, 'radio-pack', 'box', new pc.Vec3(0, 1.35, 0.27), new pc.Vec3(0.42, 0.55, 0.2), dark);
+  part(root, 'radio-antenna', 'cylinder', new pc.Vec3(0.19, 1.72, 0.3), new pc.Vec3(0.025, 0.38, 0.025), metal);
   part(root, 'shoulder-left', 'sphere', new pc.Vec3(-0.39, 1.48, 0), new pc.Vec3(0.28, 0.28, 0.28), fabric);
   part(root, 'shoulder-right', 'sphere', new pc.Vec3(0.39, 1.48, 0), new pc.Vec3(0.28, 0.28, 0.28), fabric);
-  part(root, 'arm-left', 'capsule', new pc.Vec3(-0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
-  part(root, 'arm-right', 'capsule', new pc.Vec3(0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
-  part(root, 'leg-left', 'capsule', new pc.Vec3(-0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
-  part(root, 'leg-right', 'capsule', new pc.Vec3(0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
-  part(root, 'boot-left', 'box', new pc.Vec3(-0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), dark);
-  part(root, 'boot-right', 'box', new pc.Vec3(0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), dark);
+  part(root, 'shoulder-mark', 'box', new pc.Vec3(0.4, 1.49, -0.13), new pc.Vec3(0.12, 0.15, 0.045), orange);
+  part(root, 'belt-tool', 'box', new pc.Vec3(-0.34, 0.78, -0.02), new pc.Vec3(0.1, 0.22, 0.12), metal);
+
+  // Articulated blockout limbs; pivots allow a first procedural run cycle.
+  const armLeft = part(root, 'arm-left', 'capsule', new pc.Vec3(-0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
+  const armRight = part(root, 'arm-right', 'capsule', new pc.Vec3(0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
+  const legLeft = part(root, 'leg-left', 'capsule', new pc.Vec3(-0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
+  const legRight = part(root, 'leg-right', 'capsule', new pc.Vec3(0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
+  part(root, 'knee-pad-left', 'box', new pc.Vec3(-0.18, 0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
+  part(root, 'knee-pad-right', 'box', new pc.Vec3(0.18, 0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
+  part(root, 'boot-left', 'box', new pc.Vec3(-0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
+  part(root, 'boot-right', 'box', new pc.Vec3(0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
+  part(root, 'forearm-guard-left', 'box', new pc.Vec3(-0.44, 0.95, -0.14), new pc.Vec3(0.19, 0.22, 0.08), dark);
+  part(root, 'forearm-guard-right', 'box', new pc.Vec3(0.44, 0.95, -0.14), new pc.Vec3(0.19, 0.22, 0.08), dark);
+
+  // Head, helmet, visor and communications equipment.
   part(root, 'neck', 'cylinder', new pc.Vec3(0, 1.72, 0), new pc.Vec3(0.18, 0.16, 0.18), fabric);
   part(root, 'head', 'sphere', new pc.Vec3(0, 1.94, 0), new pc.Vec3(0.42, 0.48, 0.4), fabric);
   part(root, 'helmet-shell', 'sphere', new pc.Vec3(0, 2.12, 0.015), new pc.Vec3(0.48, 0.34, 0.46), helmet);
+  part(root, 'helmet-front-ridge', 'box', new pc.Vec3(0, 2.17, -0.36), new pc.Vec3(0.28, 0.07, 0.08), dark);
   part(root, 'visor-strip', 'box', new pc.Vec3(0, 1.99, -0.2), new pc.Vec3(0.36, 0.08, 0.035), visor);
-  part(root, 'shoulder-mark', 'box', new pc.Vec3(0.4, 1.49, -0.13), new pc.Vec3(0.12, 0.15, 0.045), orange);
+  part(root, 'visor-left-light', 'sphere', new pc.Vec3(-0.11, 2.0, -0.226), new pc.Vec3(0.055, 0.055, 0.025), glass);
+  part(root, 'visor-right-light', 'sphere', new pc.Vec3(0.11, 2.0, -0.226), new pc.Vec3(0.055, 0.055, 0.025), glass);
+  part(root, 'earpiece-left', 'cylinder', new pc.Vec3(-0.23, 1.97, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
+  part(root, 'earpiece-right', 'cylinder', new pc.Vec3(0.23, 1.97, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
 
+  // AR-01 rifle blockout with sight, magazine, stock, handguard and muzzle.
   const weapon = new pc.Entity('ar-01-rifle');
-  weapon.setLocalPosition(0.28, 1.27, -0.46);
+  const weaponRest = new pc.Vec3(0.28, 1.27, -0.46);
+  weapon.setLocalPosition(weaponRest);
   root.addChild(weapon);
   part(weapon, 'receiver', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(0.17, 0.16, 0.62), dark);
+  part(weapon, 'upper-receiver', 'box', new pc.Vec3(0, 0.075, -0.04), new pc.Vec3(0.16, 0.055, 0.5), metal);
   part(weapon, 'barrel', 'cylinder', new pc.Vec3(0, 0.015, -0.42), new pc.Vec3(0.045, 0.38, 0.045), helmet).setLocalEulerAngles(90, 0, 0);
+  part(weapon, 'muzzle-device', 'cylinder', new pc.Vec3(0, 0.015, -0.68), new pc.Vec3(0.065, 0.12, 0.065), metal).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'handguard', 'box', new pc.Vec3(0, 0, -0.26), new pc.Vec3(0.14, 0.13, 0.34), armor);
+  part(weapon, 'stock', 'box', new pc.Vec3(0, 0.005, 0.38), new pc.Vec3(0.13, 0.17, 0.32), dark);
   part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
-  part(weapon, 'optic', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.1, 0.1, 0.18), orange);
+  part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
+  part(weapon, 'optic-mount', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.14, 0.035, 0.2), dark);
+  part(weapon, 'optic', 'box', new pc.Vec3(0, 0.21, -0.02), new pc.Vec3(0.1, 0.12, 0.13), orange);
+  part(weapon, 'optic-glass', 'box', new pc.Vec3(0, 0.215, -0.091), new pc.Vec3(0.07, 0.07, 0.015), glass);
+  part(weapon, 'foregrip', 'box', new pc.Vec3(0, -0.12, -0.23), new pc.Vec3(0.09, 0.22, 0.1), rubber);
 
-  return { root, weapon };
+  const muzzleFlash = part(weapon, 'muzzle-flash', 'sphere', new pc.Vec3(0, 0.015, -0.78), new pc.Vec3(0.16, 0.16, 0.28), orange);
+  muzzleFlash.enabled = false;
+
+  let animationTime = 0;
+  let muzzleTimer = 0;
+  let recoil = 0;
+
+  return {
+    root,
+    weapon,
+    triggerShot() {
+      muzzleTimer = 0.055;
+      recoil = 1;
+      muzzleFlash.enabled = true;
+    },
+    updateAnimation(deltaTime, moving, sprinting) {
+      animationTime += deltaTime;
+      const rate = sprinting ? 13.5 : 9.5;
+      const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
+      const swing = Math.sin(animationTime * rate) * amplitude;
+      legLeft.setLocalEulerAngles(swing * 38, 0, 0);
+      legRight.setLocalEulerAngles(-swing * 38, 0, 0);
+      armLeft.setLocalEulerAngles(-swing * 13, 0, -5);
+      armRight.setLocalEulerAngles(swing * 13, 0, 5);
+      const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
+      weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
+      recoil = Math.max(0, recoil - deltaTime * 7.5);
+      muzzleTimer = Math.max(0, muzzleTimer - deltaTime);
+      if (muzzleTimer === 0) muzzleFlash.enabled = false;
+    }
+  };
 }
-
 
 /** Simple remote silhouette for the first local network test. Not a final character asset. */
 export function createRemotePlayer(app: pc.Application, playerId: string): pc.Entity {
