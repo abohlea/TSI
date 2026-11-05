@@ -237,6 +237,7 @@ export class PlayerController {
       );
     }
     this.yaw = yaw;
+    this.scene.player.setEulerAngles(0, yaw, 0);
   }
 
   private getAccuracy(): number {
@@ -338,7 +339,8 @@ export class PlayerController {
       this.networkSendTimer += dt;
       if (this.networkSendTimer >= 0.05) {
         this.networkSendTimer = 0;
-        this.network.sendInput(strafeInput, forwardInput, this.yaw);
+        const inputScale = Math.max(1, magnitude);
+        this.network.sendInput(strafeInput / inputScale, forwardInput / inputScale, this.yaw);
       }
     }
     if (magnitude > 0.01) {
