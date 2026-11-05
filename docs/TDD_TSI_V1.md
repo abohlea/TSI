@@ -274,3 +274,26 @@ Cloud Functions for Firebase nécessite actuellement le plan Blaze. Les quotas g
 
 Pendant la préproduction, exécuter l'API localement et utiliser les émulateurs lorsque possible. Avant une bêta publique, sélectionner une solution serveur de confiance. Ne jamais contourner ce besoin en accordant trop de droits au client.
 
+
+
+## 8. Cloudinary — stratégie média
+
+Cloudinary sert aux portraits, avatars, bannières, actualités, visuels de boutique, médias communautaires modérés et vidéos promotionnelles.
+
+Ne pas utiliser Cloudinary comme base de données, serveur de match ou stockage principal de grandes archives Unreal (niveaux, textures, sons ou paquets de contenu). Les ressources nécessaires au gameplay sont intégrées aux builds ou distribuées par un mécanisme de contenu conçu séparément.
+
+Sécurité :
+- ne jamais inclure le secret Cloudinary dans le client ;
+- générer les signatures d'upload via l'API de confiance ;
+- limiter formats, tailles, dossiers et types de médias ;
+- vérifier la propriété de chaque ressource ;
+- modérer les médias envoyés par les joueurs ;
+- conserver un identifiant d'asset plutôt que multiplier les URL transformées ;
+- séparer les droits d'administration et ceux des joueurs.
+
+### Offre gratuite
+
+Cloudinary indique 25 crédits mensuels sur son offre Free. Un crédit correspond notamment à 1 000 transformations, ou 1 Gio de stockage, ou 1 Gio de bande passante image ; ces usages partagent le budget. Ce quota convient au prototype et à un petit catalogue, pas à une diffusion mondiale massive garantie.
+
+Sources : [Cloudinary Pricing](https://cloudinary.com/pricing) et [Billing and Plans](https://cloudinary.com/documentation/billing_and_plans).
+
