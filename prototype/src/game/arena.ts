@@ -140,17 +140,28 @@ export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): vo
       const groundSet = textures.find((item) => /asphalt|gravel|ground|dirt|road/i.test(item.name)) ?? textures[0];
       const wallSet = textures.find((item) => /concrete|brick|stone/i.test(item.name)) ?? textures[1];
       const applyMap = (set: Cc0TextureSet | undefined, target: pc.StandardMaterial, tiling: number) => {
-        const diffuse = set?.files.find((file) => /diffuse|albedo|color/i.test(file.map));
-        if (!diffuse) return;
-        app.assets.loadFromUrl(diffuse.file, 'texture', (error, asset) => {
-          if (error || !asset?.resource) {
-            console.warn('Unable to load CC0 PBR texture:', diffuse.file, error);
-            return;
-          }
-          target.diffuseMap = asset.resource as pc.Texture;
-          target.diffuseMapTiling = new pc.Vec2(tiling, tiling);
-          target.update();
-        });
+        const maps = [
+          { file: set?.files.find((item) => /diff|albedo|color/i.test(item.map)), kind: 'diffuse' as const },
+          { file: set?.files.find((item) => /normal|nor_gl|nor_dx|bump/i.test(item.map)), kind: 'normal' as const }
+        ];
+        for (const entry of maps) {
+          if (!entry.file) continue;
+          app.assets.loadFromUrl(entry.file.file, 'texture', (error, asset) => {
+            if (error || !asset?.resource) {
+              console.warn('Unable to load CC0 PBR texture:', entry.file?.file, error);
+              return;
+            }
+            const texture = asset.resource as pc.Texture;
+            if (entry.kind === 'diffuse') {
+              target.diffuseMap = texture;
+              target.diffuseMapTiling = new pc.Vec2(tiling, tiling);
+            } else {
+              target.normalMap = texture;
+              target.normalMapTiling = new pc.Vec2(tiling, tiling);
+            }
+            target.update();
+          });
+        }
       };
       applyMap(groundSet, arena.surfaces.ground, 9);
       applyMap(wallSet, arena.surfaces.concrete, 2.5);
