@@ -9,16 +9,15 @@ TSI est un projet de shooter compétitif mobile-first. Ce dépôt regroupe le pr
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas et Colyseus pour le prototype.
 - [ADR-004](docs/adr/ADR-004-firebase-auth-firestore.md) — Firebase Authentication et création initiale des documents Firestore.
-- `game-client/` — client PlayCanvas et intégration Firebase Authentication.
-- `server/` — room Colyseus de test, vérification Firebase Admin et création initiale des documents joueur.
+- [ADR-005](docs/adr/ADR-005-cloudinary-signed-player-uploads.md) — signatures Cloudinary côté serveur et validation des avatars.
+- `game-client/` — client PlayCanvas, Firebase Authentication et helper d'upload Cloudinary.
+- `server/` — room Colyseus de test, vérification Firebase Admin, provisionnement Firestore et Media API Cloudinary.
 - `backend/firebase/` et `firestore.rules` — règles Firestore et tests de l'émulateur.
 - `prototype/` et `backend/realtime/` — ancien prototype réseau conservé comme référence.
 
-## Firebase local
+## Démarrage local
 
-Le parcours d'authentification utilise Firebase Auth Emulator et Firestore Emulator. Aucun projet Firebase réel ni compte de service n'est nécessaire pour le mode local.
-
-1. Terminal 1 — démarrer les émulateurs :
+1. Terminal 1 — démarrer les émulateurs Firebase :
 
 ```bash
 cd backend/firebase
@@ -26,12 +25,13 @@ npm install
 npx firebase --config ../../firebase.json emulators:start --project demo-tsi-local --only auth,firestore
 ```
 
-2. Terminal 2 — démarrer le serveur :
+2. Terminal 2 — démarrer le serveur et le Media API :
 
 ```bash
 cd server
 npm install
 cp .env.example .env
+# Cloudinary est facultatif pour les tests ; renseigne ses 4 variables pour activer les uploads.
 npm run check
 npm test
 npm run dev
@@ -47,24 +47,22 @@ npm run build
 npm run dev
 ```
 
-Ouvre l'URL indiquée par Vite. Le client obtient une identité anonyme Firebase, récupère un ID token et rejoint la room. Le serveur vérifie ce token puis crée au besoin `users/{uid}`, `playerProfiles/{uid}` et `progression/{uid}` dans l'émulateur Firestore.
-
-Le guide détaillé se trouve dans [server/README.md](server/README.md).
+Le guide complet, notamment la création d'un preset Cloudinary signé, est dans [server/README.md](server/README.md).
 
 ## Limites et sécurité
 
-- Le serveur Field Test écoute uniquement sur `127.0.0.1` et refuse le mode production.
-- La connexion anonyme est uniquement une solution de préproduction ; une connexion permanente et la liaison de compte sont à construire.
+- Le serveur Field Test et le Media API écoutent uniquement sur `127.0.0.1` et refusent le mode production.
+- La connexion Firebase anonyme est une solution de préproduction ; une connexion permanente et la liaison de compte restent à construire.
 - Les secrets Firebase Admin et Cloudinary ne doivent jamais apparaître dans le client ou dans Git.
+- Cloudinary couvre actuellement l'upload signé d'avatars uniquement ; pas encore de bannières, vidéo, bibliothèque d'assets, modération, ni nettoyage automatique.
 - Les règles Firestore empêchent les clients de modifier progression, inventaire, comptes et résultats protégés.
 - Les tirs, dégâts et résultats de match ne doivent pas être décidés par le client ni synchronisés frame par frame dans Firestore.
 - Aucun hébergement payant ni service externe ne sera activé sans validation.
 
 ## Prochains jalons
 
-1. Valider le flux Auth Emulator → ID token → Colyseus → Firestore Emulator.
-2. Ajouter une connexion permanente et la liaison du compte anonyme.
-3. Raccorder le client courant au réseau et au combat autoritaire.
-4. Persister profils et résultats uniquement après validation serveur.
-5. Intégrer Cloudinary avec signatures d'upload créées côté serveur.
-6. Réaliser des tests Android/iOS et des tests réseau avant toute bêta.
+1. Finaliser la liaison de comptes Firebase permanents.
+2. Ajouter la persistance serveur des résultats de match et de la progression.
+3. Intégrer l'interface d'édition du profil pour choisir l'avatar et prévisualiser les médias.
+4. Ajouter une politique Cloudinary séparée pour bannières et médias officiels, ainsi que la modération et le nettoyage.
+5. Réaliser des tests Android/iOS et des tests réseau avant toute bêta.
