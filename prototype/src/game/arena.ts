@@ -22,6 +22,8 @@ export interface ArenaApi {
   vehicle: pc.Entity;
   doors: pc.Entity[];
   crates: pc.Entity[];
+  wheels: pc.Entity[];
+  steeringWheel: pc.Entity;
 }
 
 function material(color: pc.Color, options: { metalness?: number; roughness?: number; emissive?: pc.Color } = {}): pc.StandardMaterial {
@@ -272,6 +274,7 @@ export function createArena(app: pc.Application): ArenaApi {
     obstacles.push({ minX: x - 0.5, maxX: x + 0.5, minZ: z - 0.5, maxZ: z + 0.5 });
   });
 
+  const wheels: pc.Entity[] = [];
   const truck = new pc.Entity('parked-utility-truck');
   truck.setPosition(0, 0, 8);
   app.root.addChild(truck);
@@ -280,8 +283,18 @@ export function createArena(app: pc.Application): ArenaApi {
   primitive(truck, 'truck-windshield', 'box', new pc.Vec3(0, 2.0, 0.02), new pc.Vec3(2.45, 0.92, 0.055), glass);
   primitive(truck, 'truck-cargo-bed', 'box', new pc.Vec3(0, 1.18, 1.75), new pc.Vec3(2.75, 0.65, 2.25), truckBody);
   for (const x of [-1.52, 1.52]) for (const z of [-2.0, 2.0]) {
-    primitive(truck, 'truck-wheel', 'cylinder', new pc.Vec3(x, 0.55, z), new pc.Vec3(0.82, 0.42, 0.82), rubber);
+    const wheel = primitive(truck, 'truck-wheel', 'cylinder', new pc.Vec3(x, 0.55, z), new pc.Vec3(0.82, 0.42, 0.82), rubber);
+    wheel.setLocalEulerAngles(0, 0, 90);
+    wheels.push(wheel);
   }
+  // Visible seated driver silhouette: the controllable soldier is hidden while driving.
+  const driver = new pc.Entity('truck-driver-seat');
+  driver.setLocalPosition(0, 1.18, -1.72);
+  truck.addChild(driver);
+  primitive(driver, 'driver-torso', 'capsule', new pc.Vec3(0, 0.38, 0), new pc.Vec3(0.48, 0.62, 0.34), crateMetal);
+  primitive(driver, 'driver-head', 'sphere', new pc.Vec3(0, 0.92, -0.02), new pc.Vec3(0.34, 0.38, 0.34), dark);
+  const steeringWheel = primitive(truck, 'truck-steering-wheel', 'cylinder', new pc.Vec3(0, 1.58, -2.02), new pc.Vec3(0.52, 0.07, 0.52), dark);
+  steeringWheel.setLocalEulerAngles(90, 0, 0);
 
   const targetPositions = [
     new pc.Vec3(-5, 0, -22), new pc.Vec3(0, 0, -29), new pc.Vec3(5, 0, -22),
@@ -291,5 +304,5 @@ export function createArena(app: pc.Application): ArenaApi {
     target: targetSurface, accent: orange, dark
   }));
 
-  return { targets, obstacles, vehicle: truck, doors, crates };
+  return { targets, obstacles, vehicle: truck, doors, crates, wheels, steeringWheel };
 }
