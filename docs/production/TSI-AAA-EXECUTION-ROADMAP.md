@@ -188,8 +188,10 @@ La prochaine livraison doit valider par CI le cycle FFA et les résultats idempo
 - [x] Ajouter un module TypeScript déterministe pour l'affectation équilibrée alpha/bravo et le cycle best-of-three.
 - [x] Définir manches de trois minutes, objectif de cinq éliminations, pause de huit secondes et victoire au meilleur des trois.
 - [x] Couvrir équilibrage, score cible, transition inter-manches, timeout, égalité et immutabilité après fin par tests unitaires.
-- [ ] Intégrer le module à la room Colyseus et au client : le mode actif reste FFA tant que l'affectation, les tirs alliés, les resets, le HUD et les tests multi-clients ne sont pas livrés.
-- [ ] Ajouter une persistance durable crash-safe (outbox/queue transactionnelle) avant de considérer les résultats résistants aux arrêts brutaux.
+- [x] Intégrer le module à une room Colyseus dédiée et au client : affectation équilibrée, tirs adverses uniquement, snapshots joueurs, resets et état de manche.
+- [x] Étendre les points d'apparition et les résultats Firestore à dix joueurs ; stocker l'équipe dans chaque résultat.
+- [x] Ajouter des checkpoints Firestore après les connexions et éliminations, avec récupération idempotente des matchs interrompus au redémarrage.
+- [ ] Restaurer une session de jeu en cours (état du monde, positions, munitions, round) et ajouter un verrou de leader distribué avant toute exécution multi-instance.
 - Détail des règles et de la frontière d'intégration : `docs/production/TSI-TEAM-MODE.md`.
 
 
