@@ -1,6 +1,7 @@
 import { getApp, getApps, initializeApp } from 'firebase/app';
 import {
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   signInWithPopup,
   type Auth
@@ -17,12 +18,20 @@ export function isFirebaseConfigured(): boolean {
   return Boolean(config.apiKey && config.authDomain && config.projectId && config.appId);
 }
 
+let authEmulatorConfigured = false;
+
 function firebaseAuth(): Auth {
   if (!isFirebaseConfigured()) {
     throw new Error('Firebase Web App non configurée : renseigne les variables VITE_FIREBASE_*.');
   }
   const app = getApps().length ? getApp() : initializeApp(config);
-  return getAuth(app);
+  const auth = getAuth(app);
+  const emulatorHost = import.meta.env.VITE_FIREBASE_AUTH_EMULATOR_HOST as string | undefined;
+  if (emulatorHost && !authEmulatorConfigured) {
+    connectAuthEmulator(auth, `http://${emulatorHost}`, { disableWarnings: true });
+    authEmulatorConfigured = true;
+  }
+  return auth;
 }
 
 export function hasFirebaseUser(): boolean {
