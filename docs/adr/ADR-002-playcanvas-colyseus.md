@@ -1,16 +1,16 @@
 # ADR-002 — PlayCanvas Engine pour le prototype TSI et Colyseus comme serveur candidat
 
-- **Statut :** PlayCanvas accepté pour le prototype ; production non encore figée
+- **Statut :** PlayCanvas et le serveur Colyseus local sont implémentés en prototype ; la production n'est pas encore figée
 - **Date :** 5 novembre 2026
 - **Contexte :** le fondateur souhaite un moteur accessible en ligne, un développement piloté par le code et GitHub, une licence permissive, Android/iOS comme cibles et une priorité aux solutions gratuites. Le choix précédent d'Unreal est remplacé pour le prototype.
 
 ## Décisions
 
 1. Le prototype client utilise **PlayCanvas Engine 2.23.3**, installé depuis npm et versionné dans le dépôt.
-2. Le client est écrit en TypeScript, construit avec Vite et exécuté d'abord dans un navigateur.
+2. Le client est écrit en TypeScript, construit avec Vite et exécuté d'abord dans un navigateur. Un prototype de terrain d'entraînement et une room Colyseus locale sont présents dans le dépôt.
 3. Le projet utilise PlayCanvas Engine directement ; l'éditeur visuel PlayCanvas n'est pas un prérequis.
 4. La licence MIT du moteur est retenue comme base permissive pour le prototype et l'exploitation commerciale, sous réserve de respecter les licences et notices des dépendances et ressources tierces.
-5. **Colyseus 0.18.x / Node.js / TypeScript** devient le premier candidat à prototyper pour les rooms, le matchmaking et la synchronisation d'état autoritaire.
+5. **Colyseus 0.18.10 / Node.js / TypeScript** est implémenté pour une room locale de test. Le SDK client est épinglé sur **@colyseus/sdk 0.18.9**. Cette implémentation synchronise uniquement les déplacements ; elle ne constitue pas encore un combat multijoueur complet.
 6. Firebase Authentication, Cloud Firestore et Cloudinary restent les services de compte, de données persistantes et de médias conformément à ADR-001.
 7. Render reste exclu.
 8. PlayCanvas n'est pas déclaré plus performant qu'Unreal Engine 6. Le choix est motivé par le workflow web, l'accès au code, la licence et la capacité à prototyper en TypeScript. La performance mobile et la capacité à porter le jeu final restent à prouver.
@@ -43,6 +43,13 @@ Le premier Field Test doit prouver :
 - cibles de pratique et HUD ;
 - build web reproductible ;
 - tests de performance de base sur téléphone.
+
+Le premier jalon réseau local implémenté permet de vérifier :
+- un client PlayCanvas rejoint une room Colyseus locale ;
+- le serveur valide les séquences et normalise les inputs de déplacement ;
+- les snapshots permettent d'afficher des opérateurs distants.
+
+Cette preuve est limitée au réseau local et à huit clients de test maximum. Elle n'a pas encore été validée par un build npm réussi dans l'environnement de travail.
 
 Le jalon réseau suivant doit prouver :
 - un client PlayCanvas rejoint une room locale ;
