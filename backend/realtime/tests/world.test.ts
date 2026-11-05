@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canOccupyPosition, createPracticeTargets, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
+import { canOccupyPosition, createPracticeTargets, findSpawnPosition, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
 
 test('practice world blocks players inside structures and outside world bounds', () => {
   assert.equal(canOccupyPosition(0, 4), true);
@@ -58,4 +58,27 @@ test('server ray does not hit a target when an obstacle blocks the line', () => 
   const result = resolveAuthoritativeShot(-20, 1.55, 4, 0, -2.4, [obstructedTarget], 2000);
   assert.equal(result.hit, false);
   assert.equal(obstructedTarget.health, 100);
+});
+
+
+test('spawn allocation avoids a player who remains after another player disconnects', () => {
+  const remainingPlayer = { x: 2, z: 5 };
+  const nextSpawn = findSpawnPosition([remainingPlayer]);
+
+  assert.ok(nextSpawn);
+  assert.notDeepEqual(nextSpawn, remainingPlayer);
+  assert.ok(Math.hypot(nextSpawn.x - remainingPlayer.x, nextSpawn.z - remainingPlayer.z) >= 1.36);
+});
+
+test('spawn allocation gives every player a distinct position and refuses a ninth spawn', () => {
+  const players: Array<{ x: number; z: number }> = [];
+
+  for (let index = 0; index < 8; index += 1) {
+    const spawn = findSpawnPosition(players);
+    assert.ok(spawn, `spawn ${index + 1} should be available`);
+    assert.ok(players.every((player) => Math.hypot(player.x - spawn.x, player.z - spawn.z) >= 1.36));
+    players.push(spawn);
+  }
+
+  assert.equal(findSpawnPosition(players), null);
 });
