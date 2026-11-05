@@ -56,7 +56,13 @@ export function consumeSessionTicket(ticket: string, now = Date.now()): { player
   } catch {
     throw new Error('Invalid session ticket signature.');
   }
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) {
+  // Reject non-canonical base64url encodings: Node's decoder accepts distinct
+  // strings that decode to the same bytes when unused trailing bits differ.
+  if (
+    actual.length !== expected.length ||
+    suppliedSignature !== expected.toString('base64url') ||
+    !timingSafeEqual(actual, expected)
+  ) {
     throw new Error('Invalid session ticket signature.');
   }
 
