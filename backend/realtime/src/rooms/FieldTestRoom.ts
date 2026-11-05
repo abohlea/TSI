@@ -11,6 +11,7 @@ import {
 import { parsePlayerInput } from '../validation.js';
 import { consumeSessionTicket } from '../sessionTickets.js';
 import { persistMatchResult, type MatchParticipantResult } from '../matchResults.js';
+import { saveMatchCheckpoint } from '../matchJournal.js';
 import { advanceMatchLifecycle, createMatchLifecycle, DEFAULT_MATCH_CONFIG, finishMatchLifecycle, getMatchRemainingMs } from '../matchLifecycle.js';
 import {
   canOccupyPosition,
@@ -57,6 +58,7 @@ export class FieldTestRoom extends Room {
   private readonly participants = new Map<string, MatchParticipantResult>();
   private readonly match = createMatchLifecycle(Date.now());
   private matchPersistenceStarted = false;
+  private checkpointQueue: Promise<void> = Promise.resolve();
 
   override maxClients = MAX_PLAYERS_PER_TEST_ROOM;
   override maxMessagesPerSecond = 35;
@@ -122,6 +124,7 @@ export class FieldTestRoom extends Room {
     if (auth.persistent && !this.participants.has(auth.playerId)) {
       this.participants.set(auth.playerId, { uid: auth.playerId, score: 0, kills: 0, deaths: 0, joinedAt: Date.now() });
     }
+    this.queueCheckpoint();
     this.clock.setTimeout(() => {
       if (!this.players.has(client.sessionId)) return;
       client.send('welcome', {
@@ -207,6 +210,7 @@ export class FieldTestRoom extends Room {
         if (killerResult) { killerResult.score += 1; killerResult.kills += 1; }
         const victimResult = this.participants.get(victim.playerId);
         if (victimResult) victimResult.deaths += 1;
+        this.queueCheckpoint();
         this.broadcast('player-eliminated', {
           killerId: player.playerId,
           playerId: victim.playerId,
@@ -328,10 +332,25 @@ export class FieldTestRoom extends Room {
     await this.persistFinalResult(this.match.finishedAt ?? now);
   }
 
+
+  private queueCheckpoint(): void {
+    if (this.participants.size === 0 || this.match.phase === 'finished') return;
+    const checkpoint = {
+      matchId: this.roomId,
+      mode: 'field-test-ffa' as const,
+      startedAt: this.match.createdAt,
+      participants: Array.from(this.participants.values(), (participant) => ({ ...participant }))
+    };
+    this.checkpointQueue = this.checkpointQueue
+      .then(() => saveMatchCheckpoint(checkpoint))
+      .catch((error) => console.error('[TSI] Failed to checkpoint FFA match:', error));
+  }
+
   private async persistFinalResult(endedAt: number): Promise<void> {
     if (this.matchPersistenceStarted || this.participants.size === 0) return;
     this.matchPersistenceStarted = true;
     try {
+      await this.checkpointQueue;
       await persistMatchResult({
         matchId: this.roomId,
         mode: 'field-test-ffa',
@@ -339,6 +358,9 @@ export class FieldTestRoom extends Room {
         endedAt: Math.max(this.match.createdAt, endedAt),
         participants: Array.from(this.participants.values())
       });
+      const { getFirestore } = await import('firebase-admin/firestore');
+      const { getFirebaseAdminApp } = await import('../firebaseAuth.js');
+      await getFirestore(getFirebaseAdminApp()).doc('activeMatchCheckpoints/' + this.roomId).delete();
     } catch (error) {
       this.matchPersistenceStarted = false;
       console.error('[TSI] Failed to persist authoritative match result:', error);
