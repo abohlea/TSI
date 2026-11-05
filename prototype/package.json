@@ -14,7 +14,8 @@
     "preview": "vite preview --host 0.0.0.0"
   },
   "dependencies": {
-    "playcanvas": "2.23.3"
+    "playcanvas": "2.23.3",
+    "@colyseus/sdk": "0.18.9"
   },
   "devDependencies": {
     "typescript": "7.0.2",
