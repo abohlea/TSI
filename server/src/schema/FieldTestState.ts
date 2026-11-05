@@ -9,6 +9,7 @@ export class PlayerState extends Schema {
   @type("number") ammo = 30;
   @type("number") reserveAmmo = 120;
   @type("number") eliminations = 0;
+  @type("number") deaths = 0;
 }
 
 export class TargetState extends Schema {
