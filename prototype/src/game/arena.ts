@@ -275,7 +275,6 @@ export function createArena(app: pc.Application): ArenaApi {
   for (const x of [-1.52, 1.52]) for (const z of [-2.0, 2.0]) {
     primitive(truck, 'truck-wheel', 'cylinder', new pc.Vec3(x, 0.55, z), new pc.Vec3(0.82, 0.42, 0.82), rubber);
   }
-  obstacles.push({ minX: -2.0, maxX: 2.0, minZ: 4.2, maxZ: 11.8 });
 
   const targetPositions = [
     new pc.Vec3(-5, 0, -22), new pc.Vec3(0, 0, -29), new pc.Vec3(5, 0, -22),
