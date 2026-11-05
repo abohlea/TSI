@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+import { Readable } from 'node:stream';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { v2 as cloudinary } from 'cloudinary';
@@ -13,6 +15,7 @@ import {
 
 const SIGNATURE_PATH = '/v1/media/avatar/signature';
 const CONFIRM_PATH = '/v1/media/avatar/confirm';
+const UPLOAD_PATH = '/v1/media/avatar/upload';
 const WINDOW_MS = 60_000;
 const MAX_SIGNATURES = 8;
 const MAX_PLAYERS = 20_000;
@@ -42,6 +45,30 @@ async function readBody(request: IncomingMessage): Promise<Record<string, unknow
   const parsed: unknown = JSON.parse(raw);
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) throw new Error('Invalid JSON object.');
   return parsed as Record<string, unknown>;
+}
+
+async function readAvatarBytes(request: IncomingMessage): Promise<Buffer> {
+  const contentType = request.headers['content-type']?.split(';', 1)[0]?.trim().toLowerCase();
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(contentType ?? '')) throw new Error('Unsupported avatar content type.');
+  const declaredLength = Number(request.headers['content-length'] ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > TSI_AVATAR_MAX_BYTES) throw new Error('Avatar exceeds the 5 MiB limit.');
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of request) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += bytes.length;
+    if (total > TSI_AVATAR_MAX_BYTES) throw new Error('Avatar exceeds the 5 MiB limit.');
+    chunks.push(bytes);
+  }
+  if (total < 1) throw new Error('Avatar is empty.');
+  const data = Buffer.concat(chunks, total);
+  const isJpeg = data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  const isPng = data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const isWebp = data.length >= 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP';
+  if ((contentType === 'image/jpeg' && !isJpeg) || (contentType === 'image/png' && !isPng) || (contentType === 'image/webp' && !isWebp)) {
+    throw new Error('Avatar content does not match its declared image type.');
+  }
+  return data;
 }
 
 function bearer(request: IncomingMessage): string | null {
@@ -140,13 +167,36 @@ export async function startCloudinaryMediaApi(): Promise<void> {
     if (request.method === 'OPTIONS') { response.writeHead(204); response.end(); return; }
 
     const path = new URL(request.url ?? '/', 'http://127.0.0.1').pathname;
-    if (request.method !== 'POST' || (path !== SIGNATURE_PATH && path !== CONFIRM_PATH)) {
+    if (request.method !== 'POST' || (path !== SIGNATURE_PATH && path !== CONFIRM_PATH && path !== UPLOAD_PATH)) {
       json(response, 404, { error: 'Route not found.' }); return;
     }
 
     try {
       const uid = await authenticate(request);
       if (!uid) { json(response, 401, { error: 'A valid Firebase bearer token is required.' }); return; }
+      if (path === UPLOAD_PATH) {
+        if (!allowSignature(uid)) { json(response, 429, { error: 'Avatar upload rate limit reached.' }); return; }
+        const bytes = await readAvatarBytes(request);
+        const publicId = cloudinaryPlayerAvatarPrefix(uid) + 'avatar-' + randomUUID();
+        const uploaded = await new Promise<CloudinaryResource>((resolve, reject) => {
+          const stream = cloudinary.uploader.upload_stream({
+            resource_type: 'image', type: 'upload', public_id: publicId, overwrite: false,
+            upload_preset: config.uploadPreset, max_bytes: TSI_AVATAR_MAX_BYTES
+          }, (error, result) => {
+            if (error || !result) reject(error ?? new Error('Cloudinary returned no upload result.'));
+            else resolve(result as CloudinaryResource);
+          });
+          Readable.from([bytes]).pipe(stream);
+        });
+        const assetId = typeof uploaded.asset_id === 'string' ? uploaded.asset_id : '';
+        const avatar = validateResource(uploaded, uid, config.cloudName, publicId, assetId);
+        if (!avatar) throw new Error('Cloudinary asset failed TSI avatar validation.');
+        const db = getFirestore(getFirebaseAdminApp());
+        await db.doc('playerProfiles/' + uid).set({ avatar, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+        json(response, 200, { avatar });
+        return;
+      }
+
       const body = await readBody(request);
 
       if (path === SIGNATURE_PATH) {
@@ -187,8 +237,11 @@ export async function startCloudinaryMediaApi(): Promise<void> {
       if (error instanceof SyntaxError || (error instanceof Error && error.message === 'Invalid JSON object.')) {
         json(response, 400, { error: 'Invalid JSON request body.' }); return;
       }
-      if (error instanceof Error && error.message === 'Request body is too large.') {
-        json(response, 413, { error: 'Request body is too large.' }); return;
+      if (error instanceof Error && (error.message === 'Avatar exceeds the 5 MiB limit.' || error.message === 'Request body is too large.')) {
+        json(response, 413, { error: error.message }); return;
+      }
+      if (error instanceof Error && (error.message === 'Unsupported avatar content type.' || error.message === 'Avatar content does not match its declared image type.' || error.message === 'Avatar is empty.')) {
+        json(response, 415, { error: error.message }); return;
       }
       if (error instanceof Error && error.message === 'TSI account is not active.') {
         json(response, 403, { error: error.message }); return;
