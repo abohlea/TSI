@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "@colyseus/schema": "5.0.44",
-    "colyseus": "0.18.10"
+    "colyseus": "0.18.10",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@types/node": "^22.15.0",
