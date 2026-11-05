@@ -267,8 +267,17 @@ export class PlayerController {
       const sprint = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? 1.35 : 1;
       const speed = 7.2 * sprint * dt;
       const position = this.scene.player.getPosition();
-      const x = Math.max(-48, Math.min(48, position.x + (forwardX * forward + rightX * strafe) * speed));
-      const z = Math.max(-55, Math.min(55, position.z + (forwardZ * forward + rightZ * strafe) * speed));
+      const nextX = Math.max(-48, Math.min(48, position.x + (forwardX * forward + rightX * strafe) * speed));
+      const nextZ = Math.max(-55, Math.min(55, position.z + (forwardZ * forward + rightZ * strafe) * speed));
+      const blocked = (x: number, z: number): boolean =>
+        this.scene.blockers.some((box) =>
+          x + 0.42 > box.minX && x - 0.42 < box.maxX &&
+          z + 0.42 > box.minZ && z - 0.42 < box.maxZ
+        );
+      let x = position.x;
+      let z = position.z;
+      if (!blocked(nextX, z)) x = nextX;
+      if (!blocked(x, nextZ)) z = nextZ;
       this.scene.player.setPosition(x, 0, z);
       this.scene.player.setEulerAngles(0, this.yaw, 0);
     }
