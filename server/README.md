@@ -32,9 +32,11 @@ Dans la console Cloudinary :
 1. Ouvre **Settings → Upload → Upload presets**.
 2. Crée un preset nommé par exemple `tsi_player_avatar_signed`.
 3. Choisis le mode **Signed**.
-4. Restreins les formats autorisés à `jpg`, `jpeg`, `png` et `webp`.
-5. Définis la taille maximale à **5 Mio** et conserve le type de ressource **image**.
+4. Restreins les formats autorisés à `jpg`, `jpeg` et `png` (et `webp` si disponible dans ton environnement).
+5. Configure le type de ressource comme image et, si souhaité, une transformation entrante pour normaliser les avatars.
 6. Enregistre le preset, puis récupère le Cloud name et l'API Key dans la console API Keys.
+
+**Important : Cloudinary indique que les upload presets ne prennent pas en charge une limite de taille de fichier par preset.** Le client TSI bloque les fichiers de plus de 5 Mio pour l'expérience utilisateur et le serveur revérifie la taille après upload avant d'enregistrer l'avatar dans Firestore. Un fichier trop volumineux peut donc avoir déjà été transféré et consommer des crédits avant d'être rejeté ; ce flux direct ne suffit pas à garantir un plafond de coût. Un contrôle strict avant transfert (proxy serveur à taille bornée ou mécanisme équivalent) reste requis avant production.
 
 Dans `server/.env` (copie locale de `.env.example`), renseigne :
 
@@ -80,18 +82,19 @@ npm run build
 npm run dev
 ```
 
-Le client utilise `VITE_TSI_MEDIA_API_URL=http://127.0.0.1:2568`. Le module `src/media/cloudinaryMedia.ts` expose `uploadPlayerAvatar(file, identity)` pour l'écran de profil à venir. Il vérifie le type MIME et la taille avant upload ; le preset Cloudinary et la validation serveur restent les contrôles de sécurité effectifs.
+Le client utilise `VITE_TSI_MEDIA_API_URL=http://127.0.0.1:2568`. Le module `src/media/cloudinaryMedia.ts` expose `uploadPlayerAvatar(file, identity)` pour l'écran de profil à venir. Il vérifie le type MIME et la taille avant upload ; ces vérifications client ne remplacent pas les contrôles serveur.
 
 ## Flux d'upload d'avatar
 
 1. Le client demande `POST /v1/media/avatar/signature` avec le Firebase ID token dans `Authorization: Bearer …`.
-2. Le serveur vérifie le token, l'état actif du compte, applique une limite de signatures et crée un `public_id` unique sous `tsi/players/{uid}/avatars/`.
+2. Le serveur vérifie le token, l'état actif du compte, applique une limite de signatures et crée un `public_id` unique sous `tsi/players/{uid-encodé}/avatars/`.
 3. Le serveur signe les paramètres avec le SDK Cloudinary ; seul le client reçoit la signature temporaire, l'API Key et l'URL d'upload.
 4. Le navigateur envoie le fichier directement à l'API Upload Cloudinary. Le serveur TSI ne relaie donc pas les octets du fichier.
 5. Le client confirme `asset_id` et `public_id` via `POST /v1/media/avatar/confirm`.
-6. Le serveur relit la ressource dans l'API Admin Cloudinary, vérifie UID propriétaire, identifiants, type image, format, dimensions et taille, puis écrit `playerProfiles/{uid}.avatar` dans Firestore avec Admin SDK.
+6. Le serveur relit la ressource dans l'API Admin Cloudinary, vérifie l'UID propriétaire, le cloud d'origine, les identifiants, le type image, le format, les dimensions et la taille, puis écrit `playerProfiles/{uid}.avatar` dans Firestore avec Admin SDK.
+7. Si le fichier ne respecte pas la politique TSI, le serveur tente de supprimer cet asset de Cloudinary avant de refuser l'enregistrement Firestore.
 
-La réponse n'est donc pas acceptée sur la seule base de valeurs déclarées par le navigateur. Les avatars sont limités à JPG/JPEG/PNG/WebP, 5 Mio maximum et 4096 × 4096 pixels maximum. Le point de terminaison de signature est limité à 8 signatures par joueur et par minute dans ce serveur de préproduction.
+La réponse n'est donc pas acceptée sur la seule base de valeurs déclarées par le navigateur. Les avatars enregistrés sont limités à JPG/JPEG/PNG/WebP, 5 Mio maximum et 4096 × 4096 pixels maximum. Le point de terminaison de signature est limité à 8 signatures par joueur et par minute dans ce serveur de préproduction.
 
 ## Documents Firestore
 
@@ -107,11 +110,11 @@ Après confirmation d'un avatar, `playerProfiles/{uid}.avatar` conserve `assetId
 
 - Le client ne reçoit que la configuration publique Cloudinary (Cloud name/API Key) et une signature à durée limitée ; aucun API Secret.
 - Le serveur vérifie la signature, l'expiration et la révocation du Firebase token avec `verifyIdToken(token, true)`.
-- Les uploads sont liés à l'UID authentifié ; le client ne choisit ni l'espace propriétaire ni le chemin final de l'asset.
+- Les uploads sont liés à l'UID authentifié ; l'UID Firebase est encodé pour former un chemin Cloudinary sûr.
 - Les origines navigateur sont limitées par `MEDIA_API_ALLOWED_ORIGINS`.
 - Le serveur vérifie à nouveau la ressource via l'API Admin Cloudinary avant écriture Firestore.
 - Le serveur refuse le mode production et les émulateurs ne doivent jamais être activés en production.
-- Le module actuel couvre uniquement les avatars. Les bannières, captures, clips vidéo, assets officiels du jeu, modération et suppression d'anciens médias nécessitent des politiques séparées.
+- Le module actuel couvre uniquement les avatars. Les bannières, captures, clips vidéo, assets officiels du jeu, modération complète et suppression d'anciens médias nécessitent des politiques séparées.
 - Pour un futur serveur hébergé, utiliser Application Default Credentials / une identité de charge de travail Firebase plutôt qu'une clé JSON committée et stocker les secrets Cloudinary dans un gestionnaire de secrets.
 - L'authentification anonyme est une identité de préproduction. Avant le lancement, il faudra proposer une méthode de connexion durable et permettre de lier la session anonyme au compte permanent du joueur.
 
