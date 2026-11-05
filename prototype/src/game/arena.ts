@@ -92,7 +92,7 @@ export function createArena(app: pc.Application): ArenaApi {
     const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
     const doorWidth = Math.min(1.7, building.w * 0.22);
     primitive(root, 'entrance-door', 'box', new pc.Vec3(0, -building.h * 0.29, building.d / 2 + 0.055), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
-    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), wallTrim);
+    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
     primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
     const windowY = Math.min(building.h * 0.18, 1.55);
     for (const side of [-1, 1]) {
@@ -136,7 +136,7 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'wall-top-cap', 'box', new pc.Vec3(0, 2.13, 0), new pc.Vec3(wall.length + 0.22, 0.14, 0.78), dark);
     for (let segment = 0; segment < Math.floor(wall.length / 2); segment += 1) {
       const x = -wall.length / 2 + 1 + segment * 2;
-      primitive(root, `wall-panel-seam-${segment}`, 'box', new pc.Vec3(x, 1.05, -0.32), new pc.Vec3(0.055, 2.0, 0.025), trim);
+      primitive(root, `wall-panel-seam-${segment}`, 'box', new pc.Vec3(x, 1.05, -0.32), new pc.Vec3(0.055, 2.0, 0.025), wallTrim);
       primitive(root, `wall-support-${segment}`, 'box', new pc.Vec3(x, 0.55, 0.38), new pc.Vec3(0.16, 1.1, 0.24), metalSurface);
     }
     obstacles.push({
