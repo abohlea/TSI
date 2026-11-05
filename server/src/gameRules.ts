@@ -56,8 +56,8 @@ export function parsePlayerInput(payload: unknown, lastSequence: number): Player
 
   if (sequence <= lastSequence || Math.abs(yaw) > 3600) return null;
 
+  if (Math.abs(moveX) > 1 || Math.abs(moveZ) > 1) return null;
   const magnitude = Math.hypot(moveX, moveZ);
-  if (magnitude > 1.05) return null;
   const safeScale = magnitude > 1 ? 1 / magnitude : 1;
 
   return {
