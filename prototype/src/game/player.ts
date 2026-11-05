@@ -69,3 +69,21 @@ export function createPlayer(app: pc.Application): PlayerRig {
 
   return { root, weapon };
 }
+
+
+/** Simple remote silhouette for the first local network test. Not a final character asset. */
+export function createRemotePlayer(app: pc.Application, playerId: string): pc.Entity {
+  const root = new pc.Entity(`remote-operator-${playerId}`);
+  const armor = makeMaterial(new pc.Color(0.075, 0.32, 0.36), 0.25, 0.62);
+  const trim = makeMaterial(new pc.Color(1, 0.38, 0.08), 0.12, 0.45);
+  const dark = makeMaterial(new pc.Color(0.025, 0.055, 0.065), 0.4, 0.55);
+
+  part(root, 'remote-torso', 'capsule', new pc.Vec3(0, 1.15, 0), new pc.Vec3(0.62, 0.95, 0.36), armor);
+  part(root, 'remote-head', 'sphere', new pc.Vec3(0, 1.92, 0), new pc.Vec3(0.42, 0.46, 0.4), dark);
+  part(root, 'remote-helmet', 'sphere', new pc.Vec3(0, 2.1, 0), new pc.Vec3(0.47, 0.32, 0.45), trim);
+  part(root, 'remote-leg-left', 'capsule', new pc.Vec3(-0.18, 0.42, 0), new pc.Vec3(0.23, 0.68, 0.24), dark);
+  part(root, 'remote-leg-right', 'capsule', new pc.Vec3(0.18, 0.42, 0), new pc.Vec3(0.23, 0.68, 0.24), dark);
+  root.setPosition(0, 0.04, 0);
+  app.root.addChild(root);
+  return root;
+}
