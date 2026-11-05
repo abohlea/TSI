@@ -12,6 +12,7 @@ import { parsePlayerInput } from '../validation.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
+  findSpawnPosition,
   resolveAuthoritativeShot,
   SPRINT_SPEED,
   updateTargetRespawns,
@@ -80,11 +81,13 @@ export class FieldTestRoom extends Room {
   }
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
-    const spawnIndex = this.players.size;
+    const spawn = findSpawnPosition(Array.from(this.players.values()));
+    if (!spawn) throw new Error('No free player spawn position is available.');
+
     const player: ServerPlayer = {
       playerId: auth.playerId,
-      x: spawnIndex % 2 === 0 ? -2 : 2,
-      z: 5 + Math.floor(spawnIndex / 2) * 2,
+      x: spawn.x,
+      z: spawn.z,
       yaw: 0,
       pitch: -2.4,
       health: 100,
