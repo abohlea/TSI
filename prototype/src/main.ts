@@ -284,6 +284,13 @@ connectButton?.addEventListener('click', async () => {
         hud.setAmmo(ammo, reserve);
         hud.setScore(kills, arena.targets.length);
       },
+      onTeamPlayers(players) {
+        applyNetworkSnapshot({
+          serverTime: Date.now(),
+          players: players.map(({ playerId, x, z, yaw, health }) => ({ playerId, x, z, yaw, health })),
+          targets: []
+        });
+      },
       onTeamWelcome(team) {
         hud.toast('ÉQUIPE ' + team.toUpperCase() + ' · MODE 5V5');
       },
