@@ -8,11 +8,12 @@
     "build": "tsc",
     "check": "tsc --noEmit",
     "start": "node dist/index.js",
-    "test": "npm run build && node --test test/*.test.mjs && tsx --test tests/firebase-auth.test.ts",
+    "test": "npm run build && node --test test/*.test.mjs && tsx --test tests/firebase-auth.test.ts tests/cloudinary.test.ts",
     "test:firebase-integration": "tsx --test tests/firebase-auth.integration.test.ts"
   },
   "dependencies": {
     "@colyseus/schema": "5.0.44",
+    "cloudinary": "2.11.0",
     "colyseus": "0.18.10",
     "dotenv": "^16.4.7",
     "firebase-admin": "14.5.0"
