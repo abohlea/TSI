@@ -208,3 +208,72 @@ export function updateTargetRespawns(targets: ServerTarget[], now: number): void
     target.respawnAt = 0;
   }
 }
+
+export interface ServerCombatant {
+  playerId: string;
+  x: number;
+  z: number;
+  health: number;
+}
+
+export interface PlayerShotResolution {
+  hit: boolean;
+  eliminated: boolean;
+  targetPlayerId: string | null;
+}
+
+/**
+ * Resolves a free-for-all player hit on the server.
+ * Player hitboxes are intentionally simple until the character rig supplies
+ * production hit volumes; world obstacles still block the ray.
+ */
+export function resolveAuthoritativePlayerShot(
+  shooterId: string,
+  originX: number,
+  originY: number,
+  originZ: number,
+  yawDegrees: number,
+  pitchDegrees: number,
+  players: ServerCombatant[]
+): PlayerShotResolution {
+  const yaw = yawDegrees * Math.PI / 180;
+  const pitch = pitchDegrees * Math.PI / 180;
+  const horizontal = Math.cos(pitch);
+  const dirX = -Math.sin(yaw) * horizontal;
+  const dirY = Math.sin(pitch);
+  const dirZ = -Math.cos(yaw) * horizontal;
+
+  let nearest: ServerCombatant | null = null;
+  let nearestDistance = SHOT_RANGE;
+
+  for (const player of players) {
+    if (player.playerId === shooterId || player.health <= 0) continue;
+
+    const distance = raySphereDistance(
+      originX, originY, originZ,
+      dirX, dirY, dirZ,
+      player.x, 1.0, player.z,
+      0.68
+    );
+    if (distance === null || distance >= nearestDistance) continue;
+
+    const blocked = WORLD_OBSTACLES.some((obstacle) =>
+      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)
+    );
+    if (blocked) continue;
+
+    nearest = player;
+    nearestDistance = distance;
+  }
+
+  if (!nearest) {
+    return { hit: false, eliminated: false, targetPlayerId: null };
+  }
+
+  nearest.health = clamp(nearest.health - WEAPON_DAMAGE, 0, 100);
+  return {
+    hit: true,
+    eliminated: nearest.health === 0,
+    targetPlayerId: nearest.playerId
+  };
+}
