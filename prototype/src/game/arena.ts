@@ -86,6 +86,24 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'building-mass', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(building.w, building.h, building.d), concrete);
     primitive(root, 'roof-trim', 'box', new pc.Vec3(0, building.h / 2 + 0.08, 0), new pc.Vec3(building.w + 0.25, 0.16, building.d + 0.25), dark);
     primitive(root, 'signal-panel', 'box', new pc.Vec3(0, 0.5, building.d / 2 + 0.035), new pc.Vec3(1.8, 0.7, 0.08), orange);
+    // Facade details: recessed entrance, lintel, windows, sills and corner columns.
+    const facade = material(new pc.Color(0.22, 0.27, 0.27), { roughness: 0.96 });
+    const glass = material(new pc.Color(0.035, 0.17, 0.2), { metalness: 0.38, roughness: 0.28 });
+    const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
+    const doorWidth = Math.min(1.7, building.w * 0.22);
+    primitive(root, 'entrance-door', 'box', new pc.Vec3(0, -building.h * 0.29, building.d / 2 + 0.055), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
+    primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
+    primitive(root, 'entrance-step', 'box', new pc.Vec3(0, -building.h / 2 + 0.08, building.d / 2 + 0.24), new pc.Vec3(doorWidth + 0.5, 0.16, 0.55), facade);
+    const windowY = Math.min(building.h * 0.18, 1.55);
+    for (const side of [-1, 1]) {
+      const windowX = side * building.w * 0.29;
+      primitive(root, `front-window-${side}`, 'box', new pc.Vec3(windowX, windowY, building.d / 2 + 0.045), new pc.Vec3(Math.min(1.55, building.w * 0.2), 1.15, 0.075), glass);
+      primitive(root, `window-frame-${side}`, 'box', new pc.Vec3(windowX, windowY, building.d / 2 + 0.09), new pc.Vec3(Math.min(1.72, building.w * 0.22), 1.3, 0.055), trim);
+      primitive(root, `window-sill-${side}`, 'box', new pc.Vec3(windowX, windowY - 0.68, building.d / 2 + 0.12), new pc.Vec3(Math.min(1.85, building.w * 0.24), 0.12, 0.2), facade);
+      primitive(root, `corner-pillar-${side}`, 'box', new pc.Vec3(side * (building.w / 2 - 0.22), 0, building.d / 2 + 0.07), new pc.Vec3(0.28, building.h - 0.25, 0.18), facade);
+    }
+    primitive(root, 'roof-parapet-front', 'box', new pc.Vec3(0, building.h / 2 + 0.24, building.d / 2 - 0.08), new pc.Vec3(building.w + 0.2, 0.32, 0.24), facade);
+    primitive(root, 'roof-vent', 'box', new pc.Vec3(building.w * 0.28, building.h / 2 + 0.22, 0), new pc.Vec3(1.1, 0.38, 0.85), dark);
     obstacles.push({
       minX: building.x - building.w / 2 - 0.8, maxX: building.x + building.w / 2 + 0.8,
       minZ: building.z - building.d / 2 - 0.8, maxZ: building.z + building.d / 2 + 0.8
