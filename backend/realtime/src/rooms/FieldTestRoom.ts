@@ -19,14 +19,16 @@ import {
   WEAPON_COOLDOWN_MS,
   WEAPON_MAGAZINE_SIZE,
   WEAPON_STARTING_RESERVE,
-  type ServerTarget
+  type ServerCombatant,
+  type ServerTarget,
+  updatePlayerRespawns
 } from '../world.js';
 
 interface LocalAuth {
   playerId: string;
 }
 
-interface ServerPlayer extends PlayerSnapshot {
+interface ServerPlayer extends PlayerSnapshot, ServerCombatant {
   lastSequence: number;
   moveX: number;
   moveZ: number;
@@ -52,7 +54,7 @@ export class FieldTestRoom extends Room {
   override patchRate = 50;
 
   override onCreate(): void {
-    this.setMetadata({ mode: 'field-test', build: '0.2.0' });
+    this.setMetadata({ mode: 'field-test', build: '0.3.0' });
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
     this.onMessage('reload', (client) => this.handleReload(client));
     this.setTimestep((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
@@ -78,12 +80,14 @@ export class FieldTestRoom extends Room {
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
     const spawnIndex = this.players.size;
     const player: ServerPlayer = {
+      sessionId: client.sessionId,
       playerId: auth.playerId,
       x: spawnIndex % 2 === 0 ? -2 : 2,
       z: 5 + Math.floor(spawnIndex / 2) * 2,
       yaw: 0,
       pitch: -2.4,
       health: 100,
+      respawnAt: 0,
       lastSequence: 0,
       moveX: 0,
       moveZ: 0,
@@ -123,6 +127,13 @@ export class FieldTestRoom extends Room {
     if (!input) return;
 
     player.lastSequence = input.sequence;
+    if (player.health <= 0) {
+      player.moveX = 0;
+      player.moveZ = 0;
+      player.sprint = false;
+      return;
+    }
+
     player.moveX = input.moveX;
     player.moveZ = input.moveZ;
     player.yaw = input.yaw;
@@ -134,7 +145,7 @@ export class FieldTestRoom extends Room {
 
   private handleReload(client: Client): void {
     const player = this.players.get(client.sessionId);
-    if (!player || player.reloadEndsAt > Date.now()) return;
+    if (!player || player.health <= 0 || player.reloadEndsAt > Date.now()) return;
     if (player.ammo >= WEAPON_MAGAZINE_SIZE || player.reserve <= 0) return;
 
     player.reloadEndsAt = Date.now() + RELOAD_DURATION_MS;
@@ -143,7 +154,7 @@ export class FieldTestRoom extends Room {
 
   private handleShot(client: Client, player: ServerPlayer): void {
     const now = Date.now();
-    if (player.reloadEndsAt > now || now < player.nextShotAt) return;
+    if (player.health <= 0 || player.reloadEndsAt > now || now < player.nextShotAt) return;
 
     if (player.ammo <= 0) {
       client.send('shot', { accepted: false, reason: 'empty' });
@@ -160,7 +171,9 @@ export class FieldTestRoom extends Room {
       player.yaw,
       player.pitch,
       this.targets,
-      now
+      now,
+      client.sessionId,
+      Array.from(this.players.values())
     );
 
     if (result.eliminated) player.score += 1;
@@ -168,6 +181,7 @@ export class FieldTestRoom extends Room {
       accepted: true,
       hit: result.hit,
       eliminated: result.eliminated,
+      playerHit: result.playerSessionId !== null,
       targetId: result.targetId
     });
     this.sendPrivateState(client, player);
@@ -178,22 +192,50 @@ export class FieldTestRoom extends Room {
     const now = Date.now();
 
     for (const [sessionId, player] of this.players) {
-      const speed = player.sprint ? SPRINT_SPEED : WALK_SPEED;
-      const deltaX = player.moveX * speed * deltaSeconds;
-      const deltaZ = player.moveZ * speed * deltaSeconds;
-      const nextX = player.x + deltaX;
-      const nextZ = player.z + deltaZ;
+      if (player.health > 0) {
+        const speed = player.sprint ? SPRINT_SPEED : WALK_SPEED;
+        const deltaX = player.moveX * speed * deltaSeconds;
+        const deltaZ = player.moveZ * speed * deltaSeconds;
+        const nextX = player.x + deltaX;
+        const nextZ = player.z + deltaZ;
 
-      if (canOccupyPosition(nextX, player.z)) player.x = nextX;
-      if (canOccupyPosition(player.x, nextZ)) player.z = nextZ;
+        if (canOccupyPosition(nextX, player.z)) player.x = nextX;
+        if (canOccupyPosition(player.x, nextZ)) player.z = nextZ;
+      } else {
+        player.moveX = 0;
+        player.moveZ = 0;
+        player.sprint = false;
+      }
 
-      if (player.reloadEndsAt > 0 && now >= player.reloadEndsAt) {
+      if (player.health > 0 && player.reloadEndsAt > 0 && now >= player.reloadEndsAt) {
         const loaded = Math.min(WEAPON_MAGAZINE_SIZE - player.ammo, player.reserve);
         player.ammo += loaded;
         player.reserve -= loaded;
         player.reloadEndsAt = 0;
         const client = this.clients.find((candidate) => candidate.sessionId === sessionId);
         if (client) this.sendPrivateState(client, player);
+      }
+    }
+
+    const respawned = updatePlayerRespawns(Array.from(this.players.values()), now);
+    for (const player of respawned) {
+      const spawnIndex = Array.from(this.players.keys()).indexOf(player.sessionId);
+      player.x = spawnIndex % 2 === 0 ? -2 : 2;
+      player.z = 5 + Math.floor(Math.max(0, spawnIndex) / 2) * 2;
+      player.yaw = 0;
+      player.pitch = -2.4;
+      player.moveX = 0;
+      player.moveZ = 0;
+      player.sprint = false;
+      player.ammo = WEAPON_MAGAZINE_SIZE;
+      player.reserve = WEAPON_STARTING_RESERVE;
+      player.nextShotAt = now + 250;
+      player.reloadEndsAt = 0;
+
+      const client = this.clients.find((candidate) => candidate.sessionId === player.sessionId);
+      if (client) {
+        client.send('respawn', { x: player.x, z: player.z });
+        this.sendPrivateState(client, player);
       }
     }
 
