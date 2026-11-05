@@ -9,7 +9,7 @@ import {
   type TargetSnapshot
 } from '../types.js';
 import { parsePlayerInput } from '../validation.js';
-import { verifyFirebasePlayerToken } from '../firebaseAuth.js';
+import { consumeSessionTicket } from '../sessionTickets.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
@@ -70,11 +70,10 @@ export class FieldTestRoom extends Room {
 
   override async onAuth(_client: Client, options: unknown): Promise<LocalAuth> {
     if (process.env.NODE_ENV === 'production') {
-      if (!isRecord(options) || typeof options.idToken !== 'string') {
-        throw new Error('A Firebase Authentication ID token is required.');
+      if (!isRecord(options) || typeof options.sessionTicket !== 'string') {
+        throw new Error('A short-lived game session ticket is required.');
       }
-      const identity = await verifyFirebasePlayerToken(options.idToken);
-      return { playerId: identity.playerId };
+      return consumeSessionTicket(options.sessionTicket);
     }
     if (process.env.TSI_ENABLE_LOCAL_AUTH !== 'true') {
       throw new Error('Local room authentication is not enabled.');
