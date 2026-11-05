@@ -3,7 +3,7 @@ import { applyCc0ArenaMaterials, createArena } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
-import { loadCc0Operator } from './game/cc0Operator';
+import { loadCc0Operator, type LoadedOperator } from './game/cc0Operator';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { getFirebaseIdToken, hasFirebaseUser, isFirebaseConfigured, signInWithGoogle } from './game/firebase';
 import { createHud } from './ui/hud';
@@ -59,7 +59,11 @@ app.root.addChild(fill);
 const arena = createArena(app);
 applyCc0ArenaMaterials(app, arena);
 const player = createPlayer(app);
-void loadCc0Operator(app, player.root).catch((error: unknown) => {
+let cc0Operator: LoadedOperator | null = null;
+void loadCc0Operator(app, player.root).then((operator) => {
+  cc0Operator = operator;
+  cc0Operator.setLocomotion(false, false);
+}).catch((error: unknown) => {
   console.warn('CC0 operator asset unavailable; using the local TSI blockout:', error);
 });
 const input = new GameInput(canvas);
@@ -348,6 +352,7 @@ app.on('update', (dt: number) => {
   }
 
   player.updateAnimation(dt, movingForAnimation, sprintingForAnimation);
+  cc0Operator?.setLocomotion(movingForAnimation, sprintingForAnimation);
   const remoteBlend = 1 - Math.exp(-12 * dt);
   for (const view of remotePlayers.values()) {
     const current = view.root.getPosition();
