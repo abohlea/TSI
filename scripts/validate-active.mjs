@@ -7,7 +7,8 @@ const steps = [
   ['Colyseus server: unit tests', ['--prefix', 'backend/realtime', 'test']],
   ['Colyseus server: compile', ['--prefix', 'backend/realtime', 'run', 'build']],
   ['Firebase: TypeScript checks', ['--prefix', 'backend/firebase', 'run', 'typecheck']],
-  ['Firebase: Firestore emulator tests', ['--prefix', 'backend/firebase', 'test']]
+  ['Firebase: Firestore emulator tests', ['--prefix', 'backend/firebase', 'test']],
+  ['Firebase: server profile integration tests', ['--prefix', 'backend/firebase', 'run', 'test:server-integration']]
 ];
 
 for (const [label, args] of steps) {
