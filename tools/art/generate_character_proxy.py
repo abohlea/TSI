@@ -115,13 +115,38 @@ def build():
         B("knee_mark_"+side,(.03,s*.13,.52),(.06,.012,.025),ORANGE,"shin."+side,.006)
         E("shin_guard_"+side,(0,s*.13,.31),(.12,.13,.20),GRAPH,"shin."+side)
         E("boot_"+side,(.12,s*.13,.10),(.20,.14,.10),STEEL,"foot."+side)
-    # Rigid-parent each armor piece to its named bone; transform is preserved.
-    for o in parts:
-        bone=o.get("attach_bone")
-        if bone and arm_data.bones.get(bone):
-            world=o.matrix_world.copy(); o.parent=arm; o.parent_type="BONE"; o.parent_bone=bone
-            o.matrix_world=world
-        del o["attach_bone"]
+    # Join the proxy into one skinned mesh and compute smooth two-bone weights.
+    # Geometry remains stylized/segmented, but joints now deform continuously with the rig.
+    bpy.ops.object.select_all(action="DESELECT")
+    for o in parts: o.select_set(True)
+    mesh=parts[0]
+    bpy.context.view_layer.objects.active=mesh
+    bpy.ops.object.join()
+    mesh.name="TSI001_Skinned_Proxy"
+    mesh.parent=None
+    mesh.matrix_world.identity()
+    groups={name:mesh.vertex_groups.new(name=name) for name in bones}
+    segments={}
+    for name in bones:
+        b=arm_data.bones[name]
+        segments[name]=(arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local)
+    def segment_distance(point, a, b):
+        ab=b-a
+        denom=ab.length_squared
+        t=0.0 if denom < 1e-10 else max(0.0,min(1.0,(point-a).dot(ab)/denom))
+        return (point-(a+ab*t)).length
+    for vertex in mesh.data.vertices:
+        p=mesh.matrix_world @ vertex.co
+        ranked=sorted((segment_distance(p,a,b),name) for name,(a,b) in segments.items())[:2]
+        scores=[1.0/max(distance,0.025)**3 for distance,name in ranked]
+        total=sum(scores)
+        for score,(distance,name) in zip(scores,ranked):
+            groups[name].add([vertex.index],score/total,"REPLACE")
+    modifier=mesh.modifiers.new("TSI001 Armature Deform","ARMATURE")
+    modifier.object=arm
+    mesh.parent=arm
+    mesh.matrix_parent_inverse=arm.matrix_world.inverted()
+    mesh["rigging_note"]="Procedural distance-weighted proxy skin; validate joints and replace with production retopology."
 
     # Named hand/weapon sockets as empties parented to rig bones.
     for name,bone,loc in [
