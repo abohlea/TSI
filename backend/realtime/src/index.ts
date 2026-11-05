@@ -5,6 +5,7 @@ import { verifyFirebasePlayerToken } from './firebaseAuth.js';
 import { issueSessionTicket } from './sessionTickets.js';
 import { provisionPlayerProfile } from './firebaseProfiles.js';
 import { startCloudinaryMediaApi } from './mediaApi.js';
+import { recoverAbandonedMatches } from './matchJournal.js';
 
 const port = Number.parseInt(process.env.PORT ?? '2567', 10);
 if (!Number.isInteger(port) || port < 1 || port > 65535) {
@@ -140,6 +141,11 @@ const server = defineServer({
     });
   }
 });
+
+if (process.env.FIREBASE_PROJECT_ID) {
+  const recovered = await recoverAbandonedMatches();
+  if (recovered > 0) console.info(`[TSI] Recovered ${recovered} interrupted match result(s).`);
+}
 
 await server.listen(port, isProduction ? undefined : '127.0.0.1');
 console.info(`TSI local realtime prototype listening on port ${port}`);
