@@ -69,7 +69,7 @@ export class TeamMatchRoom extends Room {
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
     this.onMessage('fire', (client) => this.handleFire(client));
     this.onMessage('reload', (client) => this.handleReload(client));
-    this.setSimulationInterval((deltaMs) => this.simulate(deltaMs), STEP_MS);
+    this.setTimestep((deltaMs) => this.simulate(deltaMs), STEP_MS);
     this.broadcastMatchState();
   }
 
