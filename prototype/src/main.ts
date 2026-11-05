@@ -134,6 +134,8 @@ function reload(): void {
   }
   if (reloadTimer > 0 || ammo === 30 || reserve <= 0) return;
   reloadTimer = 1.35;
+  player.playReload();
+  cc0Operator?.playAction('reload');
   hud.toast('RECHARGEMENT…');
 }
 
@@ -148,6 +150,7 @@ function fire(): void {
   ammo -= 1;
   shotCooldown = 0.115;
   player.triggerShot();
+  cc0Operator?.playAction('attack');
   hud.setAmmo(ammo, reserve);
   const cameraPosition = camera.getPosition().clone();
   const direction = aimPointForPlayer().sub(cameraPosition).normalize();
@@ -270,7 +273,10 @@ connectButton?.addEventListener('click', async () => {
           hud.toast('CHARGEUR VIDE · RECHARGE');
           return;
         }
-        if (result.accepted) player.triggerShot();
+        if (result.accepted) {
+          player.triggerShot();
+          cc0Operator?.playAction('attack');
+        }
         if (result.hit) hud.showHit();
         if (result.eliminated && result.targetPlayerId) hud.toast('OPÉRATEUR ÉLIMINÉ · VALIDÉ SERVEUR');
         else if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
