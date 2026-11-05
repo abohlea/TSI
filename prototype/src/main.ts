@@ -87,7 +87,7 @@ let shotCooldown = 0;
 let reloadTimer = 0;
 let fpsAccumulator = 0;
 let fpsFrames = 0;
-let networkSendAccumulator = 0;
+let networkSendAccumulator = 0;\nlet drivingVehicle = false;\nconst openedDoors = new Set<pc.Entity>();
 let serverTargetPosition = { x: 0, z: 0 };
 const playerRadius = 0.58;
 const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
@@ -266,8 +266,7 @@ app.on('update', (dt: number) => {
   let movingForAnimation = false;
   let sprintingForAnimation = false;
   if (active) {
-    const controls = input.read();
-    yaw += controls.yawDelta;
+    const controls = input.read();\n    yaw += controls.yawDelta;\n    if (controls.interactPressed) {\n      const playerPosition = player.root.getPosition();\n      const vehiclePosition = arena.vehicle.getPosition();\n      const vehicleDistance = playerPosition.distance(vehiclePosition);\n      if (drivingVehicle) {\n        drivingVehicle = false;\n        player.root.setPosition(vehiclePosition.x + 2.6, playerPosition.y, vehiclePosition.z);\n        hud.toast('VÉHICULE QUITTÉ');\n      } else if (vehicleDistance < 5.2) {\n        drivingVehicle = true;\n        hud.toast('VÉHICULE ACTIVÉ · E POUR SORTIR');\n      } else {\n        const nearbyDoor = arena.doors.find((door) => playerPosition.distance(door.getPosition()) < 3.2);\n        if (nearbyDoor) {\n          const isOpen = openedDoors.has(nearbyDoor);\n          if (isOpen) { nearbyDoor.setLocalEulerAngles(0, 0, 0); openedDoors.delete(nearbyDoor); }\n          else { nearbyDoor.setLocalEulerAngles(0, -100, 0); openedDoors.add(nearbyDoor); }\n          hud.toast(isOpen ? 'PORTE FERMÉE' : 'PORTE OUVERTE');\n        } else {\n          hud.toast('APPROCHE-TOI D’UNE PORTE OU DU CAMION');\n        }\n      }\n    }
     pitch = clamp(pitch + controls.pitchDelta, -27, 13);
     const radians = yaw * Math.PI / 180;
     const forwardX = -Math.sin(radians);
@@ -279,7 +278,7 @@ app.on('update', (dt: number) => {
     const moveLength = Math.hypot(moveX, moveZ);
     const normalizedX = moveLength > 1 ? moveX / moveLength : moveX;
     const normalizedZ = moveLength > 1 ? moveZ / moveLength : moveZ;
-    const speed = controls.sprint ? 8.2 : 5.2;
+    const speed = drivingVehicle ? (controls.sprint ? 15 : 10) : (controls.sprint ? 8.2 : 5.2);
     movingForAnimation = moveLength > 0.01;
     sprintingForAnimation = controls.sprint;
 
@@ -289,9 +288,7 @@ app.on('update', (dt: number) => {
       const current = player.root.getPosition().clone();
       const nextX = current.x + stepX;
       const nextZ = current.z + stepZ;
-      if (!isBlocked(nextX, current.z)) player.root.setPosition(nextX, current.y, current.z);
-      const afterX = player.root.getPosition();
-      if (!isBlocked(afterX.x, nextZ)) player.root.setPosition(afterX.x, current.y, nextZ);
+      if (drivingVehicle) {\n        const vehiclePosition = arena.vehicle.getPosition();\n        const vehicleX = vehiclePosition.x + stepX;\n        const vehicleZ = vehiclePosition.z + stepZ;\n        if (!isBlocked(vehicleX, vehicleZ)) {\n          arena.vehicle.setPosition(vehicleX, 0, vehicleZ);\n          player.root.setPosition(vehicleX, current.y, vehicleZ);\n        }\n      } else {\n        if (!isBlocked(nextX, current.z)) player.root.setPosition(nextX, current.y, current.z);\n        const afterX = player.root.getPosition();\n        if (!isBlocked(afterX.x, nextZ)) player.root.setPosition(afterX.x, current.y, nextZ);\n      }
     }
     player.root.setEulerAngles(0, yaw, 0);
 
