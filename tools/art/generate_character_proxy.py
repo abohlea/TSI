@@ -124,7 +124,6 @@ def build():
     bpy.ops.object.join()
     mesh.name="TSI001_Skinned_Proxy"
     mesh.parent=None
-    mesh.matrix_world.identity()
     groups={name:mesh.vertex_groups.new(name=name) for name in bones}
     segments={}
     for name in bones:
