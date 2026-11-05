@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canOccupyPosition, createPracticeTargets, resolveAuthoritativePlayerShot, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
+import { canOccupyPosition, createPracticeTargets, findSpawnPosition, resolveAuthoritativePlayerShot, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
 
 test('practice world blocks players inside structures and outside world bounds', () => {
   assert.equal(canOccupyPosition(0, 4), true);
@@ -136,4 +136,22 @@ test('server player shot eliminates an enemy at zero health', () => {
   assert.equal(result.hit, true);
   assert.equal(result.eliminated, true);
   assert.equal(players[1]?.health, 0);
+});
+
+
+test('spawn allocator chooses an unoccupied position after a player leaves', () => {
+  const remaining = [{ x: -2, z: 5 }, { x: -2, z: 9 }, { x: 2, z: 9 }];
+  const spawn = findSpawnPosition(remaining);
+  assert.ok(spawn);
+  assert.ok(remaining.every((player) => Math.hypot(player.x - spawn.x, player.z - spawn.z) >= 1.36));
+});
+
+test('spawn allocator fills eight distinct positions and refuses a ninth', () => {
+  const players: Array<{ x: number; z: number }> = [];
+  for (let index = 0; index < 8; index += 1) {
+    const spawn = findSpawnPosition(players);
+    assert.ok(spawn, `spawn ${index + 1} should be available`);
+    players.push(spawn);
+  }
+  assert.equal(findSpawnPosition(players), null);
 });
