@@ -10,9 +10,9 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
 - [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
-- `backend/realtime/` — room Colyseus locale avec déplacement, collisions de terrain, tirs sur cibles et dégâts validés côté serveur.
+- `backend/realtime/` — room Colyseus locale avec déplacement, collisions, tirs hitscan sur cibles et joueurs, dégâts, score et réapparition validés côté serveur.
 
-**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles, la cadence, les munitions, le rechargement, les collisions du terrain et la réapparition des cibles. Cette room n'implémente pas encore le combat joueur contre joueur, les comptes Firebase, la persistance Firestore, les médias Cloudinary ou le matchmaking de production.
+**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions de terrain, les dégâts, les éliminations et la réapparition. Le PvP est une preuve technique locale limitée à huit clients, pas un système compétitif de production. Firebase Authentication, Firestore, Cloudinary et le matchmaking de production ne sont pas encore intégrés.
 
 ## Stack du prototype
 
@@ -58,7 +58,7 @@ Le serveur Colyseus est volontairement protégé pour le développement local. I
 4. Démarrer Vite avec `npm run dev`.
 5. Ouvrir deux fenêtres du navigateur sur la même machine et cliquer sur **REJOINDRE LE SERVEUR DE TEST**.
 
-Les deux clients doivent utiliser le même serveur local. Les déplacements et tirs sur les cibles de pratique sont validés par la room ; le score et les munitions proviennent du serveur. Le combat entre joueurs n'est pas encore implémenté. Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
+Les clients doivent utiliser le même serveur local. Les déplacements, les tirs sur cibles et les tirs contre joueurs sont validés par la room ; le serveur possède la santé, le score, les munitions et les réapparitions. La room reste une arène de test FFA sans équipes, anti-triche complet, comptes Firebase ni protection de production. Ne jamais l'exposer sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
 
 ## Commandes de test
 
@@ -107,7 +107,7 @@ backend/realtime/
 
 1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
 2. Vérifier la scène et les commandes sur de vrais appareils Android et iOS.
-3. Ajouter le combat joueur contre joueur, les dégâts et les règles de réanimation côté serveur.
+3. Étendre les tests d'intégration du PvP : latence, cadence réelle, réapparitions concurrentes, collision des joueurs et cohérence du réticule.
 4. Intégrer Firebase Authentication et des tickets de session signés.
 5. Enregistrer les profils et résultats confirmés dans Firestore, puis intégrer Cloudinary pour les médias.
 6. Vérifier les règles Firestore avec l'émulateur avant d'activer les flux de données client.

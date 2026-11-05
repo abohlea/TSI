@@ -16,10 +16,19 @@ export interface ServerTarget {
   respawnAt: number;
 }
 
+export interface ServerCombatant {
+  sessionId: string;
+  x: number;
+  z: number;
+  health: number;
+  respawnAt: number;
+}
+
 export interface ShotResolution {
   hit: boolean;
   eliminated: boolean;
   targetId: string | null;
+  playerSessionId: string | null;
 }
 
 export const WORLD_LIMIT = 48;
@@ -31,6 +40,8 @@ export const WEAPON_STARTING_RESERVE = 90;
 export const WEAPON_DAMAGE = 34;
 export const WEAPON_COOLDOWN_MS = 120;
 export const TARGET_RESPAWN_MS = 4500;
+export const PLAYER_RESPAWN_MS = 4000;
+export const PLAYER_HIT_RADIUS = 0.72;
 export const SHOT_RANGE = 90;
 const TARGET_RADIUS = 1.15;
 
@@ -156,7 +167,9 @@ export function resolveAuthoritativeShot(
   yawDegrees: number,
   pitchDegrees: number,
   targets: ServerTarget[],
-  now: number
+  now: number,
+  shooterSessionId: string | null = null,
+  players: ServerCombatant[] = []
 ): ShotResolution {
   const yaw = yawDegrees * Math.PI / 180;
   const pitch = pitchDegrees * Math.PI / 180;
@@ -165,9 +178,12 @@ export function resolveAuthoritativeShot(
   const dirY = Math.sin(pitch);
   const dirZ = -Math.cos(yaw) * horizontal;
 
-  let nearest: ServerTarget | null = null;
+  let nearestTarget: ServerTarget | null = null;
+  let nearestPlayer: ServerCombatant | null = null;
   let nearestDistance = SHOT_RANGE;
 
+  // Practice targets and players compete for the same nearest visible impact.
+  // The client never supplies a target ID or a damage value.
   for (const target of targets) {
     if (!target.active) continue;
     const distance = raySphereDistance(
@@ -178,26 +194,83 @@ export function resolveAuthoritativeShot(
     );
 
     if (distance === null || distance >= nearestDistance) continue;
-
     const blocked = WORLD_OBSTACLES.some((obstacle) =>
       rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)
     );
     if (blocked) continue;
 
-    nearest = target;
+    nearestTarget = target;
+    nearestPlayer = null;
     nearestDistance = distance;
   }
 
-  if (!nearest) return { hit: false, eliminated: false, targetId: null };
+  for (const candidate of players) {
+    if (
+      candidate.sessionId === shooterSessionId ||
+      candidate.health <= 0
+    ) continue;
 
-  nearest.health = clamp(nearest.health - WEAPON_DAMAGE, 0, 100);
-  const eliminated = nearest.health === 0;
-  if (eliminated) {
-    nearest.active = false;
-    nearest.respawnAt = now + TARGET_RESPAWN_MS;
+    const distance = raySphereDistance(
+      originX, originY, originZ,
+      dirX, dirY, dirZ,
+      candidate.x, 1.15, candidate.z,
+      PLAYER_HIT_RADIUS
+    );
+
+    if (distance === null || distance >= nearestDistance) continue;
+    const blocked = WORLD_OBSTACLES.some((obstacle) =>
+      rayIntersectsObstacle(originX, originZ, dirX, dirZ, obstacle, distance)
+    );
+    if (blocked) continue;
+
+    nearestTarget = null;
+    nearestPlayer = candidate;
+    nearestDistance = distance;
   }
 
-  return { hit: true, eliminated, targetId: nearest.targetId };
+  if (nearestPlayer) {
+    nearestPlayer.health = clamp(nearestPlayer.health - WEAPON_DAMAGE, 0, 100);
+    const eliminated = nearestPlayer.health === 0;
+    if (eliminated) nearestPlayer.respawnAt = now + PLAYER_RESPAWN_MS;
+
+    return {
+      hit: true,
+      eliminated,
+      targetId: null,
+      playerSessionId: nearestPlayer.sessionId
+    };
+  }
+
+  if (!nearestTarget) {
+    return { hit: false, eliminated: false, targetId: null, playerSessionId: null };
+  }
+
+  nearestTarget.health = clamp(nearestTarget.health - WEAPON_DAMAGE, 0, 100);
+  const eliminated = nearestTarget.health === 0;
+  if (eliminated) {
+    nearestTarget.active = false;
+    nearestTarget.respawnAt = now + TARGET_RESPAWN_MS;
+  }
+
+  return {
+    hit: true,
+    eliminated,
+    targetId: nearestTarget.targetId,
+    playerSessionId: null
+  };
+}
+
+export function updatePlayerRespawns<T extends ServerCombatant>(players: T[], now: number): T[] {
+  const respawned: T[] = [];
+
+  for (const player of players) {
+    if (player.health > 0 || player.respawnAt <= 0 || now < player.respawnAt) continue;
+    player.health = 100;
+    player.respawnAt = 0;
+    respawned.push(player);
+  }
+
+  return respawned;
 }
 
 export function updateTargetRespawns(targets: ServerTarget[], now: number): void {

@@ -89,6 +89,7 @@ let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
 let serverTargetPosition = { x: 0, z: 0 };
+let lastServerHealth = 100;
 const playerRadius = 0.58;
 const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
 
@@ -165,6 +166,13 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
   for (const remote of snapshot.players) {
     if (remote.playerId === network.playerId) {
       serverTargetPosition = { x: remote.x, z: remote.z };
+      hud.setHealth(remote.health);
+      if (lastServerHealth > 0 && remote.health <= 0) {
+        hud.toast('OPÉRATEUR ÉLIMINÉ · RÉAPPARITION EN COURS');
+      } else if (lastServerHealth <= 0 && remote.health > 0) {
+        hud.toast('RÉAPPARITION CONFIRMÉE · SESSION SERVEUR');
+      }
+      lastServerHealth = remote.health;
       continue;
     }
     visibleRemoteIds.add(remote.playerId);
@@ -179,6 +187,7 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     view.targetX = remote.x;
     view.targetZ = remote.z;
     view.targetYaw = remote.yaw;
+    view.root.enabled = remote.health > 0;
   }
 
   for (const targetSnapshot of snapshot.targets) {
@@ -221,6 +230,12 @@ connectButton?.addEventListener('click', async () => {
       onWelcome(_playerId, spawn) {
         serverTargetPosition = { x: spawn.x, z: spawn.z };
         player.root.setPosition(spawn.x, 0.04, spawn.z);
+        lastServerHealth = 100;
+        hud.setHealth(100);
+      },
+      onRespawn(spawn) {
+        serverTargetPosition = { x: spawn.x, z: spawn.z };
+        player.root.setPosition(spawn.x, 0.04, spawn.z);
       },
       onSelf(state) {
         ammo = state.ammo;
@@ -236,7 +251,13 @@ connectButton?.addEventListener('click', async () => {
         }
         if (result.accepted) player.triggerShot();
         if (result.hit) hud.showHit();
-        if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
+        if (result.playerHit) {
+          hud.toast(result.eliminated
+            ? 'ADVERSAIRE ÉLIMINÉ · VALIDÉ SERVEUR'
+            : 'ADVERSAIRE TOUCHÉ · VALIDÉ SERVEUR');
+        } else if (result.eliminated) {
+          hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
+        }
       },
       onSnapshot: applyNetworkSnapshot
     });
