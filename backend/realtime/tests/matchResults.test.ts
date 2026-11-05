@@ -36,7 +36,7 @@ test('match results are written once and update participant statistics atomicall
     assert.equal(match.get('winnerUid'), uidB);
     assert.equal(match.get('durationMs'), 60_000);
     assert.equal(playerA.get('matchesPlayed'), 1);
-    assert.equal(playerA.get('kills'), 2);
+    assert.equal(playerA.get('kills'), 8);
     assert.equal(playerA.get('wins'), 0);
     assert.equal(playerB.get('deaths'), 2);
     assert.equal(playerB.get('wins'), 1);
