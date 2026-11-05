@@ -1,12 +1,6 @@
 import { Client, Room } from "colyseus";
 import { FieldTestState, PlayerState, TargetState } from "../schema/FieldTestState.js";
-
-interface PlayerInput {
-  sequence: number;
-  moveX: number;
-  moveZ: number;
-  yaw: number;
-}
+import { movePlayer, parsePlayerInput, type PlayerInput } from "../gameRules.js";
 
 interface SpawnPoint {
   x: number;
@@ -31,35 +25,8 @@ const TARGET_SPAWNS: SpawnPoint[] = [
   { x: 26, z: -18 }
 ];
 
-const BLOCKERS = [
-  { minX: -30, maxX: -14, minZ: -31, maxZ: -13 },
-  { minX: 12, maxX: 34, minZ: -44, maxZ: -28 },
-  { minX: 35, maxX: 43, minZ: -2, maxZ: 6 },
-  { minX: -12.5, maxX: -3.5, minZ: -15.7, maxZ: -14.3 },
-  { minX: 8, maxX: 16, minZ: -29.7, maxZ: -28.3 },
-  { minX: -15.8, maxX: -14.2, minZ: -6.1, maxZ: -3.9 },
-  { minX: 15.8, maxX: 18.2, minZ: -9.2, maxZ: -6.8 },
-  { minX: 6.9, maxX: 9.1, minZ: -43.1, maxZ: -40.9 }
-];
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function finiteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function normalizeYaw(yaw: number): number {
-  return ((yaw % 360) + 360) % 360;
-}
-
-function isBlocked(x: number, z: number): boolean {
-  const radius = 0.42;
-  return BLOCKERS.some((box) =>
-    x + radius > box.minX && x - radius < box.maxX &&
-    z + radius > box.minZ && z - radius < box.maxZ
-  );
 }
 
 export class FieldTestRoom extends Room<FieldTestState> {
@@ -125,32 +92,11 @@ export class FieldTestRoom extends Room<FieldTestState> {
   }
 
   private handleInput(client: Client, payload: unknown): void {
-    if (!isRecord(payload)) return;
-    const { sequence, moveX, moveZ, yaw } = payload;
-    if (
-      !finiteNumber(sequence) ||
-      !Number.isSafeInteger(sequence) ||
-      !finiteNumber(moveX) ||
-      !finiteNumber(moveZ) ||
-      !finiteNumber(yaw)
-    ) return;
-
-    const last = this.lastSequences.get(client.sessionId) ?? -1;
-    if ((sequence as number) <= last) return;
-
-    const x = moveX as number;
-    const z = moveZ as number;
-    const magnitude = Math.hypot(x, z);
-    if (magnitude > 1.05 || Math.abs(yaw as number) > 3600) return;
-
-    const safeScale = magnitude > 1 ? 1 / magnitude : 1;
-    this.lastSequences.set(client.sessionId, sequence as number);
-    this.inputs.set(client.sessionId, {
-      sequence: sequence as number,
-      moveX: x * safeScale,
-      moveZ: z * safeScale,
-      yaw: normalizeYaw(yaw as number)
-    });
+    const lastSequence = this.lastSequences.get(client.sessionId) ?? -1;
+    const input = parsePlayerInput(payload, lastSequence);
+    if (!input) return;
+    this.lastSequences.set(client.sessionId, input.sequence);
+    this.inputs.set(client.sessionId, input);
   }
 
   private handleFire(client: Client): void {
@@ -205,21 +151,10 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.state.players.forEach((player, sessionId) => {
       const input = this.inputs.get(sessionId);
       if (input) {
-        player.yaw = input.yaw;
-        const radians = (player.yaw * Math.PI) / 180;
-        const forwardX = Math.sin(radians);
-        const forwardZ = -Math.cos(radians);
-        const rightX = Math.cos(radians);
-        const rightZ = Math.sin(radians);
-        const speed = 7.2 * deltaSeconds;
-        const nextX = Math.max(-48, Math.min(48, player.x + (forwardX * input.moveZ + rightX * input.moveX) * speed));
-        const nextZ = Math.max(-55, Math.min(55, player.z + (forwardZ * input.moveZ + rightZ * input.moveX) * speed));
-        let x = player.x;
-        let z = player.z;
-        if (!isBlocked(nextX, z)) x = nextX;
-        if (!isBlocked(x, nextZ)) z = nextZ;
-        player.x = x;
-        player.z = z;
+        const next = movePlayer(player.x, player.z, input, deltaSeconds);
+        player.x = next.x;
+        player.z = next.z;
+        player.yaw = next.yaw;
       }
 
       const reloadAt = this.reloadEnds.get(sessionId);
