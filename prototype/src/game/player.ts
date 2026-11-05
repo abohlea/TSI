@@ -161,6 +161,35 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const chargingHandle = weapon.findByName('charging-handle') as pc.Entity;
   const magazineRotation = magazine.getLocalEulerAngles().clone();
   const weaponRestRotation = new pc.Vec3(0, 0, 0);
+  let authoredWeapon: pc.Entity | null = null;
+  // Optional production GLB: keep the procedural blockout until a valid asset is present.
+  app.assets.loadFromUrl('/assets/tsi/TSI-WPN-AR-01.glb', 'container', (error, asset) => {
+    if (error || !asset?.resource) {
+      console.info('TSI-WPN-AR-01 GLB absent; keeping procedural weapon blockout.');
+      return;
+    }
+    const model = asset.resource.instantiateRenderEntity({ castShadows: true, receiveShadows: true });
+    model.name = 'tsi-ar-01-authored-glb';
+    model.setLocalPosition(0, 0, 0);
+    model.setLocalEulerAngles(0, 0, 0);
+    model.setLocalScale(1, 1, 1);
+    weapon.addChild(model);
+    authoredWeapon = model;
+    // Only hide primitive render components after the authored GLB is instantiated.
+    const hideBlockout = (entity: pc.Entity): void => {
+      if (entity !== model && entity.render) entity.render.enabled = false;
+      entity.children.forEach((child) => {
+        if (child !== model) hideBlockout(child);
+      });
+    };
+    weapon.children.forEach((child) => {
+      if (child !== model && child.name !== 'AR01_MuzzleFlashSocket' &&
+          child.name !== 'AR01_LeftHandGrip' && child.name !== 'AR01_RightHandGrip' &&
+          child.name !== 'AR01_EjectSocket' && child.name !== 'AR01_MagazineSocket' &&
+          child.name !== 'AR01_SightSocket' && child.name !== 'muzzle-flash') hideBlockout(child);
+    });
+    console.info('TSI-WPN-AR-01 authored GLB loaded. Confirm scale, orientation and socket alignment in G1.');
+  });
 
   return {
     root,
