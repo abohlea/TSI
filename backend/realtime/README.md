@@ -62,10 +62,11 @@ Health check: `http://localhost:2567/health`.
 
 ## Security limitations
 
-- The token is only a local development guard. It is delivered to the browser and is not a production credential.
+- The local token is only a development guard. It is delivered to the browser and is not a production credential. Production authentication uses Firebase ID tokens verified server-side.
 - The room refuses all joins when `NODE_ENV=production`.
 - Do not expose this local server to the public internet or reuse the token for any other service.
-- Firebase Authentication and signed server tickets are not integrated yet.
+- Production joins now verify Firebase Authentication ID tokens with the Firebase Admin SDK, including revoked-token checks. The runtime must provide Application Default Credentials/workload identity and `FIREBASE_PROJECT_ID`.
+- Short-lived, single-use signed game-session tickets are not implemented yet; the current production room verifies the Firebase ID token directly at join.
 - The local room now includes experimental free-for-all player damage, health, eliminations and timed respawns. Teams, rounds, revives, hitbox animation/validation, lag compensation, full anti-cheat analysis, Firebase Authentication, signed session tickets, persistent results and production matchmaking are not implemented yet.
 - Do not use this room for public or ranked matches.
 
