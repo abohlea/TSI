@@ -8,13 +8,14 @@ export interface InputFrame {
   sprint: boolean;
   reload: boolean;
   aim: boolean;
+  interactPressed: boolean;
 }
 
 export class GameInput {
   private readonly keys = new Set<string>();
   private readonly frame: InputFrame = {
     moveX: 0, moveY: 0, yawDelta: 0, pitchDelta: 0,
-    shoot: false, firePressed: false, sprint: false, reload: false, aim: false
+    shoot: false, firePressed: false, sprint: false, reload: false, aim: false, interactPressed: false
   };
   private movePointer: number | null = null;
   private lookPointer: number | null = null;
@@ -75,7 +76,7 @@ export class GameInput {
   private onKeyDown = (event: KeyboardEvent): void => {
     this.keys.add(event.code);
     if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(event.code)) event.preventDefault();
-    if (event.code === 'KeyR' && !event.repeat) this.frame.reload = true;
+    if (event.code === 'KeyR' && !event.repeat) this.frame.reload = true;\n    if (event.code === 'KeyE' && !event.repeat) this.frame.interactPressed = true;
   };
 
   private onKeyUp = (event: KeyboardEvent): void => { this.keys.delete(event.code); };
@@ -193,8 +194,7 @@ export class GameInput {
     this.frame.yawDelta = 0;
     this.frame.pitchDelta = 0;
     this.frame.reload = false;
-    this.frame.firePressed = false;
-    return result;
+    this.frame.firePressed = false;\n    this.frame.interactPressed = false;\n    return result;
   }
 
   destroy(): void {
