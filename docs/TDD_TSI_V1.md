@@ -2,12 +2,12 @@
 
 Document technique de référence pour la préproduction. Version 1.0 — 5 novembre 2026.
 
-Firebase Authentication, Cloud Firestore et Cloudinary sont retenus. Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction. Les serveurs de combat seront des serveurs Unreal dédiés et autoritaires.
+Firebase Authentication, Cloud Firestore et Cloudinary sont retenus. Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction. PlayCanvas Engine est retenu pour le prototype web ; le serveur de combat reste soumis à une preuve technique.
 
 
 ## 0. Statut et gouvernance
 
-Ce document explique comment TSI doit être construit, testé et exploité. Il ne signifie pas que les systèmes sont déjà développés : le dépôt contient aujourd'hui la documentation de conception, pas encore le projet Unreal, les serveurs ou le backend.
+Ce document explique comment TSI doit être construit, testé et exploité. Il ne signifie pas que les systèmes sont déjà développés : le dépôt contient aujourd'hui la documentation de conception, pas encore une version compilée et testée sur appareils réels, un serveur multijoueur en production ou le backend.
 
 Légende : **RETENU** = choix approuvé ; **PROPOSÉ** = recommandation ; **À PROTOTYPER** = décision conditionnée par une mesure ; **POST-LANCEMENT** = élément différé.
 
@@ -23,14 +23,14 @@ Règles :
 
 | Domaine | Décision | Statut |
 |---|---|---|
-| Moteur | Unreal Engine 5 ; version mineure figée après test client et serveur | À prototyper |
-| Langage gameplay | C++ pour les règles fondamentales ; Blueprints pour assemblage et réglages | Proposé |
+| Moteur | PlayCanvas Engine 2.23.3 pour le prototype web ; validation mobile avant production | Prototype en cours |
+| Langage gameplay | TypeScript côté client ; TypeScript/Node.js pour serveur candidat | Proposé |
 | Plateformes prioritaires | Android et iOS | Retenu dans le GDD |
 | Comptes | Firebase Authentication | Retenu |
 | Base persistante | Cloud Firestore | Retenu |
 | Médias | Cloudinary | Retenu |
 | Protection des services | Firebase App Check en complément des règles | Proposé |
-| Simulation | Serveurs Unreal dédiés et autoritaires | Exigence |
+| Simulation | Rooms serveur autoritaires ; Colyseus 0.18.x candidat | À prototyper |
 | API sensible | Service serveur de confiance, hébergeur non choisi | À prototyper |
 | Render | Exclu | Retenu |
 | Préproduction | Émulateurs, quotas gratuits et serveurs locaux | Retenu |
@@ -42,14 +42,14 @@ Firebase, Firestore et Cloudinary ne sont pas des serveurs de combat. Firestore 
 
 TSI est divisé en quatre plans :
 
-1. **Client :** application Unreal Android/iOS, rendu, commandes, interface et prédiction visuelle.
-2. **Simulation :** serveur Unreal dédié qui détient l'état officiel de chaque partie.
+1. **Client :** client PlayCanvas web, testé d'abord dans un navigateur mobile, rendu, commandes, interface et prédiction visuelle.
+2. **Simulation :** serveur de session autoritaire qui détient l'état officiel de chaque partie.
 3. **Contrôle et persistance :** Firebase Authentication, API de confiance et Firestore.
 4. **Médias :** Cloudinary pour les images, portraits, bannières et vidéos promotionnelles.
 
 Schéma logique :
 
-    CLIENT UNREAL
+    CLIENT PLAYCANVAS
        | HTTPS : identité, profil, lobby
        v
     FIREBASE AUTHENTICATION
@@ -62,7 +62,7 @@ Schéma logique :
                       |
                       | ticket temporaire
                       v
-               SERVEUR UNREAL DÉDIÉ
+               SERVEUR DE SESSION AUTORITAIRE
                       ^
                       | UDP / trafic de partie
                       |
@@ -80,7 +80,7 @@ Le serveur de partie décide des combats. Firestore conserve les données persis
 3. L'API vérifie identité, expiration et état du compte.
 4. Le matchmaking trouve une partie et demande une allocation.
 5. Le backend remet un ticket court lié au joueur et à la session.
-6. Le client rejoint le serveur Unreal dédié.
+6. Le client rejoint le serveur de session autoritaire.
 7. Le serveur valide le ticket et refuse les tickets expirés ou réutilisés.
 8. La partie se déroule sur le serveur dédié.
 9. Le serveur produit le résultat officiel.
@@ -89,85 +89,132 @@ Le serveur de partie décide des combats. Firestore conserve les données persis
 
 Le client ne choisit jamais lui-même une victoire, un rang ou une récompense.
 
-## 3. Client Unreal Engine
+## 3. Client PlayCanvas Engine
 
-### 3.1 Version
+### 3.1 Moteur et chaîne de compilation
 
-Unreal Engine 5 est la piste de référence. La version mineure sera figée après une preuve comprenant : compilation Android, compilation et démarrage d'un serveur Linux dédié, connexion client-serveur, compatibilité des plugins, mesure sur téléphone réel et revue des conditions de licence.
+**Retenu pour le prototype : PlayCanvas Engine 2.23.3**, utilisé directement depuis son package npm. Le moteur est publié sous licence MIT et prend en charge WebGL 2 et WebGPU. Le projet est organisé en TypeScript avec Vite ; le code est suivi dans GitHub et l'éditeur visuel en ligne n'est pas nécessaire pour compiler ou modifier les scènes.
 
-Les fonctions réseau encore expérimentales dans la version retenue ne doivent pas devenir une dépendance du chemin critique sans validation indépendante.
+Versions épinglées dans le prototype :
+- PlayCanvas Engine 2.23.3 ;
+- TypeScript 7.0.2 ;
+- Vite 8.3.6 ;
+- Node.js 22.12 ou supérieur pour cette configuration Vite.
 
-Documentation : [Epic — Setting Up Dedicated Servers](https://dev.epicgames.com/documentation/unreal-engine/setting-up-dedicated-servers-in-unreal-engine).
+Le rendu WebGL 2 est le chemin de compatibilité de base ; WebGPU peut être activé progressivement quand le navigateur et l'appareil le prennent en charge. Aucune fonction WebGPU ne doit être obligatoire pour lancer le jeu sur les appareils compatibles uniquement WebGL 2.
 
-### 3.2 Responsabilités
+**Important :** PlayCanvas est un moteur web. Un jeu exécuté dans un navigateur mobile ou une WebView n'est pas automatiquement équivalent à une application 3D native. Les performances, le chauffage, la mémoire, le son et les limites du navigateur devront être mesurés sur de vrais téléphones Android et iOS. Le prototype actuel ne prouve pas encore qu'il peut soutenir le Battle Royale final.
 
-- **C++ :** déplacement, armes, dégâts, inventaire de partie, règles de match, validation serveur, réplication et interfaces de services.
-- **Blueprints :** assemblage de niveaux, séquences simples, paramètres et prototypage visuel.
-- **Data Assets / Data Tables :** paramètres d'armes, objets, profils graphiques, modes et versions de contenu.
-- **Scripts d'outillage :** validation de ressources, automatisation de build et tests hors runtime.
+Le projet peut être développé sans souscrire à l'éditeur PlayCanvas. L'éditeur gratuit en ligne a ses propres conditions (notamment projets publics et limite de stockage) ; notre source principale reste GitHub.
 
-Les règles critiques ne doivent pas être dupliquées dans deux implémentations différentes.
+Documentation : [PlayCanvas Engine standalone](https://developer.playcanvas.com/user-manual/engine/standalone/), [PlayCanvas Engine API](https://api.playcanvas.com/engine/).
+
+### 3.2 Langages et responsabilités
+
+- **TypeScript :** gameplay client, caméra, contrôles, interface, chargement de ressources et communication réseau.
+- **JavaScript :** uniquement pour les scripts de compatibilité ou d'outillage qui ne nécessitent pas de typage spécifique.
+- **JSON / données typées :** paramètres d'armes, objets, profils de qualité, modes et configuration de niveaux.
+- **Outils de build :** Vite pour le serveur de développement et la génération du bundle de production.
+
+Le client peut prédire localement son déplacement pour la réactivité, mais ne décide jamais des dégâts, éliminations, récompenses ou résultats compétitifs.
 
 ### 3.3 Modules logiques
 
-- TSI.Core : types, identifiants et interfaces partagées.
-- TSI.Gameplay : déplacement, combat et interactions.
-- TSI.Weapons : cadence, recul, munitions et tirs.
-- TSI.Match : équipes, zone, objectifs et résultats.
-- TSI.Online : connexion, tickets et matchmaking.
-- TSI.Persistence : accès aux données persistantes.
-- TSI.UI : menus et HUD.
-- TSI.Mobile : commandes tactiles et profils graphiques.
-- TSI.Security : validations et limites d'actions.
-- TSI.Server : configuration propre au serveur dédié.
+- TSI.Core : types partagés, identifiants et interfaces.
+- TSI.Gameplay : déplacement, caméra et interactions.
+- TSI.Weapons : armes, munitions, recul, cadence et feedback.
+- TSI.Match : HUD, état visible de la partie et objectifs.
+- TSI.Online : connexion, tickets et événements synchronisés.
+- TSI.Persistence : interface vers les données persistantes.
+- TSI.UI : menus, HUD et accessibilité.
+- TSI.Mobile : commandes tactiles, orientation et profils graphiques.
+- TSI.Security : validation des entrées et limites côté client.
+- TSI.Assets : chargement et gestion des ressources 3D.
 
-Cette liste définit des responsabilités ; elle ne force pas à créer dix plugins avant d'en avoir besoin.
+Les frontières de module doivent rester simples au début. Nous ne créerons pas de couche d'abstraction ou de plugin sans besoin réel.
 
+### 3.4 Organisation du prototype
 
-## 4. Serveur dédié et réseau temps réel
+La première base de code se trouve dans `prototype/` :
+- `src/main.ts` : initialisation de l'application, caméra, lumière et boucle de jeu ;
+- `src/game/arena.ts` : géométrie procédurale de la zone d'entraînement ;
+- `src/game/player.ts` : modèle de personnage et arme de blocout ;
+- `src/game/input.ts` : clavier, souris et tactile ;
+- `src/game/combat.ts` : calcul local des touches sur les cibles de pratique ;
+- `src/ui/hud.ts` et `src/style.css` : interface.
 
-### 4.1 Autorité serveur
+Le modèle du personnage et les structures sont volontairement des blocs 3D procéduraux. Ils ne sont pas des modèles AAA finaux, ne possèdent pas encore de squelette animé et servent à valider les dimensions et la boucle de jeu.
 
-Les matchs publics utilisent un serveur Unreal dédié, sans joueur hôte. Le serveur valide l'identité de session, les déplacements plausibles, les changements d'état, la cadence de tir, les munitions, les impacts, les dégâts, la santé, les éliminations, les interactions, le butin, les objectifs et les résultats.
+## 4. Serveur de jeu et réseau temps réel
 
-Le client envoie une intention de tir ; il ne transmet jamais une instruction disant quel dégât appliquer à un adversaire.
+### 4.1 Candidat serveur
 
-### 4.2 Transport réseau
+**Colyseus 0.18.x / Node.js / TypeScript est le candidat de référence à prototyper** pour les sessions de jeu autoritaires, les rooms et le matchmaking. Il possède un serveur de rooms, des mécanismes de synchronisation d'état et un SDK TypeScript utilisable depuis un client PlayCanvas. Sa licence est MIT.
 
-- HTTPS pour identité, profil, matchmaking et résultats.
-- Transport de jeu Unreal sur UDP pour les parties, après vérification des ports disponibles chez l'hébergeur retenu.
-- Tickets de session courts, liés à un joueur et une partie.
-- Identifiants de requête pour les opérations qui pourraient être rejouées.
-- Séparation des messages de contrôle et des données fréquentes de simulation.
-- Aucun secret Firebase ou Cloudinary dans le client.
+Ce choix n'est pas encore validé pour 60 joueurs de shooter. Il devra être mesuré sur le type de combat, le nombre d'acteurs, la fréquence des inputs et la qualité réseau cible.
 
-### 4.3 Capacité et fréquence
+Documentation : [Colyseus — framework et rooms](https://docs.colyseus.io/), [State Synchronization](https://docs.colyseus.io/state), [Client SDK TypeScript](https://docs.colyseus.io/getting-started).
 
-Commencer à 2–8 clients, mesurer CPU, mémoire, bande passante, pertes, fréquence de mise à jour et latence. Augmenter ensuite par paliers de 20, 40 et viser 60 joueurs uniquement si chaque palier passe les tests prolongés.
+### 4.2 Autorité serveur
 
-Une fréquence de 20 à 30 ticks/s peut servir de plage d'expérimentation initiale, mais ce n'est pas une décision finale. Elle dépend des mécaniques, du nombre d'acteurs répliqués, du matériel serveur et de la latence observée.
+Les parties publiques doivent fonctionner dans des rooms contrôlées par le serveur. Le serveur valide :
+- l'identité et le ticket de session ;
+- les entrées de déplacement et leur fréquence ;
+- les vitesses, accélérations et transitions possibles ;
+- la cadence de tir et les munitions ;
+- les impacts, les dégâts et la santé ;
+- les éliminations, réanimations et interactions ;
+- le butin, les objectifs du Réseau de Front et la zone ;
+- la fin de partie, les placements et les résultats.
 
-Les 60 joueurs du GDD sont une cible de conception, pas une capacité déjà démontrée.
+Le client envoie une intention d'action. Il ne transmet jamais une instruction disant quel dégât appliquer à un adversaire.
 
-### 4.4 Réplication et optimisation
+### 4.3 Transport et limites du navigateur
 
-- Envoyer à chaque client uniquement les informations pertinentes.
-- Définir la pertinence selon distance, visibilité, équipe et état de partie.
-- Prioriser les états qui influencent le combat.
-- Réduire les mises à jour des acteurs éloignés ou non pertinents.
-- Tester les pires cas avec plusieurs combats et beaucoup d'acteurs actifs.
-- Évaluer Replication Graph après profilage si la réplication standard devient insuffisante.
-- Ne pas baser la sortie du jeu sur une fonction réseau expérimentale non validée.
+Le transport par défaut documenté de Colyseus est WebSocket. Ce transport est pratique pour la première version et le test du matchmaking, mais fonctionne au-dessus de TCP et n'est pas automatiquement optimal pour un shooter rapide soumis à pertes de paquets.
 
-### 4.5 Prédiction et correction
+Le navigateur n'expose pas un socket UDP brut comme une application native. WebTransport est une piste à évaluer selon le support des navigateurs et des appareils ; WebRTC DataChannels peuvent également être étudiés si le modèle de connexion le justifie.
 
-Le client peut prédire son mouvement pour réduire la latence ressentie, mais le serveur reste l'autorité et corrige les états impossibles. Les corrections doivent être mesurées pour éviter les téléportations visuellement brutales.
+**Décision :** débuter avec WebSocket/Colyseus pour le test en petit groupe. Si les mesures de latence, gigue, pertes et sensation de tir ne satisfont pas les exigences, réévaluer le transport avant de construire le Battle Royale complet. Ne pas promettre un netcode compétitif tant que cette porte n'est pas passée.
 
-La compensation de latence et la validation des impacts seront conçues par type d'arme. Le serveur ne doit pas accepter sans contrôle une date de tir arbitraire fournie par le client.
+### 4.4 Synchronisation et boucle serveur
 
-### 4.6 Déconnexion
+- Le serveur conserve l'état officiel des joueurs et des objets.
+- Les clients envoient des inputs horodatés et numérotés ; le serveur vérifie leur ordre et leur fréquence.
+- Le serveur publie des changements d'état limités aux informations nécessaires.
+- Le client interpole les états distants et peut prédire son mouvement local.
+- Les tirs et dégâts sont validés côté serveur.
+- Les résultats persistants sont écrits après le match, pas à chaque tick.
 
-Prévoir une fenêtre de reconnexion configurable. Le serveur conserve temporairement l'état si le mode le permet. Les tickets expirés ou réutilisés sont rejetés. Les résultats et récompenses sont persistés une seule fois. Une déconnexion ne donne pas automatiquement la victoire à une autre équipe sans règle de jeu définie.
+Une fréquence de 20 à 30 mises à jour/s peut servir de plage d'expérimentation, mais ce n'est pas une valeur finale. Elle dépend des mesures du serveur et de l'expérience ressentie.
+
+### 4.5 Capacité et tests de charge
+
+Commencer avec 2 à 8 clients. Augmenter ensuite par paliers de 20, 40 et viser 60 joueurs uniquement si chaque étape passe les tests prolongés.
+
+Mesurer :
+- CPU et mémoire par room et par processus ;
+- bande passante entrante et sortante ;
+- fréquence des mises à jour ;
+- latence médiane et percentiles élevés ;
+- gigue et pertes de messages ;
+- stabilité en cas de déconnexion ;
+- cohérence des résultats ;
+- temps de simulation dans les pires scénarios.
+
+Les 60 joueurs du GDD sont un objectif de conception, pas une capacité démontrée.
+
+### 4.6 Intérêt réseau et réduction des données
+
+- N'envoyer à chaque client que les états utiles à sa partie.
+- Réduire la fréquence des informations éloignées ou non pertinentes.
+- Prioriser les états qui influencent directement les combats.
+- Éviter la duplication de messages et les mises à jour sans changement.
+- Tester plusieurs combats simultanés et les moments de forte activité.
+
+### 4.7 Déconnexion et reprise
+
+Prévoir une fenêtre de reconnexion configurable. Le serveur conserve temporairement l'état si le mode le permet. Les tickets expirés ou réutilisés sont rejetés. Les résultats et récompenses sont enregistrés une seule fois. Une déconnexion ne donne pas automatiquement la victoire à une autre équipe sans règle définie.
 
 ## 5. Firebase Authentication
 
@@ -280,7 +327,7 @@ Pendant la préproduction, exécuter l'API localement et utiliser les émulateur
 
 Cloudinary sert aux portraits, avatars, bannières, actualités, visuels de boutique, médias communautaires modérés et vidéos promotionnelles.
 
-Ne pas utiliser Cloudinary comme base de données, serveur de match ou stockage principal de grandes archives Unreal (niveaux, textures, sons ou paquets de contenu). Les ressources nécessaires au gameplay sont intégrées aux builds ou distribuées par un mécanisme de contenu conçu séparément.
+Ne pas utiliser Cloudinary comme base de données, serveur de match ou stockage principal des ressources de jeu (géométries, textures, sons ou paquets de contenu). Les ressources nécessaires au gameplay sont intégrées aux builds ou distribuées par un mécanisme de contenu conçu séparément.
 
 Sécurité :
 - ne jamais inclure le secret Cloudinary dans le client ;
@@ -305,7 +352,7 @@ L'hébergeur de partie devra prendre en charge un processus Linux persistant, UD
 
 Un hébergement de site web ou HTTP uniquement ne répond pas automatiquement à ces besoins.
 
-**Développement :** serveur Unreal dédié lancé sur la machine du développeur.
+**Développement :** serveur de session autoritaire lancé sur la machine du développeur.
 
 **Laboratoire :** machine ou VM de test à durée limitée, uniquement après comparaison de la latence, du CPU, de la mémoire, des ports UDP et du coût réel.
 
@@ -326,7 +373,7 @@ Règles :
 
 Trois environnements distincts sont requis.
 
-**Development :** projet Firebase de développement, émulateurs, données fictives, Cloudinary de test, serveur Unreal local et logs détaillés.
+**Development :** projet Firebase de développement, émulateurs, données fictives, Cloudinary de test, serveur de test local et logs détaillés.
 
 **Staging :** projet Firebase distinct, comptes de test, API privée, serveurs de test, build bêta interne et vérification des migrations.
 
@@ -371,7 +418,7 @@ Ne jamais versionner un compte de service Firebase, un secret Cloudinary, une cl
 
 Un fichier exemple peut documenter les variables attendues, sans valeur secrète. Les vrais secrets restent dans un gestionnaire adapté ou dans l'environnement local protégé.
 
-Le dépôt suit le code, les documents, les configurations et les scripts. Les gros fichiers binaires Unreal nécessitent une stratégie contrôlée (Git LFS ou stockage adapté après vérification des quotas). Ne pas committer caches, builds générés ou fichiers temporaires.
+Le dépôt suit le code, les documents, les configurations et les scripts. Les grosses ressources 3D (glTF, textures compressées, audio et bundles) nécessitent une stratégie contrôlée (Git LFS ou stockage adapté après vérification des quotas). Ne pas committer caches, builds générés ou fichiers temporaires.
 
 ## 13. Performance mobile
 
@@ -443,13 +490,13 @@ Un jalon n'est accepté que si le build est reproductible, les tests obligatoire
 - Migration Firestore documentée.
 - Procédure de retour arrière préparée.
 
-GitHub peut automatiser les contrôles et tests. La compilation Unreal complète peut nécessiter des runners adaptés et beaucoup de stockage ; ne pas supposer qu'un runner gratuit standard suffira.
+GitHub peut automatiser les contrôles et tests. La compilation PlayCanvas complète peut nécessiter des runners adaptés et beaucoup de stockage ; ne pas supposer qu'un runner gratuit standard suffira.
 
 ## 17. Phases techniques
 
 ### Phase A — preuve de faisabilité
 
-Projet Unreal minimal, cible serveur, compilation mobile, Firebase Authentication de test, Firestore Emulator, règles de base, premier média Cloudinary et connexion client vers serveur local.
+Prototype PlayCanvas minimal, serveur Node.js local, compilation web, Firebase Authentication de test, Firestore Emulator, règles de base, premier média Cloudinary et connexion client vers serveur local.
 
 **Acceptation :** un joueur authentifié rejoint le serveur local sans exposer de secret.
 
@@ -467,7 +514,7 @@ Profils, inventaire cosmétique, progression de test, sauvegarde idempotente, r�
 
 ### Phase D — vertical slice
 
-Scène représentative, un personnage, armes, interface, son, un objectif Réseau de Front et serveur dédié Linux.
+Scène représentative, un personnage, armes, interface, son, un objectif Réseau de Front et serveur de session local.
 
 **Acceptation :** qualité visuelle, sensation, performances et réseau démontrés.
 
@@ -504,7 +551,7 @@ Aucune offre payante ne doit être activée sans autorisation explicite du fonda
 
 | Sujet | Action requise |
 |---|---|
-| Version Unreal | Compiler client et serveur, vérifier plugins |
+| Version PlayCanvas / Colyseus | Build TypeScript, vérifier le rendu et le transport réseau |
 | Capacité de serveur | Tests de charge progressifs |
 | Région | Mesurer la latence sur les marchés visés |
 | API de confiance | Prototyper localement, sélectionner un hébergement avant bêta |
@@ -516,8 +563,8 @@ Aucune offre payante ne doit être activée sans autorisation explicite du fonda
 | iOS | Vérifier environnement macOS, signature et distribution |
 
 Questions à résoudre avant production complète :
-1. Version Unreal exacte.
-2. Hébergement des serveurs dédiés et région.
+1. Version PlayCanvas exacte et compatibilité mobile.
+2. Transport temps réel et hébergement des rooms autoritaires.
 3. Hébergement de l'API de confiance.
 4. Plafond mensuel autorisé après préproduction.
 5. Capacité joueurs validée par le matériel.
@@ -534,14 +581,14 @@ Ne pas inventer de calendrier ou de coût avant ces preuves.
 - [Cloud Functions — FAQ et facturation](https://firebase.google.com/docs/functions/faq-and-troubleshooting)
 - [Cloudinary — Tarifs](https://cloudinary.com/pricing)
 - [Cloudinary — Crédits et plans](https://cloudinary.com/documentation/billing_and_plans)
-- [Epic — Serveurs dédiés Unreal](https://dev.epicgames.com/documentation/unreal-engine/setting-up-dedicated-servers-in-unreal-engine)
+- [Epic — Serveurs dédiés PlayCanvas](https://dev.epicgames.com/documentation/unreal-engine/setting-up-dedicated-servers-in-unreal-engine)
 
 ## 21. Décision finale d'architecture
 
-TSI utilisera Unreal Engine pour le client et la simulation dédiée, Firebase Authentication pour l'identité, Firestore pour les données persistantes, Cloudinary pour les médias, une API de confiance pour les opérations sensibles et des serveurs dédiés pour les combats.
+TSI utilise PlayCanvas Engine pour le prototype client web, Firebase Authentication pour l'identité, Firestore pour les données persistantes et Cloudinary pour les médias. Colyseus/Node.js est le candidat serveur autoritaire à valider par tests de réseau et de charge.
 
 Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction, mais ne sont pas présentés comme une solution de production illimitée. Le jeu ne passera à la bêta publique qu'après validation de la capacité serveur, de la sécurité, des coûts et de la disponibilité.
 
-**Première preuve technique exigée :** un client Unreal mobile rejoint un serveur Unreal dédié local ; le serveur valide un tir et des dégâts ; le résultat est ensuite enregistré de façon sécurisée dans Firestore ; le client affiche un média de profil hébergé sur Cloudinary.
+**Première preuve technique exigée :** un client PlayCanvas mobile rejoint un serveur de session autoritaire local ; le serveur valide un tir et des dégâts ; le résultat est ensuite enregistré de façon sécurisée dans Firestore ; le client affiche un média de profil hébergé sur Cloudinary.
 
 *Fin du document — TSI TDD V1.*
