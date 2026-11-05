@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#07111c" />
+    <meta name="description" content="TSI — Field Test 0.1, prototype de combat 3D." />
+    <title>TSI — Field Test 0.1</title>
+  </head>
+  <body>
+    <main id="game-shell" aria-label="Prototype TSI">
+      <canvas id="application" aria-label="Terrain de jeu 3D"></canvas>
+      <div id="hud" aria-live="polite">
+        <header class="topbar">
+          <div class="brand"><span class="brand-mark">TSI</span><span class="brand-subtitle">FIELD TEST <b>0.1</b></span></div>
+          <div class="status"><span class="status-dot"></span><span>ENVIRONNEMENT LOCAL · NON MULTIJOUEUR</span></div>
+          <div class="fps" id="fps">-- FPS</div>
+        </header>
+        <section class="mission-card">
+          <span class="eyebrow">ZONE D'ENTRAÎNEMENT / KANTARA</span>
+          <strong>RÉSEAU DE FRONT</strong>
+          <span class="mission-copy">Neutralise les cibles et teste les commandes.</span>
+        </section>
+        <div class="crosshair" aria-hidden="true"><i></i><b></b></div>
+        <div class="hit-marker" id="hit-marker" aria-hidden="true">✦</div>
+        <section class="bottom-hud">
+          <div class="vitals"><span class="eyebrow">INTÉGRITÉ</span><strong id="health">100</strong><div class="health-track"><i id="health-fill"></i></div></div>
+          <div class="weapon-panel"><span class="eyebrow">ARME DE TEST</span><strong>AR-01 <small>FUSIL</small></strong><span class="ammo"><b id="ammo">30</b><i>/</i><span id="reserve">90</span></span></div>
+          <div class="score-panel"><span class="eyebrow">CIBLES</span><strong id="score">0 <small>/ 6</small></strong></div>
+        </section>
+        <div class="desktop-hint" id="desktop-hint">ZQSD / WASD · SOURIS POUR REGARDER · CLIC POUR TIRER · ESPACE POUR SPRINT</div>
+        <div class="touch-controls" id="touch-controls">
+          <div class="joystick" id="move-pad"><div class="stick" id="move-stick"></div><span>MOVE</span></div>
+          <div class="look-zone" id="look-zone">GLISSER POUR REGARDER</div>
+          <button class="touch-button sprint-button" id="sprint-button" type="button">RUN</button>
+          <button class="touch-button fire-button" id="fire-button" type="button">FIRE</button>
+          <button class="touch-button reload-button" id="reload-button" type="button">RELOAD</button>
+        </div>
+        <div class="toast" id="toast" role="status">TSI READY · PROTOTYPE 0.1</div>
+        <div class="overlay" id="start-overlay">
+          <div class="overlay-card">
+            <span class="eyebrow">TSI ORIGINAL IP · PROTOTYPE TECHNIQUE</span>
+            <h1>FIELD TEST <em>0.1</em></h1>
+            <p>Une première arène jouable pour éprouver la caméra, les déplacements, les tirs et les contrôles tactiles.</p>
+            <button id="start-button" type="button">ENTRER SUR LE TERRAIN</button>
+            <small>Prototype local · Aucun compte, serveur ou achat connecté.</small>
+          </div>
+        </div>
+      </div>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
