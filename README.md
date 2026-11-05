@@ -12,7 +12,7 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `backend/realtime/` — room Colyseus locale avec déplacement, tirs sur cibles et première boucle PvP FFA (dégâts, élimination et réapparition) validés côté serveur.
 
-**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions du terrain, les dégâts, les éliminations et la réapparition après quatre secondes. Le PvP reste un prototype FFA : hitboxes simplifiées, pas de manches/équipes ni de compensation de latence. Le client Firebase et les tickets serveur sont intégrés. Les profils et résultats de match sont créés côté serveur dans Firestore ; les résultats sont enregistrés quand la room se ferme. Le flux Cloudinary permet de choisir un avatar dans l'interface locale si les identifiants serveur sont configurés. Ces services restent à valider avec de vrais projets Firebase/Cloudinary ; le matchmaking public n'est pas livré.
+**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions du terrain, les dégâts, les éliminations et la réapparition après quatre secondes. Le PvP reste un prototype FFA : hitboxes simplifiées, pas d'équipes ni de compensation de latence. Une première manche serveur est maintenant cadencée par un compte à rebours de 5 secondes, un chronomètre de 10 minutes et une limite de 20 points ; le serveur annonce la fin et le vainqueur. Le client Firebase et les tickets serveur sont intégrés. Les profils et résultats de match sont créés côté serveur dans Firestore ; les résultats sont enregistrés à la fin du match (ou à la fermeture anticipée de la room). Le flux Cloudinary permet de choisir un avatar dans l'interface locale si les identifiants serveur sont configurés. Ces services restent à valider avec de vrais projets Firebase/Cloudinary ; le matchmaking public n'est pas livré.
 
 ## Stack du prototype
 
@@ -134,7 +134,7 @@ Le chemin actif du prototype est `prototype/` + `backend/realtime/`. Les anciens
 
 1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
 2. Vérifier la scène et les commandes sur de vrais appareils Android et iOS.
-3. Ajouter équipes, manches explicites, fin de partie contrôlée et tests multi-clients au combat autoritaire.
+3. Ajouter les équipes et manches suivantes, puis automatiser les tests multi-clients du combat autoritaire.
 4. Valider les résultats persistants avec un vrai projet Firebase et ajouter les vues de profil/historique.
 5. Tester l'upload Cloudinary avec un compte réel et renforcer les limites de coût avant toute exposition publique.
 6. Vérifier les règles Firestore avec l'émulateur avant d'activer les flux de données client.
