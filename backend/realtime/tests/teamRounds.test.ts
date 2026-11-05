@@ -46,3 +46,17 @@ test('finished matches and late eliminations are immutable', () => {
   assert.equal(advanceTeamMatch(state, Number.MAX_SAFE_INTEGER), state);
   assert.equal(recordTeamElimination(state, 'alpha', Number.MAX_SAFE_INTEGER), state);
 });
+
+test('a tied third round ends the best-of-three as a draw', () => {
+  let state = createTeamMatch(0);
+  state = recordTeamElimination(state, 'alpha', 1);
+  state = advanceTeamMatch(state, state.roundEndsAt);
+  state = advanceTeamMatch(state, state.intermissionEndsAt!);
+  state = recordTeamElimination(state, 'bravo', state.roundStartedAt + 1);
+  state = advanceTeamMatch(state, state.roundEndsAt);
+  state = advanceTeamMatch(state, state.intermissionEndsAt!);
+  state = advanceTeamMatch(state, state.roundEndsAt);
+  assert.equal(state.phase, 'finished');
+  assert.equal(state.round, 3);
+  assert.equal(state.winner, null);
+});
