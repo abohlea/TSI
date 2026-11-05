@@ -56,3 +56,8 @@ Le blockout runtime PlayCanvas a également reçu des détails visuels correspon
 7. Archiver le `.blend`, le GLB final, les captures et le rapport de recette.
 
 **Important :** le dépôt contient le générateur, pas un binaire GLB déjà exporté. Blender n'a pas été exécuté dans cette opération et aucun résultat d'import PlayCanvas ou de test Android de ce nouvel asset n'est revendiqué. Le blocout actuel du runtime ne doit être remplacé qu'après ces validations.
+
+
+## Intégration runtime FPS/TPS
+
+Le runtime dispose maintenant d'un montage d'arme FPS indépendant, d'un retour explicite au montage TPS et d'une gestuelle procédurale de tir/rechargement. Voir [la fiche d'intégration caméra et animation runtime](./TSI-WPN-AR-01-runtime-animation-and-camera.md) pour le contrat et la recette G1. Ces mouvements ne sont pas des clips Blender exportés : les animations finales listées ci-dessus restent à produire et à valider.
