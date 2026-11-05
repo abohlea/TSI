@@ -597,45 +597,60 @@ Render est exclu. Les quotas gratuits sont privilégiés pendant la préproducti
 
 ---
 
-## 22. Première implémentation locale — Field Test 0.1
+## 22. Première implémentation locale — Field Test 0.2
 
-Les éléments suivants sont maintenant présents dans le dépôt :
-- client PlayCanvas Engine 2.23.3 en TypeScript/Vite ;
-- arène d'entraînement procédurale et personnage de blocout ;
-- commandes clavier, souris et tactile ;
-- cible d'entraînement, tir local, rechargement et HUD ;
-- client Colyseus SDK 0.18.9 pour une connexion de développement facultative ;
-- serveur Colyseus 0.18.10 avec room `field_test`, limitée à huit clients de test ;
-- synchronisation de snapshots de positions ;
-- validation serveur des numéros de séquence, des nombres finis, de la magnitude des déplacements, du sprint et des limites de terrain ;
-- tests unitaires des règles d'entrée ;
-- workflow GitHub Actions pour le typage, les tests et les builds.
+Les éléments suivants sont présents dans le dépôt :
+
+### Client PlayCanvas
+- PlayCanvas Engine 2.23.3 en TypeScript/Vite.
+- Arène d'entraînement de Kantara générée par code.
+- Opérateur TSI et fusil AR-01 construits avec géométrie procédurale de blocout.
+- Caméra troisième personne, déplacements, collisions locales, sprint et commandes tactiles.
+- HUD, munitions, rechargement, cibles et tir local hors ligne.
+- Client Colyseus SDK 0.18.9 pour une connexion de développement facultative.
+
+### Serveur Colyseus
+- Colyseus 0.18.10 avec room `field_test`, limitée à huit clients de test.
+- Écoute sur loopback uniquement en développement ; les joins sont refusés en mode production.
+- Jeton local d'au moins 24 caractères, stocké dans les fichiers d'environnement locaux non versionnés.
+- Synchronisation des positions et des orientations.
+- Validation des numéros de séquence, des valeurs finies, du pitch et de la magnitude des déplacements.
+- Collisions de déplacement vérifiées côté serveur pour le terrain d'entraînement.
+- Cadence de tir, chargeur et réserve gérés par le serveur.
+- Calcul serveur des impacts sur les six cibles, dégâts, score et réapparition des cibles.
+- État privé (munitions/score) adressé au propriétaire ; état public (positions/cibles) diffusé à la room.
+- Tests unitaires pour les inputs, collisions, impacts, cibles et réapparition.
+- Workflow GitHub Actions pour typage, tests et build client/serveur.
 
 ### 22.1 Barrière de sécurité locale
 
-L'accès à la room est protégé uniquement par un jeton de développement défini dans des fichiers locaux ignorés par Git. Le jeton est envoyé au navigateur : il n'est donc **pas** un secret adapté à la production. Le serveur refuse les connexions quand `NODE_ENV=production`. Il ne faut pas exposer cette room sur Internet.
+Le jeton du prototype est transmis par le navigateur : ce n'est **pas** un secret de production. Le serveur refuse les connexions lorsque `NODE_ENV=production`, et l'écoute de développement est liée à `127.0.0.1`. Ne pas exposer ce serveur de test à Internet.
 
-### 22.2 Fonctionnalités qui ne sont pas encore implémentées
+Le mode local ne vérifie pas encore Firebase Authentication ni les tickets signés. Il n'est pas destiné aux parties publiques ou classées.
 
-- Firebase Authentication et vérification des ID tokens ;
-- tickets de session signés émis par une API de confiance ;
-- collisions d'obstacles validées côté serveur ;
-- tir, cadence, impacts, dégâts, santé et éliminations synchronisés ;
-- anti-triche complète, matchmaking de production et allocation régionale ;
-- écriture Firestore des résultats ;
-- chargement Cloudinary avec signatures d'upload ;
-- tests de charge sur matériel réel et validation 60 joueurs.
+### 22.2 Fonctionnalités encore absentes
 
-Le système de tir actuel est local au navigateur et sert uniquement au terrain d'entraînement. Ne pas l'utiliser comme preuve d'un combat multijoueur sécurisé.
+- Authentification Firebase et validation des ID tokens par un service de confiance.
+- Tickets de session signés, renouvellement et révocation.
+- Matchmaking et allocation de serveurs de production.
+- Dégâts entre joueurs, réanimation, éliminations de joueurs et règles PvP.
+- Anti-triche complète, modération et gestion des sanctions.
+- Écriture sécurisée des profils, progression et résultats dans Firestore.
+- Uploads Cloudinary signés et modération des médias.
+- Tests de charge prolongés, mesures Android/iOS et validation de capacité 60 joueurs.
+- Modèle 3D final riggé, textures PBR finales, animations de locomotion et animations d'arme.
 
-### 22.3 Versions épinglées pour la preuve
+Le tir local hors ligne reste un mode d'entraînement. Les tirs contre les cibles dans la room locale sont validés par le serveur, mais cela ne constitue pas encore un combat compétitif multijoueur complet.
+
+### 22.3 Versions épinglées
 
 - PlayCanvas Engine : 2.23.3
 - Colyseus serveur : 0.18.10
 - SDK Colyseus client : 0.18.9
+- @colyseus/schema : 5.0.44
 - TypeScript : 7.0.2
 - Vite : 8.3.6
 - Node.js : 22.12 ou supérieur
 
-Les dépendances sont épinglées dans les manifestes. Les builds et tests doivent réussir dans GitHub Actions avant qu'une version soit considérée comme vérifiée.
+Le workflow GitHub Actions est configuré, mais un build ne sera déclaré validé qu'après l'exécution réussie des jobs CI. L'environnement de travail utilisé pour l'édition n'a pas pu joindre le registre npm (erreur DNS EAI_AGAIN), donc aucune compilation locale du package n'est déclarée réussie.
 
