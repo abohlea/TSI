@@ -7,6 +7,12 @@ export interface HUDPort {
   showToast(message: string): void;
 }
 
+export interface NetworkPort {
+  sendInput(moveX: number, moveZ: number, yaw: number): void;
+  sendFire(): void;
+  sendReload(): void;
+}
+
 export class PlayerController {
   private readonly keys = new Set<string>();
   private readonly canvas: HTMLCanvasElement;
@@ -35,6 +41,8 @@ export class PlayerController {
   private fireCooldown = 0;
   private reloadTimer = 0;
   private elapsed = 0;
+  private networkSendTimer = 0;
+  private network: NetworkPort | null = null;
   private disposed = false;
 
   constructor(app: Application, scene: ArenaScene, canvas: HTMLCanvasElement, hud: HUDPort) {
@@ -177,11 +185,59 @@ export class PlayerController {
 
   private reload = (): void => {
     if (this.reloadTimer > 0 || this.ammo >= 30 || this.reserve <= 0) return;
-    this.reloadTimer = 1.45;
     this.firing = false;
+    if (this.network) {
+      this.network.sendReload();
+      this.hud.setStats(this.kills, this.getAccuracy(), 'RECHARGEMENT');
+      this.hud.showToast('RECHARGEMENT ENVOYÉ AU SERVEUR');
+      return;
+    }
+    this.reloadTimer = 1.45;
     this.hud.setStats(this.kills, this.getAccuracy(), 'RECHARGEMENT');
     this.hud.showToast('RECHARGEMENT EN COURS');
   };
+
+  setNetwork(network: NetworkPort | null): void {
+    this.network = network;
+    if (network) {
+      this.hud.setStats(this.kills, this.getAccuracy(), 'CONNECTÉ');
+      this.hud.showToast('SESSION LOCALE CONNECTÉE');
+    }
+  }
+
+  applyServerState(data: unknown): void {
+    if (typeof data !== 'object' || data === null) return;
+    const state = data as Record<string, unknown>;
+    if (
+      typeof state.ammo === 'number' && Number.isFinite(state.ammo) &&
+      typeof state.reserveAmmo === 'number' && Number.isFinite(state.reserveAmmo) &&
+      typeof state.eliminations === 'number' && Number.isFinite(state.eliminations)
+    ) {
+      this.ammo = Math.max(0, Math.floor(state.ammo));
+      this.reserve = Math.max(0, Math.floor(state.reserveAmmo));
+      this.kills = Math.max(0, Math.floor(state.eliminations));
+      if (typeof state.shots === 'number' && Number.isFinite(state.shots)) this.shots = Math.max(0, Math.floor(state.shots));
+      if (typeof state.hits === 'number' && Number.isFinite(state.hits)) this.hits = Math.max(0, Math.floor(state.hits));
+      this.hud.setAmmo(this.ammo, this.reserve);
+      this.hud.setStats(this.kills, this.getAccuracy(), state.reloading === true ? 'RECHARGEMENT' : 'CONNECTÉ');
+    }
+  }
+
+  reconcileServerPosition(x: number, z: number, yaw: number): void {
+    if (![x, z, yaw].every(Number.isFinite)) return;
+    const current = this.scene.player.getPosition();
+    const distance = Math.hypot(x - current.x, z - current.z);
+    if (distance > 2.5) {
+      this.scene.player.setPosition(x, 0, z);
+    } else {
+      this.scene.player.setPosition(
+        current.x + (x - current.x) * 0.28,
+        0,
+        current.z + (z - current.z) * 0.28
+      );
+    }
+    this.yaw = yaw;
+  }
 
   private getAccuracy(): number {
     return this.shots === 0 ? 0 : Math.round((this.hits / this.shots) * 100);
@@ -194,10 +250,14 @@ export class PlayerController {
       return;
     }
 
+    this.fireCooldown = 0.135;
+    if (this.network) {
+      this.network.sendFire();
+      return;
+    }
+
     this.ammo -= 1;
     this.shots += 1;
-    this.fireCooldown = 0.135;
-
     const origin = this.scene.camera.getPosition().clone();
     const direction = this.scene.camera.forward.clone().normalize();
     let closestTarget: TargetDummy | null = null;
@@ -274,6 +334,13 @@ export class PlayerController {
       this.touchX;
 
     const magnitude = Math.hypot(forwardInput, strafeInput);
+    if (this.network) {
+      this.networkSendTimer += dt;
+      if (this.networkSendTimer >= 0.05) {
+        this.networkSendTimer = 0;
+        this.network.sendInput(strafeInput, forwardInput, this.yaw);
+      }
+    }
     if (magnitude > 0.01) {
       const forward = forwardInput / Math.max(1, magnitude);
       const strafe = strafeInput / Math.max(1, magnitude);
