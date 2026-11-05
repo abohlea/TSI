@@ -2,18 +2,10 @@ import { clamp, isFiniteNumber, isRecord, type PlayerInput } from './types.js';
 
 const MAX_INPUT_STEP = 120;
 
-/**
- * Parses an untrusted movement input from a browser client.
- * Returns null for malformed, replayed or implausibly skipped sequence numbers.
- */
 export function parsePlayerInput(payload: unknown, lastSequence: number): PlayerInput | null {
   if (!isRecord(payload)) return null;
 
-  const sequence = payload.sequence;
-  const moveX = payload.moveX;
-  const moveZ = payload.moveZ;
-  const yaw = payload.yaw;
-
+  const { sequence, moveX, moveZ, yaw, pitch, sprint, shoot } = payload;
   if (
     !isFiniteNumber(sequence) ||
     !Number.isSafeInteger(sequence) ||
@@ -22,7 +14,11 @@ export function parsePlayerInput(payload: unknown, lastSequence: number): Player
     !isFiniteNumber(moveX) ||
     !isFiniteNumber(moveZ) ||
     !isFiniteNumber(yaw) ||
-    typeof payload.sprint !== 'boolean'
+    !isFiniteNumber(pitch) ||
+    pitch < -45 ||
+    pitch > 45 ||
+    typeof sprint !== 'boolean' ||
+    typeof shoot !== 'boolean'
   ) {
     return null;
   }
@@ -37,6 +33,8 @@ export function parsePlayerInput(payload: unknown, lastSequence: number): Player
     moveX: clampedX * factor,
     moveZ: clampedZ * factor,
     yaw: ((yaw % 360) + 360) % 360,
-    sprint: payload.sprint
+    pitch,
+    sprint,
+    shoot
   };
 }
