@@ -110,3 +110,12 @@ npm start
 ```
 
 The commands above have not been verified against the package registry in every execution environment. If installation fails, verify the network and Node/npm versions before changing pinned dependency versions.
+
+## Team match room and crash checkpoints
+
+- Join the team mode with Colyseus room name `team_match`; the browser prototype selects it with `?mode=teams`.
+- The server assigns players to the smaller side, supports up to ten players, and only resolves hits against opponents.
+- Team rounds use best-of-three, three-minute rounds, a five-elimination target, and an eight-second intermission.
+- Firestore stores active match checkpoints in `activeMatchCheckpoints/{roomId}` after joins and authoritative eliminations. At startup, the server finalizes interrupted matches from their last checkpoint before listening for new clients.
+- Recovery preserves durable participant statistics and match history; it does **not** restore live world simulation, player positions, ammunition, or an in-progress round. Startup recovery assumes a single active server instance; a distributed leader lease is required before multi-instance deployment.
+- Run `npm test` in this package. The checkpoint recovery integration test runs when `FIRESTORE_EMULATOR_HOST` is configured.
