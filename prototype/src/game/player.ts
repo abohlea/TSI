@@ -93,6 +93,15 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const weaponRest = new pc.Vec3(0.28, 1.27, -0.46);
   const weaponFpsRest = new pc.Vec3(0.24, -0.27, -0.58);
   let firstPersonView = false;
+  const firstPersonArms = new pc.Entity('ar-01-fps-arms');
+  const armFabric = makeMaterial(new pc.Color(0.16, 0.2, 0.19), 0.04, 0.9);
+  const glove = makeMaterial(new pc.Color(0.035, 0.045, 0.042), 0.02, 0.98);
+  // Dedicated camera-space sleeves and gloves: the world character is hidden in FPS.
+  part(firstPersonArms, 'fps-left-sleeve', 'capsule', new pc.Vec3(-0.31, -0.43, -0.48), new pc.Vec3(0.15, 0.43, 0.15), armFabric);
+  part(firstPersonArms, 'fps-right-sleeve', 'capsule', new pc.Vec3(0.34, -0.4, -0.39), new pc.Vec3(0.15, 0.4, 0.15), armFabric);
+  part(firstPersonArms, 'fps-left-glove', 'sphere', new pc.Vec3(-0.19, -0.24, -0.75), new pc.Vec3(0.13, 0.105, 0.16), glove);
+  part(firstPersonArms, 'fps-right-glove', 'sphere', new pc.Vec3(0.17, -0.24, -0.47), new pc.Vec3(0.12, 0.11, 0.15), glove);
+  firstPersonArms.enabled = false;
   weapon.setLocalPosition(weaponRest);
   root.addChild(weapon);
   part(weapon, 'receiver', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(0.17, 0.16, 0.62), dark);
@@ -145,10 +154,13 @@ export function createPlayer(app: pc.Application): PlayerRig {
       firstPersonView = firstPerson;
       if (firstPerson) {
         cameraEntity.addChild(weapon);
+        cameraEntity.addChild(firstPersonArms);
+        firstPersonArms.enabled = true;
         weapon.setLocalPosition(weaponFpsRest);
         weapon.setLocalEulerAngles(-1.5, -2.5, 0);
       } else {
         root.addChild(weapon);
+        firstPersonArms.enabled = false;
         weapon.setLocalPosition(weaponRest);
         weapon.setLocalEulerAngles(weaponRestRotation);
       }
@@ -194,7 +206,12 @@ export function createPlayer(app: pc.Application): PlayerRig {
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
       const rest = firstPersonView ? weaponFpsRest : weaponRest;
       weapon.setLocalPosition(rest.x, rest.y + bob * (firstPersonView ? 0.55 : 1), rest.z + recoil * (firstPersonView ? 0.11 : 0.075));
-      weapon.setLocalEulerAngles(-1.5 - recoil * 3.2, -2.5, Math.sin(animationTime * rate) * (moving ? 0.8 : 0.12));
+      weapon.setLocalEulerAngles(
+        (firstPersonView ? -1.5 : 0) - recoil * (firstPersonView ? 3.2 : 1.8),
+        firstPersonView ? -2.5 : 0,
+        Math.sin(animationTime * rate) * (moving ? (firstPersonView ? 0.8 : 1.25) : 0.12)
+      );
+      firstPersonArms.setLocalPosition(0, moving ? bob * 0.45 : 0, 0);
       recoil = Math.max(0, recoil - deltaTime * 7.5);
       muzzleTimer = Math.max(0, muzzleTimer - deltaTime);
       if (muzzleTimer === 0) muzzleFlash.enabled = false;
