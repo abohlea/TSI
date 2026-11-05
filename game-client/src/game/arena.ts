@@ -8,10 +8,18 @@ export interface TargetDummy {
   respawnAt: number;
 }
 
+export interface ArenaCollider {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+}
+
 export interface ArenaScene {
   camera: Entity;
   player: Entity;
   targets: TargetDummy[];
+  blockers: ArenaCollider[];
 }
 
 function makeMaterial(name: string, color: Color, emissive?: Color): StandardMaterial {
@@ -157,6 +165,16 @@ export function buildArena(app: Application): ArenaScene {
 
   const player = buildOperator(app, 'player-operator', new Vec3(0, 0, 12), materials);
   const targets: TargetDummy[] = [];
+  const blockers: ArenaCollider[] = [
+    { minX: -30, maxX: -14, minZ: -31, maxZ: -13 },
+    { minX: 12, maxX: 34, minZ: -44, maxZ: -28 },
+    { minX: 35, maxX: 43, minZ: -2, maxZ: 6 },
+    { minX: -12.5, maxX: -3.5, minZ: -15.7, maxZ: -14.3 },
+    { minX: 8, maxX: 16, minZ: -29.7, maxZ: -28.3 },
+    { minX: -15.8, maxX: -14.2, minZ: -6.1, maxZ: -3.9 },
+    { minX: 15.8, maxX: 18.2, minZ: -9.2, maxZ: -6.8 },
+    { minX: 6.9, maxX: 9.1, minZ: -43.1, maxZ: -40.9 }
+  ];
   const targetSpawns = [
     new Vec3(-8, 0, -20),
     new Vec3(8, 0, -25),
@@ -169,5 +187,5 @@ export function buildArena(app: Application): ArenaScene {
     targets.push({ root, spawn: spawn.clone(), health: 100, maxHealth: 100, respawnAt: 0 });
   });
 
-  return { camera, player, targets };
+  return { camera, player, targets, blockers };
 }
