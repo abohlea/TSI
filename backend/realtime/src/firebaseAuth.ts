@@ -5,7 +5,7 @@ export interface FirebasePlayerIdentity {
   playerId: string;
 }
 
-function getFirebaseAdminApp() {
+export function getFirebaseAdminApp() {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   if (!projectId) {
     throw new Error('FIREBASE_PROJECT_ID is required for production Firebase authentication.');
