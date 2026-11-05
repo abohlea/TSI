@@ -296,13 +296,14 @@ export class TeamMatchRoom extends Room {
 
 
   private queueCheckpoint(): void {
-    if (this.participants.size === 0 || this.match.phase === 'finished') return;
+    if (this.participants.size === 0) return;
     const checkpoint = {
       matchId: this.roomId,
       mode: 'field-test-teams' as const,
       startedAt: this.matchStartedAt,
       participants: [...this.participants.values()].map((participant) => ({ ...participant })),
-      teamWins: { ...this.match.roundWins }
+      teamWins: { ...this.match.roundWins },
+      winnerTeam: this.match.phase === 'finished' ? this.match.winner : null
     };
     this.checkpointQueue = this.checkpointQueue
       .then(() => saveMatchCheckpoint(checkpoint))
