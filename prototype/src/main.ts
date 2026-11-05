@@ -283,6 +283,15 @@ connectButton?.addEventListener('click', async () => {
         hud.setAmmo(ammo, reserve);
         hud.setScore(kills, arena.targets.length);
       },
+      onMatchState(state) {
+        if (state.phase === 'countdown') hud.toast('MATCH DANS ' + Math.max(1, Math.ceil(state.remainingMs / 1000)) + ' s');
+        else if (state.phase === 'active') hud.toast('MATCH LANCÉ · PREMIER À ' + state.scoreLimit);
+      },
+      onMatchEnded(state) {
+        if (state.winnerUid && state.winnerUid === network.playerId) hud.toast('VICTOIRE · MATCH TERMINÉ');
+        else if (state.winnerUid) hud.toast('MATCH TERMINÉ · VAINQUEUR : ' + state.winnerUid.slice(0, 8));
+        else hud.toast('MATCH TERMINÉ · ÉGALITÉ');
+      },
       onShot(result) {
         if (!result.accepted && result.reason === 'empty') {
           hud.toast('CHARGEUR VIDE · RECHARGE');
