@@ -88,6 +88,7 @@ let reloadTimer = 0;
 let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
+let serverTargetPosition = { x: 0, z: 0 };
 const playerRadius = 0.58;
 const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
 
@@ -111,6 +112,11 @@ function aimPointForPlayer(): pc.Vec3 {
 }
 
 function reload(): void {
+  if (network.connected) {
+    network.sendReload();
+    hud.toast('DEMANDE DE RECHARGEMENT');
+    return;
+  }
   if (reloadTimer > 0 || ammo === 30 || reserve <= 0) return;
   reloadTimer = 1.35;
   hud.toast('RECHARGEMENT…');
@@ -156,7 +162,10 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
   const visibleRemoteIds = new Set<string>();
 
   for (const remote of snapshot.players) {
-    if (remote.playerId === network.playerId) continue;
+    if (remote.playerId === network.playerId) {
+      serverTargetPosition = { x: remote.x, z: remote.z };
+      continue;
+    }
     visibleRemoteIds.add(remote.playerId);
 
     let view = remotePlayers.get(remote.playerId);
@@ -169,6 +178,15 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     view.targetX = remote.x;
     view.targetZ = remote.z;
     view.targetYaw = remote.yaw;
+  }
+
+  for (const targetSnapshot of snapshot.targets) {
+    const target = arena.targets.find((candidate) => candidate.targetId === targetSnapshot.targetId);
+    if (!target) continue;
+    target.health = targetSnapshot.health;
+    target.active = targetSnapshot.active;
+    target.entity.enabled = targetSnapshot.active;
+    target.respawnAt = 0;
   }
 
   for (const [id, view] of remotePlayers) {
@@ -200,7 +218,23 @@ connectButton?.addEventListener('click', async () => {
         }
       },
       onWelcome(_playerId, spawn) {
+        serverTargetPosition = { x: spawn.x, z: spawn.z };
         player.root.setPosition(spawn.x, 0.04, spawn.z);
+      },
+      onSelf(state) {
+        ammo = state.ammo;
+        reserve = state.reserve;
+        kills = state.score;
+        hud.setAmmo(ammo, reserve);
+        hud.setScore(kills, arena.targets.length);
+      },
+      onShot(result) {
+        if (!result.accepted && result.reason === 'empty') {
+          hud.toast('CHARGEUR VIDE · RECHARGE');
+          return;
+        }
+        if (result.hit) hud.showHit();
+        if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
       },
       onSnapshot: applyNetworkSnapshot
     });
@@ -256,14 +290,28 @@ app.on('update', (dt: number) => {
     player.root.setEulerAngles(0, yaw, 0);
 
     if (controls.reload) reload();
-    if (controls.shoot) fire();
+    if (controls.shoot && !network.connected) fire();
 
     if (network.connected) {
       networkSendAccumulator += dt;
       if (networkSendAccumulator >= 0.05) {
-        network.sendInput({ moveX: normalizedX, moveZ: normalizedZ, yaw, sprint: controls.sprint });
+        network.sendInput({
+          moveX: normalizedX,
+          moveZ: normalizedZ,
+          yaw,
+          pitch,
+          sprint: controls.sprint,
+          shoot: controls.shoot
+        });
         networkSendAccumulator %= 0.05;
       }
+      const correction = 1 - Math.exp(-18 * dt);
+      const currentPosition = player.root.getPosition();
+      player.root.setPosition(
+        currentPosition.x + (serverTargetPosition.x - currentPosition.x) * correction,
+        currentPosition.y,
+        currentPosition.z + (serverTargetPosition.z - currentPosition.z) * correction
+      );
     }
   }
 
