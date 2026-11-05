@@ -17,6 +17,12 @@ EXPECTED_BONES = {
     "lower_arm.R", "hand.R", "thigh.L", "shin.L", "foot.L",
     "thigh.R", "shin.R", "foot.R",
 }
+EXPECTED_FINGER_BONES = {
+    "finger_%s_%s_%d" % (digit, side, segment)
+    for side in ("L", "R")
+    for digit in ("thumb", "index", "middle", "ring", "pinky")
+    for segment in ((1, 2) if digit == "thumb" else (1, 2, 3))
+}
 EXPECTED_SOCKETS = {
     "TSI001_weapon_hand_socket", "TSI001_back_gear_socket",
     "TSI001_head_camera_socket",
@@ -49,7 +55,9 @@ def main():
         names={b.name for b in arm.data.bones}
         missing=EXPECTED_BONES-names
         if missing: errors.append("missing bones: "+", ".join(sorted(missing)))
-        for name in EXPECTED_BONES:
+        missing_fingers=EXPECTED_FINGER_BONES-names
+        if missing_fingers: errors.append("missing finger bones: "+", ".join(sorted(missing_fingers)))
+        for name in EXPECTED_BONES | EXPECTED_FINGER_BONES:
             if name in names and arm.data.bones[name].length < 1e-5:
                 errors.append("zero-length bone: "+name)
     names={o.name for o in objects}
@@ -67,6 +75,15 @@ def main():
                     break
         if deform_count: weighted=True
     if not weighted: errors.append("no weighted mesh vertices found")
+    finger_weight_groups=set()
+    for mesh in meshes:
+        finger_weight_groups |= {
+            group.name for group in mesh.vertex_groups
+            if group.name in EXPECTED_FINGER_BONES
+        }
+    missing_finger_groups=EXPECTED_FINGER_BONES-finger_weight_groups
+    if missing_finger_groups:
+        errors.append("finger vertex groups missing: "+", ".join(sorted(missing_finger_groups)))
     clip_names=set()
     for arm in armatures:
         if arm.animation_data:
