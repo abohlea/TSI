@@ -9,6 +9,7 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
 - [ADR-003](docs/adr/ADR-003-single-active-runtime.md) — désignation du runtime unique et gel des anciens dossiers.
+- [Direction artistique officielle](docs/ART_DIRECTION_TSI.md) — réalisme militaire, caméras FPS/TPS, pipeline d'assets et critères graphiques Android.
 - [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `backend/realtime/` — room Colyseus locale avec déplacement, tirs sur cibles et première boucle PvP FFA (dégâts, élimination et réapparition) validés côté serveur.
