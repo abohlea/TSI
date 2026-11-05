@@ -123,7 +123,7 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const magazine = part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
   const magazineBase = part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
   for (let index = 0; index < 4; index += 1) {
-    part(weapon, `magazine-rib-${index}`, 'box', new pc.Vec3(0, -0.105, -0.025 + index * 0.045), new pc.Vec3(0.105, 0.008, 0.012), metal);
+    part(magazine, `magazine-rib-${index}`, 'box', new pc.Vec3(0, 0.055, -0.065 + index * 0.045), new pc.Vec3(0.105, 0.008, 0.012), metal);
   }
   part(weapon, 'optic-mount', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.14, 0.035, 0.2), dark);
   part(weapon, 'optic', 'box', new pc.Vec3(0, 0.21, -0.02), new pc.Vec3(0.1, 0.12, 0.13), orange);
