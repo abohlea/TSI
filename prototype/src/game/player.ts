@@ -171,18 +171,57 @@ export function createPlayer(app: pc.Application): PlayerRig {
   };
 }
 
-/** Simple remote silhouette for the first local network test. Not a final character asset. */
+/** Detailed remote soldier variant for networked players; final skinned GLB will replace this blockout. */
 export function createRemotePlayer(app: pc.Application, playerId: string): pc.Entity {
   const root = new pc.Entity(`remote-operator-${playerId}`);
-  const armor = makeMaterial(new pc.Color(0.075, 0.32, 0.36), 0.25, 0.62);
-  const trim = makeMaterial(new pc.Color(1, 0.38, 0.08), 0.12, 0.45);
-  const dark = makeMaterial(new pc.Color(0.025, 0.055, 0.065), 0.4, 0.55);
+  let hash = 0;
+  for (let index = 0; index < playerId.length; index += 1) hash = (hash * 31 + playerId.charCodeAt(index)) >>> 0;
+  const palettes = [
+    { cloth: new pc.Color(0.23, 0.29, 0.24), armor: new pc.Color(0.12, 0.18, 0.16), accent: new pc.Color(0.76, 0.34, 0.1) },
+    { cloth: new pc.Color(0.34, 0.31, 0.23), armor: new pc.Color(0.19, 0.18, 0.13), accent: new pc.Color(0.78, 0.64, 0.28) },
+    { cloth: new pc.Color(0.19, 0.25, 0.3), armor: new pc.Color(0.09, 0.14, 0.2), accent: new pc.Color(0.26, 0.62, 0.72) },
+    { cloth: new pc.Color(0.31, 0.27, 0.22), armor: new pc.Color(0.17, 0.15, 0.12), accent: new pc.Color(0.69, 0.43, 0.18) }
+  ];
+  const palette = palettes[hash % palettes.length];
+  const cloth = makeMaterial(palette.cloth, 0.02, 0.96);
+  const armor = makeMaterial(palette.armor, 0.28, 0.66);
+  const accent = makeMaterial(palette.accent, 0.18, 0.5);
+  const dark = makeMaterial(new pc.Color(0.025, 0.035, 0.038), 0.38, 0.68);
+  const metal = makeMaterial(new pc.Color(0.32, 0.36, 0.35), 0.72, 0.4);
 
-  part(root, 'remote-torso', 'capsule', new pc.Vec3(0, 1.15, 0), new pc.Vec3(0.62, 0.95, 0.36), armor);
-  part(root, 'remote-head', 'sphere', new pc.Vec3(0, 1.92, 0), new pc.Vec3(0.42, 0.46, 0.4), dark);
-  part(root, 'remote-helmet', 'sphere', new pc.Vec3(0, 2.1, 0), new pc.Vec3(0.47, 0.32, 0.45), trim);
-  part(root, 'remote-leg-left', 'capsule', new pc.Vec3(-0.18, 0.42, 0), new pc.Vec3(0.23, 0.68, 0.24), dark);
-  part(root, 'remote-leg-right', 'capsule', new pc.Vec3(0.18, 0.42, 0), new pc.Vec3(0.23, 0.68, 0.24), dark);
+  // Torso, plate carrier and layered magazine pouches.
+  part(root, 'remote-torso', 'capsule', new pc.Vec3(0, 1.15, 0), new pc.Vec3(0.62, 0.95, 0.36), cloth);
+  part(root, 'remote-plate-carrier', 'box', new pc.Vec3(0, 1.28, -0.19), new pc.Vec3(0.57, 0.53, 0.14), armor);
+  part(root, 'remote-belt', 'box', new pc.Vec3(0, 0.82, 0), new pc.Vec3(0.66, 0.13, 0.4), dark);
+  for (let index = 0; index < 3; index += 1) {
+    const x = -0.2 + index * 0.2;
+    part(root, `remote-mag-pouch-${index}`, 'box', new pc.Vec3(x, 1.08, -0.29), new pc.Vec3(0.16, 0.22, 0.12), dark);
+    part(root, `remote-pouch-flap-${index}`, 'box', new pc.Vec3(x, 1.2, -0.3), new pc.Vec3(0.15, 0.05, 0.13), cloth);
+  }
+  part(root, 'remote-backpack', 'box', new pc.Vec3(0, 1.35, 0.32), new pc.Vec3(0.46, 0.56, 0.28), armor);
+  part(root, 'remote-pack-roll', 'sphere', new pc.Vec3(0, 1.66, 0.34), new pc.Vec3(0.4, 0.18, 0.25), cloth);
+
+  // Helmet, face protection, communications and shoulder identification.
+  part(root, 'remote-head', 'sphere', new pc.Vec3(0, 1.92, 0), new pc.Vec3(0.42, 0.46, 0.4), cloth);
+  part(root, 'remote-balaclava', 'sphere', new pc.Vec3(0, 1.89, -0.1), new pc.Vec3(0.35, 0.34, 0.32), dark);
+  part(root, 'remote-helmet', 'sphere', new pc.Vec3(0, 2.1, 0), new pc.Vec3(0.48, 0.32, 0.45), armor);
+  part(root, 'remote-goggles', 'box', new pc.Vec3(0, 2.0, -0.205), new pc.Vec3(0.36, 0.1, 0.055), accent);
+  part(root, 'remote-ear-protection', 'cylinder', new pc.Vec3(-0.23, 1.98, 0), new pc.Vec3(0.1, 0.1, 0.1), dark);
+  part(root, 'remote-radio-antenna', 'cylinder', new pc.Vec3(0.21, 1.68, 0.32), new pc.Vec3(0.018, 0.36, 0.018), metal);
+  part(root, 'remote-shoulder-patch', 'box', new pc.Vec3(0.39, 1.48, -0.15), new pc.Vec3(0.14, 0.16, 0.035), accent);
+
+  // Arms, gloves, elbow guards, trousers, knee pads and boots.
+  for (const side of [-1, 1]) {
+    part(root, `remote-arm-${side}`, 'capsule', new pc.Vec3(side * 0.43, 1.08, -0.01), new pc.Vec3(0.2, 0.57, 0.2), cloth);
+    part(root, `remote-shoulder-pad-${side}`, 'sphere', new pc.Vec3(side * 0.42, 1.46, 0), new pc.Vec3(0.29, 0.25, 0.28), armor);
+    part(root, `remote-elbow-pad-${side}`, 'box', new pc.Vec3(side * 0.44, 0.98, -0.13), new pc.Vec3(0.2, 0.18, 0.1), dark);
+    part(root, `remote-glove-${side}`, 'sphere', new pc.Vec3(side * 0.44, 0.76, -0.04), new pc.Vec3(0.18, 0.15, 0.18), dark);
+    part(root, `remote-leg-${side}`, 'capsule', new pc.Vec3(side * 0.18, 0.43, 0), new pc.Vec3(0.24, 0.68, 0.25), cloth);
+    part(root, `remote-knee-pad-${side}`, 'box', new pc.Vec3(side * 0.18, 0.4, -0.16), new pc.Vec3(0.24, 0.18, 0.1), armor);
+    part(root, `remote-boot-${side}`, 'box', new pc.Vec3(side * 0.18, 0.12, -0.08), new pc.Vec3(0.29, 0.2, 0.42), dark);
+    part(root, `remote-thigh-pouch-${side}`, 'box', new pc.Vec3(side * 0.2, 0.59, -0.16), new pc.Vec3(0.17, 0.2, 0.11), armor);
+  }
+
   root.setPosition(0, 0.04, 0);
   app.root.addChild(root);
   return root;
