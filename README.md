@@ -66,6 +66,7 @@ Les deux clients doivent utiliser le même serveur local. Les déplacements et t
 
 - **W / A / S / D** ou **Z / Q / S / D** : déplacement
 - **Souris** : caméra (cliquer sur le terrain pour activer le verrouillage du pointeur)
+- **V** : basculer entre les caméras FPS et TPS
 - **Clic gauche** : tir
 - **Maj** ou **Espace** : sprint
 - **R** : rechargement
