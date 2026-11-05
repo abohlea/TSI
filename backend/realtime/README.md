@@ -36,6 +36,8 @@ This package starts the first Colyseus room used to verify the TSI client/server
 
 6. Copy `.env.example` to `.env.local`. Set `VITE_TSI_LOCAL_DEV_TOKEN` to the exact same local-only token and keep the server URL at `http://localhost:2567`.
 
+For Firebase emulator testing instead, start Auth and Firestore emulators from the repository root (`firebase emulators:start --only auth,firestore`), configure the commented local Firebase variables in this server `.env`, and fill the `VITE_FIREBASE_*` values in the client `.env.local`. The client can then use Firebase sign-in to exchange an ID token for a one-time ticket; local-token authentication remains available as a fallback.
+
 7. Start the browser client:
 
    ```bash
@@ -63,7 +65,7 @@ Health check: `http://localhost:2567/health`.
 ## Security limitations
 
 - The local token is only a development guard. It is delivered to the browser and is not a production credential. Production authentication uses Firebase ID tokens verified server-side.
-- Production clients exchange a Firebase Authentication ID token for a 45-second signed game-session ticket at `POST /auth/session-ticket` using `Authorization: Bearer <Firebase-ID-token>`. The room accepts only that ticket; the ticket is consumed once during room authentication.
+- Firebase clients (including local emulator clients) exchange an ID token for a 45-second signed game-session ticket at `POST /auth/session-ticket` using `Authorization: Bearer <Firebase-ID-token>`. The room accepts that ticket and consumes it once during room authentication. Production refuses joins without the ticket; local-token fallback is development-only.
 - Configure `TSI_SESSION_TICKET_SECRET` with at least 32 random characters and `TSI_ALLOWED_ORIGINS` with comma-separated exact browser origins in the production runtime. Keep it outside GitHub and rotate it through the deployment secret manager.
 - The endpoint has a basic per-IP in-memory limit (10 requests/minute). The ticket nonce store is also in-memory and single-process only; before horizontal scaling, replace both with a shared atomic store such as Redis. Do not run multiple production instances with this prototype ticket store.
 - Do not expose this local server to the public internet or reuse the token for any other service.
