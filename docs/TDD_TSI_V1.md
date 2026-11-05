@@ -483,3 +483,18 @@ Serveurs financés ou infrastructure opérée, support, modération, procédures
 
 Ne pas lancer publiquement avec des quotas gratuits non maîtrisés ou un hébergement improvisé.
 
+
+
+## 18. Coûts et politique de gratuité
+
+Pendant la préproduction, privilégier les quotas gratuits, les émulateurs et les outils locaux. Les quotas doivent être suivis et vérifiés régulièrement.
+
+Limites publiées à la date de rédaction :
+- Firestore Standard : 1 Gio, 50 000 lectures/jour, 20 000 écritures/jour, 20 000 suppressions/jour et 10 Gio de sortie/mois pour une base éligible.
+- Cloudinary Free : 25 crédits mensuels partagés entre transformations, stockage et bande passante.
+- Cloud Functions for Firebase : nécessite le plan Blaze ; les quotas d'utilisation gratuits sur Blaze ne signifient pas que Spark permet son déploiement.
+- Serveurs de partie : les quotas gratuits de petites VM ne sont pas considérés comme une infrastructure compétitive fiable.
+
+Seuils d'alerte internes : 50 %, 75 % et 90 % des quotas pertinents. Ces alertes ne remplacent pas les protections de facturation du fournisseur.
+
+Aucune offre payante ne doit être activée sans autorisation explicite du fondateur.
