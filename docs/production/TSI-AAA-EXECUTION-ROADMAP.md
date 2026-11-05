@@ -101,7 +101,8 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 - [ ] Définir le modèle d'état joueur : santé, équipe, équipement, état de vie.
 - [ ] Implémenter tirs joueur contre joueur côté serveur, cadence, munitions, rechargement, validation de ligne de vue et dégâts.
 - [x] Ajouter une première fin de match FFA contrôlée (compte à rebours, chronomètre, score cible et résultat serveur).
-- [ ] Ajouter équipes, manches successives et spectateur.
+- [x] Ajouter une room Colyseus dédiée aux équipes alpha/bravo, affectation équilibrée jusqu'à dix joueurs, tirs alliés bloqués, manches best-of-three, resets, compte à rebours synchronisé et sauvegarde idempotente du résultat.
+- [ ] Ajouter spectateur, reconnexion d'équipe et tests d'intégration multi-clients Colyseus.
 - [x] Ajouter tests du cycle de vie du match et de sa fin sur score/temps.
 - [ ] Ajouter tests serveur multi-clients et tests de triche triviale : cadence impossible, valeurs non finies, séquence invalide, portée et tirs à travers obstacles.
 - [ ] Construire une petite carte avec collisions et points de spawn validés.
@@ -190,3 +191,14 @@ La prochaine livraison doit valider par CI le cycle FFA et les résultats idempo
 - [ ] Intégrer le module à la room Colyseus et au client : le mode actif reste FFA tant que l'affectation, les tirs alliés, les resets, le HUD et les tests multi-clients ne sont pas livrés.
 - [ ] Ajouter une persistance durable crash-safe (outbox/queue transactionnelle) avant de considérer les résultats résistants aux arrêts brutaux.
 - Détail des règles et de la frontière d'intégration : `docs/production/TSI-TEAM-MODE.md`.
+
+
+### Complément P1 — intégration du mode équipes (5 novembre 2026)
+- [x] Room Colyseus séparée `team_match`, capacité maximale de dix joueurs.
+- [x] Affectation alpha/bravo au côté le moins peuplé ; pas plus d'un joueur d'écart à l'entrée.
+- [x] Tirs serveur limités aux adversaires ; les coéquipiers ne sont pas des cibles.
+- [x] Manches de trois minutes, cinq éliminations, intermission de huit secondes et victoire au meilleur des trois.
+- [x] Réinitialisation des joueurs, santé, munitions, positions et rechargements entre manches.
+- [x] État équipe/manche/score/compte à rebours diffusé aux clients ; le prototype peut rejoindre ce mode avec l'URL `?mode=teams`.
+- [x] Résultat final persisté de manière idempotente dans Firestore avec équipe gagnante, manches gagnées et statistiques de victoires par équipe.
+- [ ] Tests d'intégration Colyseus avec plusieurs clients, reconnexion et tests de charge ; la room reste un prototype de validation et n'est pas encore un matchmaking de production.
