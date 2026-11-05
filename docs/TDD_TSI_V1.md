@@ -498,3 +498,50 @@ Limites publiées à la date de rédaction :
 Seuils d'alerte internes : 50 %, 75 % et 90 % des quotas pertinents. Ces alertes ne remplacent pas les protections de facturation du fournisseur.
 
 Aucune offre payante ne doit être activée sans autorisation explicite du fondateur.
+
+
+## 19. Risques et décisions ouvertes
+
+| Sujet | Action requise |
+|---|---|
+| Version Unreal | Compiler client et serveur, vérifier plugins |
+| Capacité de serveur | Tests de charge progressifs |
+| Région | Mesurer la latence sur les marchés visés |
+| API de confiance | Prototyper localement, sélectionner un hébergement avant bêta |
+| Coût Firestore | Modéliser lectures et écritures par joueur |
+| Cloudinary | Surveiller crédits et définir export des médias |
+| Sécurité | Tester règles, tickets et permissions |
+| Budget | Calculer coût par partie et par joueur |
+| Équipe | Auditer compétences, matériel et capacité de build |
+| iOS | Vérifier environnement macOS, signature et distribution |
+
+Questions à résoudre avant production complète :
+1. Version Unreal exacte.
+2. Hébergement des serveurs dédiés et région.
+3. Hébergement de l'API de confiance.
+4. Plafond mensuel autorisé après préproduction.
+5. Capacité joueurs validée par le matériel.
+6. Compatibilité iOS et Android réellement testée.
+
+Ne pas inventer de calendrier ou de coût avant ces preuves.
+
+## 20. Sources officielles
+
+- [Firebase — Plans tarifaires](https://firebase.google.com/docs/projects/billing/firebase-pricing-plans)
+- [Firebase — Tarifs](https://firebase.google.com/pricing)
+- [Cloud Firestore — Tarification](https://firebase.google.com/docs/firestore/pricing)
+- [Firebase — App Check](https://firebase.google.com/docs/app-check)
+- [Cloud Functions — FAQ et facturation](https://firebase.google.com/docs/functions/faq-and-troubleshooting)
+- [Cloudinary — Tarifs](https://cloudinary.com/pricing)
+- [Cloudinary — Crédits et plans](https://cloudinary.com/documentation/billing_and_plans)
+- [Epic — Serveurs dédiés Unreal](https://dev.epicgames.com/documentation/unreal-engine/setting-up-dedicated-servers-in-unreal-engine)
+
+## 21. Décision finale d'architecture
+
+TSI utilisera Unreal Engine pour le client et la simulation dédiée, Firebase Authentication pour l'identité, Firestore pour les données persistantes, Cloudinary pour les médias, une API de confiance pour les opérations sensibles et des serveurs dédiés pour les combats.
+
+Render est exclu. Les quotas gratuits sont privilégiés pendant la préproduction, mais ne sont pas présentés comme une solution de production illimitée. Le jeu ne passera à la bêta publique qu'après validation de la capacité serveur, de la sécurité, des coûts et de la disponibilité.
+
+**Première preuve technique exigée :** un client Unreal mobile rejoint un serveur Unreal dédié local ; le serveur valide un tir et des dégâts ; le résultat est ensuite enregistré de façon sécurisée dans Firestore ; le client affiche un média de profil hébergé sur Cloudinary.
+
+*Fin du document — TSI TDD V1.*
