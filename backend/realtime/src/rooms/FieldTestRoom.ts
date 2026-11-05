@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { Client, Room } from 'colyseus';
-import { clamp, isFiniteNumber, isRecord, type PlayerInput, type PlayerSnapshot, type RoomSnapshot } from '../types.js';
+import { clamp, isFiniteNumber, isRecord, type PlayerSnapshot, type RoomSnapshot } from '../types.js';
 
 interface LocalAuth {
   playerId: string;
@@ -69,13 +69,16 @@ export class FieldTestRoom extends Room {
     };
 
     this.players.set(client.sessionId, player);
-    client.send('welcome', {
-      playerId: player.playerId,
-      roomId: this.roomId,
-      x: player.x,
-      z: player.z,
-      serverStepMs: SERVER_STEP_MS
-    });
+    this.clock.setTimeout(() => {
+      if (!this.players.has(client.sessionId)) return;
+      client.send('welcome', {
+        playerId: player.playerId,
+        roomId: this.roomId,
+        x: player.x,
+        z: player.z,
+        serverStepMs: SERVER_STEP_MS
+      });
+    }, 25);
     this.broadcastSnapshot();
   }
 
