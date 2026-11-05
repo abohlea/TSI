@@ -68,7 +68,7 @@ export function createPlayer(app: pc.Application): PlayerRig {
   root.addChild(armLeft);
   part(armLeft, 'upper-arm-left', 'capsule', new pc.Vec3(0, -0.27, 0), new pc.Vec3(0.2, 0.56, 0.2), armor);
   part(armLeft, 'forearm-left', 'capsule', new pc.Vec3(0, -0.62, -0.015), new pc.Vec3(0.17, 0.38, 0.18), fabric);
-  part(armLeft, 'elbow-pad-left', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), webbing);
+  part(armLeft, 'elbow-pad-left', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), dark);
   part(armLeft, 'forearm-guard-left', 'box', new pc.Vec3(0, -0.62, -0.14), new pc.Vec3(0.18, 0.2, 0.07), dark);
   part(armLeft, 'glove-left', 'sphere', new pc.Vec3(0, -0.86, -0.06), new pc.Vec3(0.19, 0.15, 0.18), rubber);
 
@@ -77,7 +77,7 @@ export function createPlayer(app: pc.Application): PlayerRig {
   root.addChild(armRight);
   part(armRight, 'upper-arm-right', 'capsule', new pc.Vec3(0, -0.27, 0), new pc.Vec3(0.2, 0.56, 0.2), armor);
   part(armRight, 'forearm-right', 'capsule', new pc.Vec3(0, -0.62, -0.015), new pc.Vec3(0.17, 0.38, 0.18), fabric);
-  part(armRight, 'elbow-pad-right', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), webbing);
+  part(armRight, 'elbow-pad-right', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), dark);
   part(armRight, 'forearm-guard-right', 'box', new pc.Vec3(0, -0.62, -0.14), new pc.Vec3(0.18, 0.2, 0.07), dark);
   part(armRight, 'glove-right', 'sphere', new pc.Vec3(0, -0.86, -0.06), new pc.Vec3(0.19, 0.15, 0.18), rubber);
 
