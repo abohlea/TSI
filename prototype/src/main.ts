@@ -101,6 +101,7 @@ let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
 let serverTargetPosition = { x: 0, z: 0 };
+let previousSelfHealth = 100;
 const playerRadius = 0.58;
 const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
 
@@ -125,6 +126,8 @@ function aimPointForPlayer(): pc.Vec3 {
 
 function reload(): void {
   if (network.connected) {
+    player.playReload();
+    cc0Operator?.playAction('reload');
     network.sendReload();
     hud.toast('DEMANDE DE RECHARGEMENT');
     return;
@@ -177,6 +180,12 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
   for (const remote of snapshot.players) {
     if (remote.playerId === network.playerId) {
       serverTargetPosition = { x: remote.x, z: remote.z };
+      if (remote.health < previousSelfHealth) {
+        player.playHit();
+        if (remote.health <= 0) cc0Operator?.playAction('death');
+        else cc0Operator?.playAction('hit');
+      }
+      previousSelfHealth = remote.health;
       player.root.enabled = remote.health > 0;
       continue;
     }
