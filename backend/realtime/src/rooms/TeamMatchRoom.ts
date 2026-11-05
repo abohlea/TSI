@@ -107,10 +107,14 @@ export class TeamMatchRoom extends Room {
         uid: auth.playerId, team, score: 0, kills: 0, deaths: 0, joinedAt: Date.now()
       });
     }
-    client.send('team-welcome', { playerId: player.playerId, team, roomId: this.roomId, x: player.x, z: player.z });
-    client.send('team-match-state', this.matchPayload());
-    this.broadcastPlayers();
-    this.broadcastMatchState();
+    this.clock.setTimeout(() => {
+      if (!this.players.has(client.sessionId)) return;
+      client.send('team-welcome', { playerId: player.playerId, team, roomId: this.roomId, x: player.x, z: player.z });
+      client.send('team-match-state', this.matchPayload());
+      this.broadcastPlayers();
+      this.broadcastMatchState();
+      this.sendPrivate(client, player);
+    }, 25);
     this.queueCheckpoint();
   }
 
