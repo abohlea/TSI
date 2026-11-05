@@ -11,6 +11,8 @@ interface PrivatePlayerState {
   ammo: number;
   reserveAmmo: number;
   eliminations: number;
+  shots: number;
+  hits: number;
 }
 
 const PLAYER_SPAWNS: SpawnPoint[] = [
@@ -85,7 +87,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     player.yaw = 0;
     this.state.players.set(client.sessionId, player);
     this.inputs.set(client.sessionId, { sequence: 0, moveX: 0, moveZ: 0, yaw: 0 });
-    this.privatePlayers.set(client.sessionId, { ammo: 30, reserveAmmo: 120, eliminations: 0 });
+    this.privatePlayers.set(client.sessionId, { ammo: 30, reserveAmmo: 120, eliminations: 0, shots: 0, hits: 0 });
     this.sendPrivateState(client);
   }
 
@@ -105,6 +107,8 @@ export class FieldTestRoom extends Room<FieldTestState> {
       ammo: values.ammo,
       reserveAmmo: values.reserveAmmo,
       eliminations: values.eliminations,
+      shots: values.shots,
+      hits: values.hits,
       reloading: this.reloadEnds.has(client.sessionId)
     });
   }
@@ -127,6 +131,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     if (now - lastShot < 0.135) return;
     this.lastShots.set(client.sessionId, now);
     privateState.ammo -= 1;
+    privateState.shots += 1;
 
     const radians = (player.yaw * Math.PI) / 180;
     const forwardX = Math.sin(radians);
@@ -147,6 +152,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     }
 
     if (nearest) {
+      privateState.hits += 1;
       nearest.health = Math.max(0, nearest.health - 34);
       if (nearest.health === 0) {
         nearest.active = false;
