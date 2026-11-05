@@ -75,6 +75,7 @@ let cameraMode: 'third' | 'first' = 'third';
 const cameraModeButton = document.getElementById('camera-mode-button') as HTMLButtonElement | null;
 
 function applyCameraMode(): void {
+  player.setCameraMode(camera, cameraMode === 'first');
   player.root.children.forEach((child) => {
     child.enabled = cameraMode === 'third' || child.name === 'ar-01-rifle';
   });
