@@ -99,3 +99,21 @@ test('team match results persist the winning side and award wins to every teamma
     await Promise.all([matchRef.delete(), alphaStats.delete(), bravoStats.delete()]);
   }
 });
+
+test('team match validation requires a valid team assignment before database access', async () => {
+  const base = {
+    matchId: 'team-validation',
+    mode: 'field-test-teams' as const,
+    startedAt: 100,
+    endedAt: 200,
+    participants: [
+      { uid: 'team-player', score: 0, kills: 0, deaths: 0, joinedAt: 100 }
+    ]
+  };
+  await assert.rejects(() => persistMatchResult(base), /missing a team/i);
+  await assert.rejects(() => persistMatchResult({
+    ...base,
+    matchId: 'team-invalid',
+    participants: [{ ...base.participants[0]!, team: 'gamma' as 'alpha' }]
+  }), /invalid participant team/i);
+});
