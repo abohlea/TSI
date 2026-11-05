@@ -48,6 +48,22 @@ For Firebase emulator testing instead, start Auth and Firestore emulators from t
 
 Health check: `http://localhost:2567/health`.
 
+## Match result persistence
+
+Only Firebase-ticket-authenticated participants are included in persisted results. When the temporary field_test room is disposed (normally after its clients leave), the server writes matchSummaries/{roomId} and updates each participant's playerStats/{uid} counters in one Firestore transaction. The room state is the sole source of scores, kills and deaths; local development-token sessions are deliberately excluded. The transaction uses the room ID as an idempotency key, so a repeated dispose/retry cannot increment statistics twice.
+
+This is an early session-level result, not yet a formal round/match lifecycle: there is no match timer, score limit, team rule, or explicit match-complete event. A server crash before room disposal can still lose the in-memory result. Production-grade match finalization will need durable event handling and recovery.
+
+## Local Cloudinary avatar setup
+
+1. Create a signed upload preset in Cloudinary, for example tsi_player_avatar_signed, restricted to image formats JPG/JPEG/PNG/WebP.
+2. Copy the Cloudinary cloud name, API key, API secret and preset name into the optional CLOUDINARY_* entries in backend/realtime/.env. Never add the API secret to a VITE_* variable or commit a real .env.
+3. Keep TSI_MEDIA_API_PORT=2568 and allow only the Vite origins you use in TSI_MEDIA_ALLOWED_ORIGINS.
+4. Set VITE_TSI_MEDIA_API_URL=http://localhost:2568 in prototype/.env.local.
+5. Start the realtime server and PlayCanvas client, sign in with Firebase, then use CHOISIR UN AVATAR in the start panel.
+
+The Media API binds to 127.0.0.1 and is disabled in production. The browser checks the 5 MiB limit before upload, and the server checks Cloudinary's asset metadata before saving the profile. Cloudinary upload presets do not provide a reliable per-file size cap: an oversized direct upload may already have consumed bandwidth/credits before rejection. This flow is for local preproduction only, not public launch.
+
 ## What this room currently proves
 
 - A browser client can request a Colyseus room.
