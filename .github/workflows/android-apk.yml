@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - build/android-field-test-apk
+      - feat/android-asset-pipeline
     paths:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"
