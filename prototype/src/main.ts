@@ -1,8 +1,9 @@
 import * as pc from 'playcanvas';
-import { createArena } from './game/arena';
+import { applyCc0ArenaMaterials, createArena, loadCc0EnvironmentProps } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
+import { loadCc0Operator, type LoadedOperator } from './game/cc0Operator';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { getFirebaseIdToken, hasFirebaseUser, isFirebaseConfigured, signInWithGoogle } from './game/firebase';
 import { createHud } from './ui/hud';
@@ -56,7 +57,16 @@ fill.setEulerAngles(18, -145, 0);
 app.root.addChild(fill);
 
 const arena = createArena(app);
+applyCc0ArenaMaterials(app, arena);
+loadCc0EnvironmentProps(app);
 const player = createPlayer(app);
+let cc0Operator: LoadedOperator | null = null;
+void loadCc0Operator(app, player.root).then((operator) => {
+  cc0Operator = operator;
+  cc0Operator.setLocomotion(false, false);
+}).catch((error: unknown) => {
+  console.warn('CC0 operator asset unavailable; using the local TSI blockout:', error);
+});
 const input = new GameInput(canvas);
 const hud = createHud();
 const network = new TsiNetworkClient();
@@ -92,8 +102,9 @@ let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
 let serverTargetPosition = { x: 0, z: 0 };
+let previousSelfHealth = 100;
 const playerRadius = 0.58;
-const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
+const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number; health: number; operator: LoadedOperator | null }>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -116,12 +127,16 @@ function aimPointForPlayer(): pc.Vec3 {
 
 function reload(): void {
   if (network.connected) {
+    player.playReload();
+    cc0Operator?.playAction('reload');
     network.sendReload();
     hud.toast('DEMANDE DE RECHARGEMENT');
     return;
   }
   if (reloadTimer > 0 || ammo === 30 || reserve <= 0) return;
   reloadTimer = 1.35;
+  player.playReload();
+  cc0Operator?.playAction('reload');
   hud.toast('RECHARGEMENT…');
 }
 
@@ -136,6 +151,7 @@ function fire(): void {
   ammo -= 1;
   shotCooldown = 0.115;
   player.triggerShot();
+  cc0Operator?.playAction('attack');
   hud.setAmmo(ammo, reserve);
   const cameraPosition = camera.getPosition().clone();
   const direction = aimPointForPlayer().sub(cameraPosition).normalize();
@@ -168,6 +184,12 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
   for (const remote of snapshot.players) {
     if (remote.playerId === network.playerId) {
       serverTargetPosition = { x: remote.x, z: remote.z };
+      if (remote.health < previousSelfHealth) {
+        player.playHit();
+        if (remote.health <= 0) cc0Operator?.playAction('death');
+        else cc0Operator?.playAction('hit');
+      }
+      previousSelfHealth = remote.health;
       player.root.enabled = remote.health > 0;
       continue;
     }
@@ -176,10 +198,19 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     let view = remotePlayers.get(remote.playerId);
     if (!view) {
       const root = createRemotePlayer(app, remote.playerId);
-      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw };
+      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw, health: remote.health, operator: null };
       remotePlayers.set(remote.playerId, view);
+      void loadCc0Operator(app, root).then((operator) => {
+        view!.operator = operator;
+        operator.setLocomotion(false, false);
+      }).catch((error: unknown) => console.warn('Remote CC0 operator unavailable:', error));
     }
 
+    if (remote.health < view.health) {
+      if (remote.health <= 0) view.operator?.playAction('death');
+      else view.operator?.playAction('hit');
+    }
+    view.health = remote.health;
     view.targetX = remote.x;
     view.targetZ = remote.z;
     view.targetYaw = remote.yaw;
@@ -252,7 +283,10 @@ connectButton?.addEventListener('click', async () => {
           hud.toast('CHARGEUR VIDE · RECHARGE');
           return;
         }
-        if (result.accepted) player.triggerShot();
+        if (result.accepted) {
+          player.triggerShot();
+          cc0Operator?.playAction('attack');
+        }
         if (result.hit) hud.showHit();
         if (result.eliminated && result.targetPlayerId) hud.toast('OPÉRATEUR ÉLIMINÉ · VALIDÉ SERVEUR');
         else if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
@@ -343,6 +377,7 @@ app.on('update', (dt: number) => {
   }
 
   player.updateAnimation(dt, movingForAnimation, sprintingForAnimation);
+  cc0Operator?.setLocomotion(movingForAnimation, sprintingForAnimation);
   const remoteBlend = 1 - Math.exp(-12 * dt);
   for (const view of remotePlayers.values()) {
     const current = view.root.getPosition();
@@ -350,6 +385,8 @@ app.on('update', (dt: number) => {
     const nextZ = current.z + (view.targetZ - current.z) * remoteBlend;
     view.root.setPosition(nextX, 0.04, nextZ);
     view.root.setEulerAngles(0, view.targetYaw, 0);
+    const distance = Math.hypot(view.targetX - current.x, view.targetZ - current.z);
+    view.operator?.setLocomotion(distance > 0.015, distance > 0.32);
   }
 
   const position = player.root.getPosition();

@@ -105,3 +105,12 @@ button { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+
+
+.asset-credit {
+  display: block;
+  margin-top: 0.75rem;
+  color: rgba(220, 231, 240, 0.62);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}

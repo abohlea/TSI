@@ -1,20 +1,25 @@
 name: Build Android APK
 
 on:
-  workflow_dispatch:
   push:
+    branches:
+      - build/android-content-expansion
+    paths:
+      - "prototype/**"
+      - ".github/workflows/android-apk.yml"
+  pull_request:
     branches:
       - build/android-production-field-test
     paths:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"
-
+  workflow_dispatch:
 permissions:
   contents: read
 
 jobs:
   build-apk:
-    name: Build TSI production-branch debug APK
+    name: Build TSI content-expanded Android debug APK
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -39,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Download verified CC0 3D, PBR and HDRI content
+        run: node scripts/fetch-cc0-assets.mjs
+
       - name: Typecheck and build web client
         run: npm run build
 
@@ -54,10 +62,24 @@ jobs:
           chmod +x gradlew
           ./gradlew --no-daemon assembleDebug
 
+      - name: Verify APK is at least 100 MiB
+        working-directory: prototype
+        run: |
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          APK_BYTES="$(stat -c%s "$APK")"
+          ASSET_BYTES="$(du -sb public/assets/cc0 | cut -f1)"
+          echo "APK bytes: $APK_BYTES"
+          echo "APK MiB: $(awk "BEGIN {printf \"%.2f\", $APK_BYTES/1048576}")"
+          echo "Bundled real asset MiB: $(awk "BEGIN {printf \"%.2f\", $ASSET_BYTES/1048576}")"
+          if [ "$APK_BYTES" -lt 104857600 ]; then
+            echo "::error::APK is below the required 100 MiB minimum. Add useful licensed game content; do not add filler files."
+            exit 1
+          fi
+
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: tsi-production-field-test-android-debug
+          name: tsi-content-expanded-android-debug
           path: prototype/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
