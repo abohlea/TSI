@@ -1,40 +1,11 @@
-# TSI Field Test Server
+# Ancien serveur TSI — référence historique
 
-This is a **local development-only** Colyseus room used to prove server-side movement, ammunition, target damage and respawn rules.
+> **ARCHIVÉ — NE PAS ÉTENDRE**
 
-## Start
+Ce dossier contient une ancienne implémentation Colyseus conservée pour consultation et récupération ciblée de code.
 
-Requirements: Node.js 22.12+ and npm.
+Le serveur officiel est désormais `backend/realtime/`. Toute nouvelle règle de déplacement, collision, arme, dégâts, PvP, session, sécurité ou matchmaking doit être développée et testée dans `backend/realtime/`.
 
-```bash
-cd server
-cp .env.example .env
-```
+Ne pas exposer cette ancienne implémentation sur Internet et ne pas la considérer comme un serveur de production. Les éléments récupérés doivent être revus, portés et couverts par des tests dans le runtime actif.
 
-Edit `.env` and replace `TSI_LOCAL_DEV_TOKEN` with a private random value of at least 24 characters. Do not commit the real `.env` file.
-
-```bash
-npm install
-npm run dev
-```
-
-The server binds to `127.0.0.1:2567` only. It refuses to start when `NODE_ENV=production`, and joins require the local development token. It is not reachable by other devices on the network and must not be exposed to the public internet.
-
-## Checks
-
-```bash
-npm run check
-npm test
-```
-
-## Current messages
-
-- `input`: sequence number, movement axes and yaw. The server validates finite values, bounds, sequence monotonicity and movement magnitude.
-- `fire`: no client-supplied target or damage. The server checks cooldown, ammunition and the current facing direction against training targets.
-- `reload`: the server owns the reload timer and ammunition transfer.
-
-The room is capped at eight development clients. It is a networking and authority proof, not the production Battle Royale server. Firebase identity, signed production tickets, matchmaking, player-versus-player damage, persistence, production deployment and load certification are not implemented.
-
-## Safety boundary
-
-The local token is sent by a development browser client and is therefore **not a production secret**. The loopback bind and production refusal are intentional guardrails. Before any remote test, replace this gate with Firebase ID-token verification and short-lived server-issued session tickets; then configure a reviewed host and network policy.
+Décision : [ADR-003 — Architecture runtime unique](../docs/adr/ADR-003-single-active-runtime.md).
