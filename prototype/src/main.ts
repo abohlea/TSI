@@ -6,8 +6,9 @@ import { createPlayer } from './game/player';
 import { createHud } from './ui/hud';
 import './style.css';
 
-const canvas = document.querySelector<HTMLCanvasElement>('#application');
-if (!canvas) throw new Error('Canvas #application introuvable.');
+const canvasElement = document.querySelector<HTMLCanvasElement>('#application');
+if (!canvasElement) throw new Error('Canvas #application introuvable.');
+const canvas: HTMLCanvasElement = canvasElement;
 
 const app = new pc.Application(canvas, {
   graphicsDeviceOptions: {
