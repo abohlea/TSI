@@ -60,6 +60,7 @@ export class TeamMatchRoom extends Room {
   private readonly matchStartedAt = Date.now();
   private readonly reloadEnds = new Map<string, number>();
   private persistenceStarted = false;
+  private lastClockBroadcastAt = 0;
 
   override onCreate(): void {
     this.setMetadata({ mode: 'team-rounds-5v5', build: '0.4.0' });
@@ -204,6 +205,10 @@ export class TeamMatchRoom extends Room {
       }
     }
     this.advanceAndBroadcast(now);
+    if (now - this.lastClockBroadcastAt >= 1000) {
+      this.lastClockBroadcastAt = now;
+      this.broadcastMatchState();
+    }
     this.broadcastPlayers();
   }
 
