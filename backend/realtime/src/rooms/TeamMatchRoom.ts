@@ -61,6 +61,7 @@ export class TeamMatchRoom extends Room {
   private readonly matchStartedAt = Date.now();
   private readonly reloadEnds = new Map<string, number>();
   private persistenceStarted = false;
+  private persistencePromise: Promise<void> | null = null;
   private checkpointQueue: Promise<void> = Promise.resolve();
   private lastClockBroadcastAt = 0;
 
@@ -312,22 +313,27 @@ export class TeamMatchRoom extends Room {
       });
   }
 
-  private async persistResult(): Promise<void> {
-    if (this.persistenceStarted || this.participants.size === 0 || this.match.phase !== 'finished') return;
+  private persistResult(): Promise<void> {
+    if (this.persistencePromise) return this.persistencePromise;
+    if (this.participants.size === 0 || this.match.phase !== 'finished') return Promise.resolve();
     this.persistenceStarted = true;
-    try {
-      await this.checkpointQueue;
-      await persistMatchResult({
-        matchId: this.roomId, mode: 'field-test-teams', startedAt: this.matchStartedAt,
-        endedAt: Date.now(), participants: [...this.participants.values()],
-        winnerTeam: this.match.winner, teamWins: this.match.roundWins
-      });
-      const { getFirestore } = await import('firebase-admin/firestore');
-      const { getFirebaseAdminApp } = await import('../firebaseAuth.js');
-      await getFirestore(getFirebaseAdminApp()).doc('activeMatchCheckpoints/' + this.roomId).delete();
-    } catch (error) {
-      this.persistenceStarted = false;
-      console.error('[TSI] Failed to persist team match result:', error);
-    }
+    this.persistencePromise = (async () => {
+      try {
+        await this.checkpointQueue;
+        await persistMatchResult({
+          matchId: this.roomId, mode: 'field-test-teams', startedAt: this.matchStartedAt,
+          endedAt: Date.now(), participants: [...this.participants.values()],
+          winnerTeam: this.match.winner, teamWins: this.match.roundWins
+        });
+        const { getFirestore } = await import('firebase-admin/firestore');
+        const { getFirebaseAdminApp } = await import('../firebaseAuth.js');
+        await getFirestore(getFirebaseAdminApp()).doc('activeMatchCheckpoints/' + this.roomId).delete();
+      } catch (error) {
+        this.persistenceStarted = false;
+        this.persistencePromise = null;
+        console.error('[TSI] Failed to persist team match result:', error);
+      }
+    })();
+    return this.persistencePromise;
   }
 }
