@@ -686,3 +686,42 @@ La GitHub Action TSI validation a exécuté avec succès, sur la révision `8465
 - vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore.
 
 Résultat : **succès CI pour ces trois jobs**. Cela ne certifie pas encore l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
+
+
+---
+
+## 24. État d'implémentation actualisé — 5 novembre 2026
+
+Cette section remplace les statuts historiques des sections 22 et 23 lorsqu'ils contredisent le code actuel. Les sections précédentes restent conservées comme historique de conception.
+
+### 24.1 Architecture active vérifiée dans la branche
+
+- Client : `prototype/`, PlayCanvas Engine + TypeScript/Vite.
+- Simulation : `backend/realtime/`, Colyseus 0.18.10 / Node.js 22.
+- Identité : Firebase Web SDK côté client et Firebase Admin côté serveur.
+- Session : échange de l'ID token contre ticket HMAC-SHA256 à usage unique, durée 45 secondes.
+- Données : Firestore via SDK Admin ; résultats et statistiques écrits par le serveur.
+- Médias : Cloudinary via une API serveur authentifiée. Le navigateur ne reçoit pas de signature Cloudinary et ne transfère plus directement les fichiers au fournisseur.
+
+### 24.2 État fonctionnel actuel
+
+- Le serveur valide les déplacements, les collisions, les tirs, les munitions, les dégâts, les éliminations et les réapparitions.
+- La room FFA démarre après un compte à rebours de 5 secondes, se termine au premier joueur à 20 points ou après 10 minutes et diffuse les phases ainsi que le résultat.
+- Le client reçoit les événements de cycle de match et présente le début/la fin et le vainqueur.
+- Les résultats Firestore sont enregistrés à la fin du match ou à la fermeture anticipée de la room. La transaction est idempotente ; les statistiques sont calculées par le serveur.
+- Le gagnant est classé par score, puis par éliminations en cas d'égalité de score ; une égalité complète ne donne pas de gagnant.
+- Les avatars acceptent JPEG, PNG et WebP, avec un plafond de 5 Mio appliqué côté serveur avant l'envoi vers Cloudinary et vérification des signatures binaires.
+
+### 24.3 Limites encore ouvertes
+
+- Le mode est FFA ; les équipes et manches successives ne sont pas implémentées.
+- Les résultats restent en mémoire jusqu'à la fin du match/fermeture de room : une panne du processus avant finalisation peut perdre une session. Une file durable/outbox et une procédure de reprise sont requises avant production.
+- Les tickets et limites de débit sont mono-instance ; un stockage atomique partagé est requis avant l'horizontal scaling.
+- L'API média écoute sur loopback et reste désactivée en production. Une exposition publique nécessite TLS, App Check, limites distribuées, protection anti-abus, timeouts et supervision.
+- Aucun vrai projet Firebase/Cloudinary, secret de déploiement, test sur appareil Android/iOS, build APK signé ou test de charge 60 joueurs n'est attesté.
+- Les assets finaux riggés, animations, modèles d'armes, sons et VFX restent à produire.
+- Les lockfiles npm ne sont pas encore présents ; les workflows utilisent encore `npm install`, pas `npm ci`.
+
+### 24.4 Critère de vérité
+
+Une CI verte valide uniquement les commandes exécutées par le workflow sur le commit correspondant. Elle ne vaut pas test manuel multi-clients, validation des services cloud réels, test mobile, preuve de capacité ou certification de release. Les rapports doivent toujours citer le SHA et le run réellement observés.
