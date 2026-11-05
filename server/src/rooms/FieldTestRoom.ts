@@ -2,6 +2,11 @@ import { Client, Room } from "colyseus";
 import { FieldTestState, PlayerState, TargetState } from "../schema/FieldTestState.js";
 import { movePlayer, parsePlayerInput, type PlayerInput } from "../gameRules.js";
 import { resolvePracticeShot } from "../combatRules.js";
+import {
+  authenticateFirebasePlayer,
+  parseRoomAuthOptions,
+  type AuthenticatedPlayer
+} from "../firebase/adminAuth.js";
 
 interface SpawnPoint {
   x: number;
@@ -45,6 +50,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
   private readonly reloadEnds = new Map<string, number>();
   private readonly privatePlayers = new Map<string, PrivatePlayerState>();
   private readonly targetRespawns = new Map<number, number>();
+  private readonly authenticatedPlayers = new Map<string, AuthenticatedPlayer>();
 
   onCreate(): void {
     if (process.env.NODE_ENV === "production") {
@@ -68,21 +74,38 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.setSimulationInterval((deltaTime) => this.simulate(deltaTime), 50);
   }
 
-  async onAuth(_client: Client, options: unknown): Promise<boolean> {
+  async onAuth(client: Client, options: unknown): Promise<boolean> {
     if (process.env.NODE_ENV === "production") return false;
-    const token = process.env.TSI_LOCAL_DEV_TOKEN;
-    if (!token || token.length < 24 || typeof options !== "object" || options === null) return false;
-    return (options as Record<string, unknown>).devToken === token;
+    const parsed = parseRoomAuthOptions(options);
+    if (!parsed) return false;
+
+    try {
+      const identity = await authenticateFirebasePlayer(parsed.idToken, parsed.displayName);
+      this.authenticatedPlayers.set(client.sessionId, identity);
+      return true;
+    } catch (error) {
+      const code = typeof error === "object" && error !== null && "code" in error
+        ? String((error as { code: unknown }).code)
+        : "authentication-failed";
+      console.warn(`[TSI] Firebase room authentication rejected: ${code}`);
+      return false;
+    }
   }
 
   onJoin(client: Client, options: unknown): void {
+    const identity = this.authenticatedPlayers.get(client.sessionId);
+    this.authenticatedPlayers.delete(client.sessionId);
+    if (!identity) {
+      throw new Error("A verified Firebase identity is required to join the TSI room.");
+    }
+
     const player = new PlayerState();
     const spawn = PLAYER_SPAWNS[(this.clients.length - 1) % PLAYER_SPAWNS.length];
     const requestedName = typeof options === "object" && options !== null &&
       typeof (options as Record<string, unknown>).displayName === "string"
       ? String((options as Record<string, unknown>).displayName)
       : "OPERATOR";
-    player.displayName = requestedName.replace(/[^a-zA-Z0-9 _-]/g, "").trim().slice(0, 16) || "OPERATOR";
+    player.displayName = identity.displayName || requestedName.replace(/[^a-zA-Z0-9 _-]/g, "").trim().slice(0, 16) || "OPERATOR";
     player.x = spawn.x;
     player.z = spawn.z;
     player.yaw = 0;
@@ -93,6 +116,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
   }
 
   onLeave(client: Client): void {
+    this.authenticatedPlayers.delete(client.sessionId);
     this.state.players.delete(client.sessionId);
     this.inputs.delete(client.sessionId);
     this.lastSequences.delete(client.sessionId);
