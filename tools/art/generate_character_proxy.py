@@ -141,11 +141,29 @@ def build():
         E("forearm_"+side,(0,s*.43,1.13),(.10,.105,.16),GRAPH,"lower_arm."+side)
         E("glove_"+side,(.025,s*.43,.96),(.095,.09,.09),STEEL,"hand."+side)
         B("wrist_band_"+side,(0,s*.43,1.02),(.10,.10,.035),ORANGE,"hand."+side,.01)
+    # Individual articulated finger geometry, weighted to matching phalange bones.
+    for side,sign in (("L",1),("R",-1)):
+        for digit,index in zip(("thumb","index","middle","ring","pinky"),range(5)):
+            spread=(index-2)*0.027
+            start=Vector((0.075,sign*(0.43+spread),0.955-(0.012 if index in (0,4) else 0)))
+            lengths=(0.045,0.035) if digit=="thumb" else (0.052,0.043,0.032)
+            for segment,length in enumerate(lengths):
+                bone="finger_%s_%s_%d"%(digit,side,segment+1)
+                center=start+Vector((length*.5,0,0))
+                E("glove_%s_%s_%d"%(digit,side,segment+1),tuple(center),(length*.58,.018,.019),STEEL,bone)
+                start=start+Vector((length,0,0))
+    # Head protection details: cheek shells, jaw guard, respirator and side comms.
     # head, helmet, visor
     E("head_proxy",(0,0,1.77),(.13,.13,.17),SKIN,"head")
     E("helmet",(0,0,1.88),(.17,.17,.12),GRAPH,"head")
     B("helmet_front",(0,-.145,1.86),(.18,.025,.045),STEEL,"head",.012)
     B("visor",(0,-.137,1.79),(.19,.018,.065),BLUE,"head",.012)
+    E("jaw_guard",(0,-.105,1.69),(.115,.055,.055),GRAPH,"head")
+    B("respirator_core",(0,-.158,1.715),(.085,.025,.045),STEEL,"head",.012)
+    for side,sign in (("L",1),("R",-1)):
+        E("cheek_guard_"+side,(0,sign*.105,1.72),(.075,.035,.065),GRAPH,"head")
+        E("comms_earcup_"+side,(0,sign*.145,1.82),(.045,.035,.055),STEEL,"head")
+        B("comms_orange_"+side,(.012,sign*.176,1.82),(.025,.012,.018),ORANGE,"head",.004)
     # legs, kneepads and boots
     for side,s in (("L",1),("R",-1)):
         E("thigh_"+side,(0,s*.13,.70),(.14,.14,.23),FAB,"thigh."+side)
