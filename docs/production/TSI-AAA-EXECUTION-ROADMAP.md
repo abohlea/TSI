@@ -32,6 +32,23 @@
 
 Les références de contenu dans le code sont des identifiants d'assets attendus. Elles ne chargent pas de sons ou de modèles qui n'existent pas encore.
 
+## Journal d'exécution — 5 novembre 2026
+
+### P0 — CI de validation (en cours)
+- Le workflow `.github/workflows/validate.yml` a été corrigé pour s'exécuter sur les branches de travail, les PR vers `main` et sur déclenchement manuel.
+- Trois jobs sont définis : prototype PlayCanvas (typecheck/build), serveur Colyseus (typecheck/tests/build) et règles Firestore (typecheck/tests avec émulateur).
+- Le cache npm invalide basé sur des chemins `package.json` a été retiré.
+- Exécution GitHub Actions déclenchée sur la branche de production : [run 42111251453](https://github.com/abohlea/TSI/actions/runs/42111251453). Son résultat doit être contrôlé avant de déclarer P0 validé.
+- Les lockfiles npm ne sont toujours pas présents ; l'installation utilise donc `npm install` et n'est pas encore totalement reproductible. Leur génération et leur commit restent requis.
+
+### P1 — première boucle PvP locale (en cours)
+- Le serveur Colyseus applique les dégâts joueur contre joueur à partir d'un raycast serveur et de hitboxes sphériques provisoires.
+- Les obstacles du terrain bloquent les tirs ; la cible joueur la plus proche est touchée ; le serveur gère l'élimination et une réapparition après quatre secondes.
+- Les joueurs éliminés ne peuvent plus tirer, recharger ou se déplacer côté serveur.
+- Tests unitaires ajoutés pour le hit PvP, la sélection de cible, l'occlusion par obstacle et l'élimination.
+- Le client affiche les opérateurs éliminés/réapparus à partir de leur santé serveur.
+- Limites restantes : équipes, manches, score de manche, hitboxes articulées, compensation de latence, tests multi-clients automatisés et anti-triche avancée.
+
 ## 2. Périmètre prioritaire : vertical slice
 
 Ne pas produire simultanément tous les modes. Le premier objectif de production est une tranche jouable complète qui prouve la qualité de bout en bout :
