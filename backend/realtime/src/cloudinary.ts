@@ -81,3 +81,14 @@ export function createAvatarUploadSignature(
 
 export const TSI_AVATAR_MAX_BYTES = 5 * 1024 * 1024;
 export const TSI_AVATAR_ALLOWED_FORMATS = ['jpg', 'jpeg', 'png', 'webp'] as const;
+
+export function isAllowedAvatarContent(contentType: string, data: Buffer): boolean {
+  if (contentType === 'image/jpeg') return data.length >= 3 && data[0] === 0xff && data[1] === 0xd8 && data[2] === 0xff;
+  if (contentType === 'image/png') {
+    return data.length >= 8 && data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  }
+  if (contentType === 'image/webp') {
+    return data.length >= 12 && data.toString('ascii', 0, 4) === 'RIFF' && data.toString('ascii', 8, 12) === 'WEBP';
+  }
+  return false;
+}
