@@ -1,15 +1,18 @@
 # TSI — pipeline de ressources Android
 
-## Source initiale de ressources 3D
+## Personnages et éléments 3D
 
-Le build Android récupère les modèles 3D depuis le manifeste public de Gobkit :
-https://gobkit.com/api/free
+Le build récupère les personnages militaires, police, secours et éléments d'environnement depuis le manifeste public Gobkit : https://gobkit.com/api/free. Le script vérifie l'origine HTTPS et le champ de licence CC0 1.0 avant chaque téléchargement. Les modèles GLB, animations et informations de provenance sont consignés dans le manifeste embarqué.
 
-Les packs retenus sont les personnages militaires (human004), policiers (human012), secours (human007) et les packs d'environnement. Le script vérifie le domaine HTTPS et la licence CC0 1.0 avant de télécharger chaque GLB. Le manifeste local conserve le nom, le pack, les animations déclarées, la licence, l'URL d'origine et la taille de chaque fichier.
+Les personnages militaires du pack human004 déclarent notamment des clips Idle, Walk, Run, Death, Hit, Attack et Special. Le pipeline ne prétend pas que ces personnages sont des créations originales TSI : ils constituent une base CC0 à adapter, remplacer et améliorer.
 
-Les personnages militaires du pack human004 incluent des clips Idle, Walk, Run, Death, Hit, Attack et Special à 30 FPS selon le manifeste source. Les fichiers sont des GLB skinnés. Le pipeline ne prétend pas que ces personnages sont des créations originales TSI : ils servent de ressources CC0 temporaires à intégrer, adapter et remplacer progressivement par les assets finaux du studio.
+## Matériaux et éclairages
 
-## Génération
+Le build utilise également l'API publique de Poly Haven (https://api.polyhaven.com) pour récupérer des matériaux de terrain et de construction (béton, asphalte, gravier, terre, sable, roche, métal, brique) ainsi que des environnements HDRI extérieurs. Les ressources Poly Haven sont CC0 ; l'écran d'accueil affiche le crédit demandé par leur API : « Powered by Poly Haven ».
+
+Les fichiers sont choisis en 4K lorsque disponible, sinon en 2K. Les cartes couleur/albédo, rugosité, normales, bump, AO, métal et displacement sont conservées séparément afin de permettre une intégration PBR sans perte. Le manifeste embarqué garde les URL source, tailles et empreintes MD5.
+
+## Génération Android
 
 Depuis le dossier prototype :
 
@@ -18,16 +21,14 @@ node scripts/fetch-cc0-assets.mjs
 npm run build
 ```
 
-Les ressources sont téléchargées dans `prototype/public/assets/cc0/` avant la compilation. Elles sont donc intégrées au build web puis au paquet Android hors ligne.
+Les ressources sont téléchargées dans `prototype/public/assets/cc0/` avant Vite et Capacitor. Elles sont donc intégrées au paquet hors ligne.
 
-## Taille APK
+## Taille et contrôle qualité
 
-La cible de distribution demandée est au moins 100 Mo. La taille finale dépend des fichiers effectivement disponibles, des textures et des formats compressés. Le workflow publie les tailles du pack de ressources et de l'APK ; il ne doit pas fabriquer de données de remplissage pour atteindre le seuil. Si le seuil n'est pas atteint, il faut ajouter de vrais contenus utiles (cartes, textures PBR, sons, animations et modèles) puis reconstruire.
+La cible demandée est une APK d'au moins 100 MiB. Le workflow mesure la taille réelle de l'APK après Gradle et doit échouer si le binaire est sous le seuil. Aucun fichier de remplissage n'est utilisé. Si le contenu CC0 disponible ne suffit pas, de vrais assets utiles (cartes, armes, personnages, sons et animations) doivent être ajoutés.
 
-## Licences et contrôle
+## Licences
 
-- Gobkit annonce les modèles de son manifeste gratuit sous CC0 1.0 ; le script vérifie le champ licence des packs sélectionnés à chaque build.
-- Les URL sont consommées depuis le manifeste, jamais reconstruites.
-- Seuls les fichiers GLB HTTPS servis par gobkit.com sont acceptés.
-- Les crédits et les références sources restent documentés ici et dans le manifeste embarqué.
-- Les licences de toute nouvelle source doivent être vérifiées avant son ajout.
+- Gobkit : packs vérifiés par le script en CC0 1.0.
+- Poly Haven : modèles, matériaux et HDRI CC0 1.0 ; l'utilisation de l'API publique est accompagnée du crédit visible « Powered by Poly Haven ».
+- Les licences des nouvelles sources doivent être contrôlées avant intégration.
