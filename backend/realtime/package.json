@@ -15,7 +15,8 @@
     "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
-    "colyseus": "0.18.10"
+    "colyseus": "0.18.10",
+    "@colyseus/schema": "5.0.44"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
