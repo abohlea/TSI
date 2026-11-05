@@ -1,9 +1,12 @@
 import * as pc from 'playcanvas';
 
+export type OperatorAction = 'attack' | 'hit' | 'reload' | 'death';
+
 export interface LoadedOperator {
   entity: pc.Entity;
   clips: string[];
   setLocomotion(moving: boolean, sprinting: boolean): void;
+  playAction(action: OperatorAction): boolean;
 }
 
 export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise<LoadedOperator> {
@@ -34,8 +37,11 @@ export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise
         clips.push(track.name);
       }
 
+      const normalized = clips.map((name) => ({
+        name,
+        key: name.toLowerCase().replace(/[^a-z0-9]/g, '')
+      }));
       const findClip = (...aliases: string[]): string | undefined => {
-        const normalized = clips.map((name) => ({ name, key: name.toLowerCase().replace(/[^a-z0-9]/g, '') }));
         for (const alias of aliases) {
           const exact = normalized.find((clip) => clip.key === alias);
           if (exact) return exact.name;
@@ -47,20 +53,47 @@ export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise
         return undefined;
       };
 
-      const idleClip = findClip('idle', 'stand');
-      const walkClip = findClip('walk', 'walking', 'move');
+      const idleClip = findClip('idle', 'stand', 'breath');
+      const walkClip = findClip('walk', 'walking');
       const runClip = findClip('run', 'sprint', 'running');
+      const actionClips: Record<OperatorAction, string | undefined> = {
+        attack: findClip('attack', 'shoot', 'fire', 'rifleaim'),
+        hit: findClip('hit', 'damage', 'hurt', 'impact'),
+        reload: findClip('reload', 'reloading', 'magazine'),
+        death: findClip('death', 'die', 'dead', 'dying')
+      };
+      let moving = false;
+      let sprinting = false;
       let activeClip: string | undefined;
+      let actionTimer = 0;
+      let dead = false;
 
-      const playLocomotion = (moving: boolean, sprinting: boolean): void => {
-        const nextClip = sprinting && runClip
-          ? runClip
-          : moving && walkClip
-            ? walkClip
-            : idleClip ?? walkClip ?? runClip;
-        if (!nextClip || nextClip === activeClip || !anim.baseLayer) return;
-        anim.baseLayer.play(nextClip);
-        activeClip = nextClip;
+      const play = (name: string | undefined): void => {
+        if (!name || name === activeClip || !anim.baseLayer) return;
+        anim.baseLayer.transition(name, 0.12);
+        activeClip = name;
+      };
+      const playLocomotion = (): void => {
+        if (dead || actionTimer > 0) return;
+        play(sprinting && runClip ? runClip : moving && walkClip ? walkClip : idleClip ?? walkClip ?? runClip);
+      };
+      const setLocomotion = (nextMoving: boolean, nextSprinting: boolean): void => {
+        moving = nextMoving;
+        sprinting = nextSprinting && nextMoving;
+        playLocomotion();
+      };
+      const playAction = (action: OperatorAction): boolean => {
+        const clip = actionClips[action];
+        if (!clip || !anim.baseLayer) return false;
+        if (dead && action !== 'death') return false;
+        if (action === 'death') {
+          dead = true;
+          actionTimer = Number.POSITIVE_INFINITY;
+        } else {
+          actionTimer = action === 'reload' ? 1.25 : action === 'hit' ? 0.55 : 0.38;
+        }
+        play(clip);
+        return true;
       };
 
       if (idleClip && anim.baseLayer) {
@@ -72,7 +105,12 @@ export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise
         if (child.name !== 'ar-01-rifle') child.enabled = false;
       });
       parent.addChild(operator);
-      resolve({ entity: operator, clips, setLocomotion: playLocomotion });
+      app.on('update', (dt: number) => {
+        if (actionTimer <= 0 || !Number.isFinite(actionTimer)) return;
+        actionTimer = Math.max(0, actionTimer - dt);
+        if (actionTimer === 0) playLocomotion();
+      });
+      resolve({ entity: operator, clips, setLocomotion, playAction });
     });
   });
 }
