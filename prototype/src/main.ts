@@ -104,7 +104,7 @@ let networkSendAccumulator = 0;
 let serverTargetPosition = { x: 0, z: 0 };
 let previousSelfHealth = 100;
 const playerRadius = 0.58;
-const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number; operator: LoadedOperator | null }>();
+const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number; health: number; operator: LoadedOperator | null }>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -198,7 +198,7 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     let view = remotePlayers.get(remote.playerId);
     if (!view) {
       const root = createRemotePlayer(app, remote.playerId);
-      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw, operator: null };
+      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw, health: remote.health, operator: null };
       remotePlayers.set(remote.playerId, view);
       void loadCc0Operator(app, root).then((operator) => {
         view!.operator = operator;
@@ -206,6 +206,11 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
       }).catch((error: unknown) => console.warn('Remote CC0 operator unavailable:', error));
     }
 
+    if (remote.health < view.health) {
+      if (remote.health <= 0) view.operator?.playAction('death');
+      else view.operator?.playAction('hit');
+    }
+    view.health = remote.health;
     view.targetX = remote.x;
     view.targetZ = remote.z;
     view.targetYaw = remote.yaw;
