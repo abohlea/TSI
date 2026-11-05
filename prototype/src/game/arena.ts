@@ -19,6 +19,7 @@ export interface PracticeTarget {
 export interface ArenaApi {
   targets: PracticeTarget[];
   obstacles: ArenaObstacle[];
+  surfaces: { ground: pc.StandardMaterial; concrete: pc.StandardMaterial };
 }
 
 function material(color: pc.Color, options: { metalness?: number; roughness?: number; emissive?: pc.Color } = {}): pc.StandardMaterial {
@@ -119,5 +120,41 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(app.root, `perimeter-post-${index + 1}`, 'box', new pc.Vec3(x, 1.1, -57), new pc.Vec3(0.25, 2.2, 0.25), dark);
   }
 
-  return { targets, obstacles };
+  return { targets, obstacles, surfaces: { ground, concrete } };
+}
+
+interface Cc0TextureManifest {
+  textures?: Array<{
+    name: string;
+    files: Array<{ map: string; file: string }>;
+  }>;
+}
+
+export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): void {
+  void fetch('/assets/cc0/manifest.json')
+    .then((response) => {
+      if (!response.ok) throw new Error(`Asset manifest unavailable: ${response.status}`);
+      return response.json() as Promise<Cc0TextureManifest>;
+    })
+    .then((manifest) => {
+      const textures = manifest.textures ?? [];
+      const groundSet = textures.find((item) => /asphalt|gravel|ground|dirt|road/i.test(item.name)) ?? textures[0];
+      const wallSet = textures.find((item) => /concrete|brick|stone/i.test(item.name)) ?? textures[1];
+      const applyMap = (set: Cc0TextureManifest['textures'][number] | undefined, target: pc.StandardMaterial, tiling: number) => {
+        const diffuse = set?.files.find((file) => /diffuse|albedo|color/i.test(file.map));
+        if (!diffuse) return;
+        app.assets.loadFromUrl(diffuse.file, 'texture', (error, asset) => {
+          if (error || !asset?.resource) {
+            console.warn('Unable to load CC0 PBR texture:', diffuse.file, error);
+            return;
+          }
+          target.diffuseMap = asset.resource as pc.Texture;
+          target.diffuseMapTiling = new pc.Vec2(tiling, tiling);
+          target.update();
+        });
+      };
+      applyMap(groundSet, arena.surfaces.ground, 9);
+      applyMap(wallSet, arena.surfaces.concrete, 2.5);
+    })
+    .catch((error: unknown) => console.warn('CC0 arena material manifest unavailable:', error));
 }
