@@ -7,6 +7,7 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [GDD TSI V1](docs/GDD_TSI_V1.md) — vision, modes, univers et règles de conception.
 - [TDD TSI V1](docs/TDD_TSI_V1.md) — architecture technique, réseau, données, sécurité et qualité.
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
+- [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
 - `prototype/` — premier terrain d'entraînement PlayCanvas, en cours de construction.
 
 **Important :** le prototype initial est local et mono-joueur. Il ne contient pas encore d'authentification Firebase, de persistance Firestore, de téléversement Cloudinary ni de serveur multijoueur. Ces intégrations viendront après validation du cœur de jeu et des règles de sécurité.
