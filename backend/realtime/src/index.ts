@@ -13,7 +13,8 @@ const isProduction = process.env.NODE_ENV === 'production';
 const localAuthEnabled = process.env.TSI_ENABLE_LOCAL_AUTH === 'true';
 const localToken = process.env.TSI_LOCAL_DEV_TOKEN ?? '';
 const ticketSecret = process.env.TSI_SESSION_TICKET_SECRET ?? '';
-const allowedOrigins = new Set((process.env.TSI_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean));
+const configuredOrigins = (process.env.TSI_ALLOWED_ORIGINS ?? '').split(',').map((value) => value.trim()).filter(Boolean);
+const allowedOrigins = new Set(configuredOrigins.length > 0 ? configuredOrigins : (isProduction ? [] : ['http://localhost:5173', 'http://127.0.0.1:5173']));
 
 if (isProduction && !process.env.FIREBASE_PROJECT_ID) {
   throw new Error('FIREBASE_PROJECT_ID is required in production.');
@@ -96,8 +97,8 @@ const server = defineServer({
     });
 
     app.post('/auth/session-ticket', async (request: unknown, response: ResponseLike) => {
-      if (!isProduction) {
-        response.status(404).json({ error: 'Session-ticket endpoint is production-only.' });
+      if (!process.env.FIREBASE_PROJECT_ID) {
+        response.status(503).json({ error: 'Firebase project is not configured on this server.' });
         return;
       }
       const req = request as RequestLike;
