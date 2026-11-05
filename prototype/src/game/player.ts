@@ -101,15 +101,15 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const headPivot = new pc.Entity('head-pivot');
   headPivot.setLocalPosition(0, 1.82, 0);
   root.addChild(headPivot);
-  part(headPivot, 'neck', 'cylinder', new pc.Vec3(0, -0.100, 0), new pc.Vec3(0.18, -1.660, 0.18), fabric);
-  part(headPivot, 'head', 'sphere', new pc.Vec3(0, 0.120, 0), new pc.Vec3(0.42, -1.340, 0.4), fabric);
-  part(headPivot, 'helmet-shell', 'sphere', new pc.Vec3(0, 0.300, 0.015), new pc.Vec3(0.48, -1.480, 0.46), helmet);
-  part(headPivot, 'helmet-front-ridge', 'box', new pc.Vec3(0, 0.350, -0.36), new pc.Vec3(0.28, -1.750, 0.08), dark);
-  part(headPivot, 'visor-strip', 'box', new pc.Vec3(0, 0.170, -0.2), new pc.Vec3(0.36, -1.740, 0.035), visor);
-  part(headPivot, 'visor-left-light', 'sphere', new pc.Vec3(-0.11, 0.180, -0.226), new pc.Vec3(0.055, -1.765, 0.025), glass);
-  part(headPivot, 'visor-right-light', 'sphere', new pc.Vec3(0.11, 0.180, -0.226), new pc.Vec3(0.055, -1.765, 0.025), glass);
-  part(headPivot, 'earpiece-left', 'cylinder', new pc.Vec3(-0.23, 0.150, 0), new pc.Vec3(0.09, -1.740, 0.08), dark);
-  part(headPivot, 'earpiece-right', 'cylinder', new pc.Vec3(0.23, 0.150, 0), new pc.Vec3(0.09, -1.740, 0.08), dark);
+  part(headPivot, 'neck', 'cylinder', new pc.Vec3(0, -0.100, 0), new pc.Vec3(0.18, 0.16, 0.18), fabric);
+  part(headPivot, 'head', 'sphere', new pc.Vec3(0, 0.120, 0), new pc.Vec3(0.42, 0.48, 0.4), fabric);
+  part(headPivot, 'helmet-shell', 'sphere', new pc.Vec3(0, 0.300, 0.015), new pc.Vec3(0.48, 0.34, 0.46), helmet);
+  part(headPivot, 'helmet-front-ridge', 'box', new pc.Vec3(0, 0.350, -0.36), new pc.Vec3(0.28, 0.07, 0.08), dark);
+  part(headPivot, 'visor-strip', 'box', new pc.Vec3(0, 0.170, -0.2), new pc.Vec3(0.36, 0.08, 0.035), visor);
+  part(headPivot, 'visor-left-light', 'sphere', new pc.Vec3(-0.11, 0.180, -0.226), new pc.Vec3(0.055, 0.055, 0.025), glass);
+  part(headPivot, 'visor-right-light', 'sphere', new pc.Vec3(0.11, 0.180, -0.226), new pc.Vec3(0.055, 0.055, 0.025), glass);
+  part(headPivot, 'earpiece-left', 'cylinder', new pc.Vec3(-0.23, 0.150, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
+  part(headPivot, 'earpiece-right', 'cylinder', new pc.Vec3(0.23, 0.150, 0), new pc.Vec3(0.09, 0.08, 0.08), dark);
 
   // Layered field equipment: webbing, shoulder straps, pouches and utility gear.
   const webbing = makeMaterial(new pc.Color(0.16, 0.2, 0.18), 0.02, 0.96);
