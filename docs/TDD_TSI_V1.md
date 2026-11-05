@@ -30,7 +30,7 @@ Règles :
 | Base persistante | Cloud Firestore | Retenu |
 | Médias | Cloudinary | Retenu |
 | Protection des services | Firebase App Check en complément des règles | Proposé |
-| Simulation | Rooms serveur autoritaires ; Colyseus 0.18.x candidat | À prototyper |
+| Simulation | Colyseus 0.18.10 ; room locale de déplacement implémentée, production à valider | Prototype en cours |
 | API sensible | Service serveur de confiance, hébergeur non choisi | À prototyper |
 | Render | Exclu | Retenu |
 | Préproduction | Émulateurs, quotas gratuits et serveurs locaux | Retenu |
@@ -149,7 +149,7 @@ Le modèle du personnage et les structures sont volontairement des blocs 3D proc
 
 ### 4.1 Candidat serveur
 
-**Colyseus 0.18.x / Node.js / TypeScript est le candidat de référence à prototyper** pour les sessions de jeu autoritaires, les rooms et le matchmaking. Il possède un serveur de rooms, des mécanismes de synchronisation d'état et un SDK TypeScript utilisable depuis un client PlayCanvas. Sa licence est MIT.
+**Colyseus 0.18.10 / Node.js / TypeScript est le candidat de référence pour les sessions de jeu autoritaires, les rooms et le matchmaking.** Une première room locale de test est présente dans le dépôt ; le SDK client est épinglé sur 0.18.9. Cette preuve ne valide pas encore la charge, le transport ou la capacité du Battle Royale final. Colyseus est publié sous licence MIT.
 
 Ce choix n'est pas encore validé pour 60 joueurs de shooter. Il devra être mesuré sur le type de combat, le nombre d'acteurs, la fréquence des inputs et la qualité réseau cible.
 
@@ -173,7 +173,7 @@ Le client envoie une intention d'action. Il ne transmet jamais une instruction d
 
 Le transport par défaut documenté de Colyseus est WebSocket. Ce transport est pratique pour la première version et le test du matchmaking, mais fonctionne au-dessus de TCP et n'est pas automatiquement optimal pour un shooter rapide soumis à pertes de paquets.
 
-Le navigateur n'expose pas un socket UDP brut comme une application native. WebTransport est une piste à évaluer selon le support des navigateurs et des appareils ; WebRTC DataChannels peuvent également être étudiés si le modèle de connexion le justifie. Le transport choisi doit être testé sur les réseaux mobiles réels.
+Le navigateur n'expose pas un socket UDP brut comme une application native. WebTransport est une piste à évaluer selon le support des navigateurs et des appareils ; WebRTC DataChannels peuvent également être étudiés si le modèle de connexion le justifie. Le transport choisi doit être testé sur les réseaux mobiles réels. Le premier prototype local utilise WebSocket et ne valide pas encore le comportement d'un shooter compétitif sur réseau mobile.
 
 **Décision :** débuter avec WebSocket/Colyseus pour le test en petit groupe. Si les mesures de latence, gigue, pertes et sensation de tir ne satisfont pas les exigences, réévaluer le transport avant de construire le Battle Royale complet. Ne pas promettre un netcode compétitif tant que cette porte n'est pas passée.
 
