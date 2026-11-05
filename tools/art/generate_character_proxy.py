@@ -218,6 +218,11 @@ def build():
     action("TSI_Character_Walk_Forward",[(1,{"thigh.L":(.45,0,0),"thigh.R":(-.45,0,0)}),(12,{"thigh.L":(-.45,0,0),"thigh.R":(.45,0,0)}),(24,{"thigh.L":(.45,0,0),"thigh.R":(-.45,0,0)})])
     action("TSI_Character_Run_Forward",[(1,{"thigh.L":(.72,0,0),"thigh.R":(-.72,0,0)}),(12,{"thigh.L":(-.72,0,0),"thigh.R":(.72,0,0)}),(24,{"thigh.L":(.72,0,0),"thigh.R":(-.72,0,0)})])
     action("TSI_Character_Death",[(1,{}),(24,{"chest":(.65,0,0),"pelvis":(.3,0,0)})])
+    action("TSI_Character_Sprint_Forward",[(1,{"thigh.L":(.95,0,0),"thigh.R":(-.95,0,0),"upper_arm.L":(-.55,0,0),"upper_arm.R":(.55,0,0)}),(12,{"thigh.L":(-.95,0,0),"thigh.R":(.95,0,0),"upper_arm.L":(.55,0,0),"upper_arm.R":(-.55,0,0)}),(24,{"thigh.L":(.95,0,0),"thigh.R":(-.95,0,0),"upper_arm.L":(-.55,0,0),"upper_arm.R":(.55,0,0)})])
+    action("TSI_Character_Aim_Rifle",[(1,{"chest":(-.08,0,0),"upper_arm.L":(-.12,0,0),"upper_arm.R":(-.18,0,0)}),(24,{"chest":(-.08,0,0),"upper_arm.L":(-.12,0,0),"upper_arm.R":(-.18,0,0)})])
+    action("TSI_Character_Fire_Rifle",[(1,{"chest":(-.08,0,0)}),(4,{"chest":(-.16,0,0)}),(8,{"chest":(-.08,0,0)})])
+    action("TSI_Character_Reload_Rifle",[(1,{"upper_arm.L":(-.15,0,0)}),(10,{"upper_arm.L":(-.65,0,0),"lower_arm.L":(-.35,0,0)}),(20,{"upper_arm.L":(-.15,0,0)})])
+    action("TSI_Character_Hit_Reaction",[(1,{}),(6,{"chest":(.22,0,.08),"head":(-.12,0,0)}),(18,{})])
     # Export all visible parts, armature and socket empties.
     bpy.ops.object.select_all(action="DESELECT")
     for o in bpy.context.scene.objects: o.select_set(True)
