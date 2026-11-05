@@ -1,18 +1,18 @@
 # TSI-CHAR-001 — Character de référence : opérateur principal
 
-- **Statut :** spécification de production initiale — à valider avant modélisation finale
+- **Statut :** direction artistique retenue provisoirement — validation technique et finale requise avant modélisation
 - **Branche :** `production/aaa-character-pipeline`
 - **Cible runtime :** PlayCanvas Engine / client TypeScript
 - **Format d'échange :** glTF 2.0 binaire (`.glb`)
 - **Source artistique :** fichier Blender natif (`.blend`) conservé séparément du build runtime
-- **Référence visuelle :** concept art TSI de l'escouade côtière, novembre 2026
-- **Personnage :** opérateur principal TSI, nom et biographie à définir
+- **Référence visuelle :** planche concept TSI-001 générée le 5 novembre 2026 ; à archiver dans `assets/characters/operator_alpha/references/` après validation du fichier
+- **Personnage :** KABORE (nom de travail, non canonique) — opérateur TSI-001
 
 > Ce document définit un asset à fabriquer et à contrôler. Il ne prétend pas qu'un modèle 3D, un rig ou des animations existent déjà.
 
 ## 1. Intention artistique
 
-Créer un opérateur original de shooter tactique futur proche, immédiatement identifiable à moyenne distance et lisible sur écran mobile.
+Créer un opérateur original de shooter tactique futur proche, immédiatement identifiable à moyenne distance et lisible sur écran mobile. Rechercher le niveau de finition, la lisibilité des classes et la présentation énergique des shooters mobiles compétitifs modernes, notamment Call of Duty: Mobile, sans reproduire ses personnages, skins, logos, interfaces, armes iconiques ou éléments protégés.
 
 ### Silhouette et identité
 
@@ -212,3 +212,24 @@ Les fichiers binaires lourds sont à versionner selon la politique de stockage d
 ## 8. Prochaine livraison
 
 La prochaine livraison doit être une **planche de turnaround et de matériaux** approuvée (face, profil, dos, gros plans du casque/visage, épaule TSI, torse, gants, bottes et palette). Ensuite seulement, le travail de modélisation 3D peut commencer avec une référence suffisamment stable.
+
+
+## 9. Décision de direction artistique — 5 novembre 2026
+
+À la demande de la direction du projet, retenir la direction la plus solide pour le premier héros jouable :
+
+- **Nom de travail :** KABORE, identifiant TSI-001. Le nom reste provisoire jusqu'à validation explicite.
+- **Silhouette :** opérateur masculin adulte, athlétique, proportions réalistes, équipement tactique modulaire et silhouette immédiatement lisible en vue troisième personne.
+- **Palette :** graphite/noir mat dominant, orange de sécurité pour les points d'identification, bleu électrique limité aux éléments technologiques TSI.
+- **Signature visuelle :** lunettes/visière tactique, épaules et torse protégés, gilet modulaire, gants, genouillères, bottes et insigne TSI original.
+- **Référence de marché :** prendre comme inspiration de haut niveau la clarté de lecture, la finition et la présentation des opérateurs de Call of Duty: Mobile. Ne pas copier de modèle, skin, personnage, silhouette distinctive, logo, texture, interface ou asset de cette franchise. TSI doit conserver une identité visuelle et une propriété intellectuelle propres.
+- **Statut de la planche :** concept de direction, pas modèle 3D ni validation de proportions. Les chiffres de la fiche technique affichée sur l'image (âge, taille, poids) ne sont pas canoniques et ne doivent pas être utilisés comme contraintes de production.
+- **Décision de production :** cette direction sert de base au prochain passage de conception détaillée. La modélisation ne commence qu'après contrôle du turnaround, des proportions, des détails et des matériaux, puis validation explicite du design.
+
+### Contrôles à effectuer avant le Gate A
+
+- [ ] Refaire/valider un turnaround orthographique strict (face, profil, dos) avec proportions identiques.
+- [ ] Vérifier la cohérence des pièces d'armure entre les trois vues.
+- [ ] Définir les matériaux et leurs valeurs PBR sous éclairage neutre.
+- [ ] Clarifier le visage, la coiffure, les accessoires et les signes distinctifs propres à TSI.
+- [ ] Archiver la planche source approuvée dans le dépôt ; ne pas traiter l'image générée comme source 3D.
