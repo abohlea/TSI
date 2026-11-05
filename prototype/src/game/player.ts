@@ -31,6 +31,8 @@ export interface PlayerRig {
   weapon: pc.Entity;
   updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
   triggerShot(): void;
+  playReload(): void;
+  playHit(): void;
 }
 
 export function createPlayer(app: pc.Application): PlayerRig {
@@ -96,8 +98,8 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(weapon, 'muzzle-device', 'cylinder', new pc.Vec3(0, 0.015, -0.68), new pc.Vec3(0.065, 0.12, 0.065), metal).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'handguard', 'box', new pc.Vec3(0, 0, -0.26), new pc.Vec3(0.14, 0.13, 0.34), armor);
   part(weapon, 'stock', 'box', new pc.Vec3(0, 0.005, 0.38), new pc.Vec3(0.13, 0.17, 0.32), dark);
-  part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
-  part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
+  const magazine = part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
+  const magazineBase = part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
   part(weapon, 'optic-mount', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.14, 0.035, 0.2), dark);
   part(weapon, 'optic', 'box', new pc.Vec3(0, 0.21, -0.02), new pc.Vec3(0.1, 0.12, 0.13), orange);
   part(weapon, 'optic-glass', 'box', new pc.Vec3(0, 0.215, -0.091), new pc.Vec3(0.07, 0.07, 0.015), glass);
@@ -109,6 +111,10 @@ export function createPlayer(app: pc.Application): PlayerRig {
   let animationTime = 0;
   let muzzleTimer = 0;
   let recoil = 0;
+  let reloadTime = 0;
+  let hitTime = 0;
+  const magazineRest = magazine.getLocalPosition().clone();
+  const magazineBaseRest = magazineBase.getLocalPosition().clone();
 
   return {
     root,
@@ -118,15 +124,28 @@ export function createPlayer(app: pc.Application): PlayerRig {
       recoil = 1;
       muzzleFlash.enabled = true;
     },
+    playReload() {
+      reloadTime = 1.25;
+    },
+    playHit() {
+      hitTime = 0.35;
+    },
     updateAnimation(deltaTime, moving, sprinting) {
       animationTime += deltaTime;
+      reloadTime = Math.max(0, reloadTime - deltaTime);
+      hitTime = Math.max(0, hitTime - deltaTime);
+      const reloadProgress = reloadTime > 0 ? 1 - reloadTime / 1.25 : 0;
+      const reloadDip = reloadTime > 0 ? Math.sin(Math.min(1, reloadProgress * 1.7) * Math.PI) : 0;
+      magazine.setLocalPosition(magazineRest.x, magazineRest.y - reloadDip * 0.22, magazineRest.z);
+      magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y - reloadDip * 0.22, magazineBaseRest.z);
       const rate = sprinting ? 13.5 : 9.5;
       const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
       const swing = Math.sin(animationTime * rate) * amplitude;
       legLeft.setLocalEulerAngles(swing * 38, 0, 0);
       legRight.setLocalEulerAngles(-swing * 38, 0, 0);
-      armLeft.setLocalEulerAngles(-swing * 13, 0, -5);
-      armRight.setLocalEulerAngles(swing * 13, 0, 5);
+      const hitFlinch = hitTime > 0 ? Math.sin((hitTime / 0.35) * Math.PI) : 0;
+      armLeft.setLocalEulerAngles(-swing * 13 - hitFlinch * 18, 0, -5);
+      armRight.setLocalEulerAngles(swing * 13 - hitFlinch * 18, 0, 5);
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
       weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
       recoil = Math.max(0, recoil - deltaTime * 7.5);
