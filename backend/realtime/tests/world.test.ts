@@ -94,6 +94,35 @@ test('server ray cannot damage an enemy behind a world obstacle', () => {
   assert.equal(players[1]?.health, 100);
 });
 
+test('server ray ignores inactive practice targets and targets beyond weapon range', () => {
+  const inactive = createPracticeTargets()[1];
+  assert.ok(inactive);
+  inactive.active = false;
+  const inactiveResult = resolveAuthoritativeShot(0, 1.55, 4, 0, -2.4, [inactive], 3000);
+  assert.equal(inactiveResult.hit, false);
+  assert.equal(inactive.health, 100);
+
+  inactive.active = true;
+  inactive.z = -100;
+  const distantResult = resolveAuthoritativeShot(0, 1.55, 4, 0, -2.4, [inactive], 3000);
+  assert.equal(distantResult.hit, false);
+  assert.equal(inactive.health, 100);
+});
+
+test('server ray skips eliminated players and damages the next living target', () => {
+  const players = [
+    { playerId: 'shooter', x: 0, z: 4, health: 100 },
+    { playerId: 'already-eliminated', x: 0, z: -8, health: 0 },
+    { playerId: 'living-enemy', x: 0, z: -18, health: 100 }
+  ];
+
+  const result = resolveAuthoritativePlayerShot('shooter', 0, 1.55, 4, 0, 0, players);
+  assert.equal(result.hit, true);
+  assert.equal(result.targetPlayerId, 'living-enemy');
+  assert.equal(players[1]?.health, 0);
+  assert.equal(players[2]?.health, 66);
+});
+
 test('server player shot eliminates an enemy at zero health', () => {
   const players = [
     { playerId: 'shooter', x: 0, z: 4, health: 100 },
