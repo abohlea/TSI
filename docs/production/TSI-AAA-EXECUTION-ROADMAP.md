@@ -35,7 +35,7 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 ## Journal d'exécution — 5 novembre 2026
 
 ### P0 — CI de validation (en cours)
-- Le workflow `.github/workflows/validate.yml` a été corrigé pour s'exécuter sur les branches de travail, les PR vers `main` et sur déclenchement manuel.
+- Le workflow `.github/workflows/validate.yml` déclenche maintenant les validations sur toutes les branches, toutes les PR et manuellement ; les mises à jour de cette branche sont donc couvertes par push CI.
 - Trois jobs sont définis : prototype PlayCanvas (typecheck/build), serveur Colyseus (typecheck/tests/build) et règles Firestore (typecheck/tests avec émulateur).
 - Le cache npm invalide basé sur des chemins `package.json` a été retiré.
 - Exécution GitHub Actions complète sur le HEAD de la branche : [run 42111350092](https://github.com/abohlea/TSI/actions/runs/42111350092) — succès pour typecheck/build PlayCanvas, typecheck/tests/build Colyseus et typecheck/tests Firestore. Cela valide ces commandes sur ce commit, mais ne clôt pas P0 tant que les lockfiles et l'installation reproductible `npm ci` ne sont pas en place.
@@ -47,12 +47,14 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Les joueurs éliminés ne peuvent plus tirer, recharger ou se déplacer côté serveur.
 - Tests unitaires ajoutés pour le hit PvP, la sélection de cible, l'occlusion par obstacle et l'élimination.
 - Le client affiche les opérateurs éliminés/réapparus à partir de leur santé serveur.
+- Correction complémentaire : allocation des points de spawn libres sur connexion et réapparition, avec refus d'une neuvième entrée si aucun spawn n'est disponible ; les tests couvrent la reconnexion après départ et les huit places distinctes.
+- La limite de demandes de tickets est maintenant bornée en mémoire à 20 000 adresses IP et purge les entrées expirées avant de refuser une nouvelle adresse.
 - Limites restantes : équipes, manches, score de manche, hitboxes articulées, compensation de latence, tests multi-clients automatisés et anti-triche avancée.
 
 ### Complément P1 — durcissement des tests serveur (5 novembre 2026)
 - Commit `15d333b066835840b1adb83088a570c2d0bfaeac` : tests de validation des séquences non sûres, valeurs non finies, bornes de pitch et séquences régressives.
 - Commit `34b8fd8287fdfc8a25b892ae609218e6fe530984` : tests de portée maximale, cibles inactives et exclusion des joueurs déjà éliminés.
-- Ces tests sont ajoutés au code ; leur passage doit être confirmé par une exécution CI après ces commits avant d'être déclarés validés.
+- Les tests de validation serveur et de monde ont été exécutés avec succès par les runs GitHub Actions 42114340310 et 42113677643 sur leurs révisions respectives ; les modifications spawn/rate-limit plus récentes doivent encore obtenir leur propre run CI.
 
 ### Complément P5 — authentification Firebase et tickets de session (5 novembre 2026)
 - Le serveur utilise `firebase-admin@14.5.0`, vérifie les ID tokens Firebase avec contrôle de révocation et exige `FIREBASE_PROJECT_ID` ainsi que des credentials ADC/workload identity côté runtime.
@@ -170,4 +172,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit valider en CI la nouvelle intégration Firebase/tickets, configurer un vrai projet Firebase et tester la connexion de bout en bout. Ensuite : persistance idempotente des résultats Firestore, puis Cloudinary. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances.
+La prochaine livraison doit obtenir un run CI vert sur le HEAD après les corrections spawn/rate-limit, puis terminer l'écriture idempotente des résultats Firestore et brancher le flux Cloudinary à cette architecture PlayCanvas/Colyseus. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances. Les lockfiles npm restent bloquants pour une installation réellement reproductible.
