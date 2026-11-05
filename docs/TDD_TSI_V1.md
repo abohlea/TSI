@@ -652,5 +652,37 @@ Le tir local hors ligne reste un mode d'entraînement. Les tirs contre les cible
 - Vite : 8.3.6
 - Node.js : 22.12 ou supérieur
 
-Le workflow GitHub Actions est configuré, mais un build ne sera déclaré validé qu'après l'exécution réussie des jobs CI. L'environnement de travail utilisé pour l'édition n'a pas pu joindre le registre npm (erreur DNS EAI_AGAIN), donc aucune compilation locale du package n'est déclarée réussie.
+Le workflow GitHub Actions a réussi sur la révision 846574fda31f6a0b9fefecb273b7c52fc51a4c37 : typage et build du client PlayCanvas, typage/tests/compilation du serveur Colyseus, et tests des règles Firestore dans l'émulateur. Cela valide les contrôles CI du code de cette révision ; cela ne remplace pas les tests sur téléphones réels, les tests de charge ni une validation de production.
 
+
+
+---
+
+## 23. Firebase — règles de sécurité et tests émulateur
+
+Les fichiers de sécurité initiaux sont maintenant présents :
+- `firestore.rules` : règles avec refus par défaut ;
+- `firebase.json` : configuration des émulateurs locaux Auth/Firestore ;
+- `firestore.indexes.json` : manifeste d'index versionné ;
+- `backend/firebase/tests/firestore.rules.test.ts` : tests automatisés d'accès ;
+- `backend/firebase/README.md` : procédure locale de test.
+
+Principes testés :
+- accès d'un joueur à ses propres données privées, sans accès aux données privées d'un autre ;
+- impossibilité pour le client de changer statut du compte, inventaire ou progression ;
+- lecture des profils publics pour les utilisateurs authentifiés, sans écriture client ;
+- lecture d'un historique de partie seulement si l'identifiant du joueur est inclus dans la liste des participants et si la requête applique ce filtre ;
+- configuration de saison en lecture seule ;
+- signalements et événements d'audit fermés au client ;
+- refus des lectures et écritures non authentifiées.
+
+Les écritures sensibles restent réservées aux services de confiance. Les règles Firestore ne protègent pas à elles seules une API serveur mal conçue ou un compte de service compromis.
+
+### 23.1 Vérification CI
+
+La GitHub Action TSI validation a exécuté avec succès, sur la révision `846574fda31f6a0b9fefecb273b7c52fc51a4c37` :
+- vérification TypeScript et bundle de production PlayCanvas ;
+- typage strict, tests unitaires et compilation du serveur Colyseus ;
+- vérification TypeScript des tests Firebase et exécution des règles dans l'émulateur Firestore.
+
+Résultat : **succès CI pour ces trois jobs**. Cela ne certifie pas encore l'expérience Android/iOS, la latence réelle, la sécurité de l'authentification de production, la capacité à 60 joueurs, ni l'intégration avec des projets Firebase ou Cloudinary réels.
