@@ -68,11 +68,11 @@ export class FieldTestRoom extends Room {
   }
 
   override async onAuth(_client: Client, options: unknown): Promise<LocalAuth> {
-    if (process.env.NODE_ENV === 'production') {
-      if (!isRecord(options) || typeof options.sessionTicket !== 'string') {
-        throw new Error('A short-lived game session ticket is required.');
-      }
+    if (isRecord(options) && typeof options.sessionTicket === 'string') {
       return consumeSessionTicket(options.sessionTicket);
+    }
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('A short-lived game session ticket is required.');
     }
     if (process.env.TSI_ENABLE_LOCAL_AUTH !== 'true') {
       throw new Error('Local room authentication is not enabled.');
@@ -88,7 +88,7 @@ export class FieldTestRoom extends Room {
   }
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
-    const spawn = findSpawnPosition(Array.from(this.players.values()));
+    const spawn = findSpawnPosition(Array.from(this.players.values()).filter((candidate) => candidate.health > 0));
     if (!spawn) throw new Error('No free player spawn position is available.');
 
     const player: ServerPlayer = {
@@ -232,7 +232,7 @@ export class FieldTestRoom extends Room {
       if (player.health <= 0) {
         if (player.respawnAt > 0 && now >= player.respawnAt) {
           const spawn = findSpawnPosition(
-            Array.from(this.players.values()).filter((candidate) => candidate !== player)
+            Array.from(this.players.values()).filter((candidate) => candidate !== player && candidate.health > 0)
           );
           if (!spawn) continue;
 
