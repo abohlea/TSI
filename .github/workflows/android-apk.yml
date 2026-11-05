@@ -8,13 +8,6 @@ on:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"
   workflow_dispatch:
-  push:
-    branches:
-      - build/android-content-expansion
-    paths:
-      - "prototype/**"
-      - ".github/workflows/android-apk.yml"
-
 permissions:
   contents: read
 
