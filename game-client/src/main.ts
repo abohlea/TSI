@@ -7,6 +7,7 @@ import './style.css';
 import { buildArena } from './game/arena';
 import { GameHUD } from './game/GameHUD';
 import { PlayerController } from './game/PlayerController';
+import { TsiFieldTestConnection } from './game/NetworkClient';
 
 function showFatalError(message: string): void {
   const shell = document.getElementById('game-shell');
@@ -42,12 +43,30 @@ async function boot(): Promise<void> {
   const arena = buildArena(app);
   const hud = new GameHUD();
   const controls = new PlayerController(app, arena, canvas, hud);
+  const network = new TsiFieldTestConnection(app, arena);
 
   window.addEventListener('resize', () => app.resizeCanvas());
-  window.addEventListener('beforeunload', () => controls.destroy(), { once: true });
+  window.addEventListener('beforeunload', () => {
+    controls.destroy();
+    void network.disconnect();
+  }, { once: true });
 
   app.start();
   hud.showToast('ZONE D’ENTRAÎNEMENT CHARGÉE');
+
+  const serverUrl = import.meta.env.VITE_TSI_LOCAL_SERVER_URL?.trim();
+  const devToken = import.meta.env.VITE_TSI_LOCAL_DEV_TOKEN?.trim();
+  const displayName = import.meta.env.VITE_TSI_LOCAL_DISPLAY_NAME?.trim() || 'OPERATOR';
+  if (serverUrl && devToken) {
+    try {
+      await network.connect({ serverUrl, devToken, displayName }, controls);
+      controls.setNetwork(network);
+      hud.showToast('SESSION MULTIJOUEUR LOCALE');
+    } catch (error) {
+      console.warn('[TSI] Local server unavailable; remaining in offline training.', error);
+      hud.showToast('SERVEUR ABSENT — MODE ENTRAÎNEMENT');
+    }
+  }
 }
 
 boot().catch((error: unknown) => {
