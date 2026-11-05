@@ -8,6 +8,7 @@ import { buildArena } from './game/arena';
 import { GameHUD } from './game/GameHUD';
 import { PlayerController } from './game/PlayerController';
 import { TsiFieldTestConnection } from './game/NetworkClient';
+import { acquireFirebaseGameIdentity } from './firebase/firebaseAuth';
 
 function showFatalError(message: string): void {
   const shell = document.getElementById('game-shell');
@@ -54,17 +55,17 @@ async function boot(): Promise<void> {
   app.start();
   hud.showToast('ZONE D’ENTRAÎNEMENT CHARGÉE');
 
-  const serverUrl = import.meta.env.VITE_TSI_LOCAL_SERVER_URL?.trim();
-  const devToken = import.meta.env.VITE_TSI_LOCAL_DEV_TOKEN?.trim();
-  const displayName = import.meta.env.VITE_TSI_LOCAL_DISPLAY_NAME?.trim() || 'OPERATOR';
-  if (serverUrl && devToken) {
+  const serverUrl = import.meta.env.VITE_TSI_SERVER_URL?.trim();
+  const displayName = import.meta.env.VITE_TSI_DISPLAY_NAME?.trim() || 'OPERATOR';
+  if (serverUrl) {
     try {
-      await network.connect({ serverUrl, devToken, displayName }, controls);
+      const identity = await acquireFirebaseGameIdentity();
+      await network.connect({ serverUrl, idToken: identity.idToken, displayName }, controls);
       controls.setNetwork(network);
-      hud.showToast('SESSION MULTIJOUEUR LOCALE');
+      hud.showToast('SESSION FIREBASE AUTHENTIFIÉE');
     } catch (error) {
-      console.warn('[TSI] Local server unavailable; remaining in offline training.', error);
-      hud.showToast('SERVEUR ABSENT — MODE ENTRAÎNEMENT');
+      console.warn('[TSI] Firebase auth or local server unavailable; remaining in offline training.', error);
+      hud.showToast('AUTH/SERVEUR ABSENT — MODE ENTRAÎNEMENT');
     }
   }
 }
