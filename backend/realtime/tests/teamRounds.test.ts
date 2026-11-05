@@ -11,7 +11,8 @@ test('assigns each new player to the smaller team and balances both sides', () =
   assert.equal(assignBalancedTeam(0, 0), 'alpha');
   assert.equal(assignBalancedTeam(1, 0), 'bravo');
   assert.equal(assignBalancedTeam(1, 1), 'alpha');
-  assert.throws(() => assignBalancedTeam(3, 0));
+  assert.equal(assignBalancedTeam(3, 0), 'bravo');
+  assert.throws(() => assignBalancedTeam(-1, 0));
 });
 
 test('best-of-three ends when a team wins two rounds', () => {
