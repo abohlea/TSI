@@ -64,6 +64,10 @@ export function createArena(app: pc.Application): ArenaApi {
   const orange = material(new pc.Color(1, 0.34, 0.075), { metalness: 0.28, roughness: 0.42, emissive: new pc.Color(0.15, 0.025, 0.005) });
   const targetSurface = material(new pc.Color(0.16, 0.42, 0.48), { metalness: 0.42, roughness: 0.48 });
   const lane = material(new pc.Color(0.7, 0.72, 0.62));
+  // Shared facade materials: avoid allocating identical GPU materials per building.
+  const facade = material(new pc.Color(0.22, 0.27, 0.27), { roughness: 0.96 });
+  const glass = material(new pc.Color(0.035, 0.17, 0.2), { metalness: 0.38, roughness: 0.28 });
+  const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
 
   primitive(app.root, 'training-ground', 'box', new pc.Vec3(0, -0.35, -2), new pc.Vec3(110, 0.7, 110), ground);
   primitive(app.root, 'central-lane', 'box', new pc.Vec3(0, 0.012, -18), new pc.Vec3(16, 0.025, 58), lane);
@@ -87,9 +91,6 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(root, 'roof-trim', 'box', new pc.Vec3(0, building.h / 2 + 0.08, 0), new pc.Vec3(building.w + 0.25, 0.16, building.d + 0.25), dark);
     primitive(root, 'signal-panel', 'box', new pc.Vec3(0, 0.5, building.d / 2 + 0.035), new pc.Vec3(1.8, 0.7, 0.08), orange);
     // Facade details: recessed entrance, lintel, windows, sills and corner columns.
-    const facade = material(new pc.Color(0.22, 0.27, 0.27), { roughness: 0.96 });
-    const glass = material(new pc.Color(0.035, 0.17, 0.2), { metalness: 0.38, roughness: 0.28 });
-    const trim = material(new pc.Color(0.43, 0.46, 0.42), { roughness: 0.88 });
     const doorWidth = Math.min(1.7, building.w * 0.22);
     primitive(root, 'entrance-door', 'box', new pc.Vec3(0, -building.h * 0.29, building.d / 2 + 0.055), new pc.Vec3(doorWidth, building.h * 0.42, 0.11), dark);
     primitive(root, 'entrance-lintel', 'box', new pc.Vec3(0, -building.h * 0.075, building.d / 2 + 0.08), new pc.Vec3(doorWidth + 0.28, 0.16, 0.16), trim);
@@ -179,6 +180,40 @@ export function createArena(app: pc.Application): ArenaApi {
     primitive(app.root, `beacon-light-${index + 1}`, 'sphere', new pc.Vec3(x, 3.75, z), new pc.Vec3(0.38, 0.38, 0.38), orange);
   }
 
+  // Watchtowers give the perimeter vertical landmarks and additional cover.
+  const towerSurface = material(new pc.Color(0.24, 0.29, 0.27), { roughness: 0.94 });
+  const towerMetal = material(new pc.Color(0.095, 0.13, 0.13), { metalness: 0.62, roughness: 0.58 });
+  for (const side of [-1, 1]) {
+    const x = side * 49;
+    const z = -39;
+    const tower = new pc.Entity(side < 0 ? 'west-watchtower' : 'east-watchtower');
+    tower.setPosition(x, 0, z);
+    app.root.addChild(tower);
+    primitive(tower, 'tower-platform', 'box', new pc.Vec3(0, 3.05, 0), new pc.Vec3(3.2, 0.28, 3.2), towerSurface);
+    for (const dx of [-1.35, 1.35]) for (const dz of [-1.35, 1.35]) {
+      primitive(tower, 'tower-leg', 'box', new pc.Vec3(dx, 1.5, dz), new pc.Vec3(0.2, 3, 0.2), towerMetal);
+    }
+    primitive(tower, 'tower-roof', 'box', new pc.Vec3(0, 5.15, 0), new pc.Vec3(3.5, 0.18, 3.5), towerMetal);
+    for (const dx of [-1.45, 1.45]) {
+      primitive(tower, 'tower-rail-side', 'box', new pc.Vec3(dx, 3.65, 0), new pc.Vec3(0.12, 0.9, 3.0), towerMetal);
+    }
+    primitive(tower, 'tower-rail-back', 'box', new pc.Vec3(0, 3.65, 1.45), new pc.Vec3(3.0, 0.9, 0.12), towerMetal);
+    // Ladder is visual only; the tower footprint is kept as a single collision area.
+    for (let rung = 0; rung < 9; rung += 1) {
+      primitive(tower, 'tower-ladder-rung', 'box', new pc.Vec3(-1.78, 0.35 + rung * 0.31, 0), new pc.Vec3(0.08, 0.055, 0.72), orange);
+    }
+    obstacles.push({ minX: x - 1.8, maxX: x + 1.8, minZ: z - 1.8, maxZ: z + 1.8 });
+  }
+
+  // Perimeter fence rails connect the existing boundary posts into a readable arena edge.
+  const fenceSurface = material(new pc.Color(0.13, 0.18, 0.17), { metalness: 0.52, roughness: 0.76 });
+  primitive(app.root, 'perimeter-fence-top-rail', 'box', new pc.Vec3(0, 1.95, -57), new pc.Vec3(90, 0.1, 0.1), fenceSurface);
+  primitive(app.root, 'perimeter-fence-mid-rail', 'box', new pc.Vec3(0, 1.1, -57), new pc.Vec3(90, 0.08, 0.08), fenceSurface);
+  for (let index = 0; index < 18; index += 1) {
+    const x = -42 + index * 4.95;
+    primitive(app.root, `perimeter-post-${index + 1}`, 'box', new pc.Vec3(x, 1.1, -57), new pc.Vec3(0.25, 2.2, 0.25), dark);
+  }
+
   const targetPositions = [
     new pc.Vec3(-5, 0, -22), new pc.Vec3(0, 0, -29), new pc.Vec3(5, 0, -22),
     new pc.Vec3(-13, 0, -37), new pc.Vec3(13, 0, -37), new pc.Vec3(0, 0, -48)
@@ -186,11 +221,6 @@ export function createArena(app: pc.Application): ArenaApi {
   const targets = targetPositions.map((position, index) => createTarget(app, position, index, {
     target: targetSurface, accent: orange, dark
   }));
-
-  for (let index = 0; index < 18; index += 1) {
-    const x = -42 + index * 4.95;
-    primitive(app.root, `perimeter-post-${index + 1}`, 'box', new pc.Vec3(x, 1.1, -57), new pc.Vec3(0.25, 2.2, 0.25), dark);
-  }
 
   return { targets, obstacles };
 }
