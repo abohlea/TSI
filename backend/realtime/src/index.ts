@@ -10,6 +10,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const localAuthEnabled = process.env.TSI_ENABLE_LOCAL_AUTH === 'true';
 const localToken = process.env.TSI_LOCAL_DEV_TOKEN ?? '';
 
+if (isProduction && !process.env.FIREBASE_PROJECT_ID) {
+  throw new Error('FIREBASE_PROJECT_ID is required in production.');
+}
 if (isProduction && localAuthEnabled) {
   throw new Error('TSI local development authentication must never be enabled in production.');
 }
