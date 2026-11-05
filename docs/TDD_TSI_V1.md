@@ -593,3 +593,49 @@ Render est exclu. Les quotas gratuits sont privilégiés pendant la préproducti
 **Première preuve technique exigée :** un client PlayCanvas mobile rejoint un serveur de session autoritaire local ; le serveur valide un tir et des dégâts ; le résultat est ensuite enregistré de façon sécurisée dans Firestore ; le client affiche un média de profil hébergé sur Cloudinary.
 
 *Fin du document — TSI TDD V1.*
+
+
+---
+
+## 22. Première implémentation locale — Field Test 0.1
+
+Les éléments suivants sont maintenant présents dans le dépôt :
+- client PlayCanvas Engine 2.23.3 en TypeScript/Vite ;
+- arène d'entraînement procédurale et personnage de blocout ;
+- commandes clavier, souris et tactile ;
+- cible d'entraînement, tir local, rechargement et HUD ;
+- client Colyseus SDK 0.18.9 pour une connexion de développement facultative ;
+- serveur Colyseus 0.18.10 avec room `field_test`, limitée à huit clients de test ;
+- synchronisation de snapshots de positions ;
+- validation serveur des numéros de séquence, des nombres finis, de la magnitude des déplacements, du sprint et des limites de terrain ;
+- tests unitaires des règles d'entrée ;
+- workflow GitHub Actions pour le typage, les tests et les builds.
+
+### 22.1 Barrière de sécurité locale
+
+L'accès à la room est protégé uniquement par un jeton de développement défini dans des fichiers locaux ignorés par Git. Le jeton est envoyé au navigateur : il n'est donc **pas** un secret adapté à la production. Le serveur refuse les connexions quand `NODE_ENV=production`. Il ne faut pas exposer cette room sur Internet.
+
+### 22.2 Fonctionnalités qui ne sont pas encore implémentées
+
+- Firebase Authentication et vérification des ID tokens ;
+- tickets de session signés émis par une API de confiance ;
+- collisions d'obstacles validées côté serveur ;
+- tir, cadence, impacts, dégâts, santé et éliminations synchronisés ;
+- anti-triche complète, matchmaking de production et allocation régionale ;
+- écriture Firestore des résultats ;
+- chargement Cloudinary avec signatures d'upload ;
+- tests de charge sur matériel réel et validation 60 joueurs.
+
+Le système de tir actuel est local au navigateur et sert uniquement au terrain d'entraînement. Ne pas l'utiliser comme preuve d'un combat multijoueur sécurisé.
+
+### 22.3 Versions épinglées pour la preuve
+
+- PlayCanvas Engine : 2.23.3
+- Colyseus serveur : 0.18.10
+- SDK Colyseus client : 0.18.9
+- TypeScript : 7.0.2
+- Vite : 8.3.6
+- Node.js : 22.12 ou supérieur
+
+Les dépendances sont épinglées dans les manifestes. Les builds et tests doivent réussir dans GitHub Actions avant qu'une version soit considérée comme vérifiée.
+
