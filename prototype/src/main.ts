@@ -104,7 +104,7 @@ let networkSendAccumulator = 0;
 let serverTargetPosition = { x: 0, z: 0 };
 let previousSelfHealth = 100;
 const playerRadius = 0.58;
-const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number }>();
+const remotePlayers = new Map<string, { root: pc.Entity; targetX: number; targetZ: number; targetYaw: number; operator: LoadedOperator | null }>();
 
 function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value));
@@ -198,8 +198,12 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     let view = remotePlayers.get(remote.playerId);
     if (!view) {
       const root = createRemotePlayer(app, remote.playerId);
-      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw };
+      view = { root, targetX: remote.x, targetZ: remote.z, targetYaw: remote.yaw, operator: null };
       remotePlayers.set(remote.playerId, view);
+      void loadCc0Operator(app, root).then((operator) => {
+        view!.operator = operator;
+        operator.setLocomotion(false, false);
+      }).catch((error: unknown) => console.warn('Remote CC0 operator unavailable:', error));
     }
 
     view.targetX = remote.x;
@@ -376,6 +380,8 @@ app.on('update', (dt: number) => {
     const nextZ = current.z + (view.targetZ - current.z) * remoteBlend;
     view.root.setPosition(nextX, 0.04, nextZ);
     view.root.setEulerAngles(0, view.targetYaw, 0);
+    const distance = Math.hypot(view.targetX - current.x, view.targetZ - current.z);
+    view.operator?.setLocomotion(distance > 0.015, distance > 0.32);
   }
 
   const position = player.root.getPosition();
