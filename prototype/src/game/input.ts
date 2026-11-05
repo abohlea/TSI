@@ -4,6 +4,7 @@ export interface InputFrame {
   yawDelta: number;
   pitchDelta: number;
   shoot: boolean;
+  firePressed: boolean;
   sprint: boolean;
   reload: boolean;
   aim: boolean;
@@ -13,7 +14,7 @@ export class GameInput {
   private readonly keys = new Set<string>();
   private readonly frame: InputFrame = {
     moveX: 0, moveY: 0, yawDelta: 0, pitchDelta: 0,
-    shoot: false, sprint: false, reload: false, aim: false
+    shoot: false, firePressed: false, sprint: false, reload: false, aim: false
   };
   private movePointer: number | null = null;
   private lookPointer: number | null = null;
@@ -94,8 +95,10 @@ export class GameInput {
 
   private onMouseDown = (event: MouseEvent): void => {
     if (event.button === 0) {
-      if (document.pointerLockElement === this.canvas) this.fireHeld = true;
-      else void this.canvas.requestPointerLock?.();
+      if (document.pointerLockElement === this.canvas) {
+        this.fireHeld = true;
+        this.frame.firePressed = true;
+      } else void this.canvas.requestPointerLock?.();
     }
     if (event.button === 2) this.aimHeld = true;
   };
@@ -164,7 +167,7 @@ export class GameInput {
     if (event.pointerId === this.lookPointer) this.lookPointer = null;
   };
 
-  private onFireStart = (event: PointerEvent): void => { this.fireHeld = true; event.preventDefault(); };
+  private onFireStart = (event: PointerEvent): void => { this.fireHeld = true; this.frame.firePressed = true; event.preventDefault(); };
   private onFireEnd = (event: PointerEvent): void => { this.fireHeld = false; event.preventDefault(); };
   private onSprintStart = (event: PointerEvent): void => { this.sprintHeld = true; event.preventDefault(); };
   private onSprintEnd = (event: PointerEvent): void => { this.sprintHeld = false; event.preventDefault(); };
@@ -190,6 +193,7 @@ export class GameInput {
     this.frame.yawDelta = 0;
     this.frame.pitchDelta = 0;
     this.frame.reload = false;
+    this.frame.firePressed = false;
     return result;
   }
 
