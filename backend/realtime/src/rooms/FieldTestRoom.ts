@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { Client, Room } from 'colyseus';
 import {
   clamp,
+  isRecord,
   type PlayerSnapshot,
   type PrivatePlayerSnapshot,
   type RoomSnapshot,
