@@ -39,12 +39,12 @@ const TARGET_SPAWNS: SpawnPoint[] = [
   { x: 26, z: -18 }
 ];
 
-export class FieldTestRoom extends Room<FieldTestState> {
-  maxClients = 8;
-  patchRate = 50;
-  maxMessagesPerSecond = 50;
+export class FieldTestRoom extends Room<{ state: FieldTestState }> {
+  override maxClients = 8;
+  override patchRate = 50;
+  override maxMessagesPerSecond = 50;
 
-  private readonly inputs = new Map<string, PlayerInput>();
+  private readonly playerInputs = new Map<string, PlayerInput>();
   private readonly lastSequences = new Map<string, number>();
   private readonly lastShots = new Map<string, number>();
   private readonly reloadEnds = new Map<string, number>();
@@ -52,7 +52,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
   private readonly targetRespawns = new Map<number, number>();
   private readonly authenticatedPlayers = new Map<string, AuthenticatedPlayer>();
 
-  onCreate(): void {
+  override onCreate(): void {
     if (process.env.NODE_ENV === "production") {
       throw new Error("The TSI Field Test room is development-only.");
     }
@@ -74,7 +74,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.setSimulationInterval((deltaTime) => this.simulate(deltaTime), 50);
   }
 
-  async onAuth(client: Client, options: unknown): Promise<boolean> {
+  override async onAuth(client: Client, options: unknown): Promise<boolean> {
     if (process.env.NODE_ENV === "production") return false;
     const parsed = parseRoomAuthOptions(options);
     if (!parsed) return false;
@@ -92,7 +92,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     }
   }
 
-  onJoin(client: Client, options: unknown): void {
+  override onJoin(client: Client, options: unknown): void {
     const identity = this.authenticatedPlayers.get(client.sessionId);
     this.authenticatedPlayers.delete(client.sessionId);
     if (!identity) {
@@ -110,15 +110,15 @@ export class FieldTestRoom extends Room<FieldTestState> {
     player.z = spawn.z;
     player.yaw = 0;
     this.state.players.set(client.sessionId, player);
-    this.inputs.set(client.sessionId, { sequence: 0, moveX: 0, moveZ: 0, yaw: 0 });
+    this.playerInputs.set(client.sessionId, { sequence: 0, moveX: 0, moveZ: 0, yaw: 0 });
     this.privatePlayers.set(client.sessionId, { ammo: 30, reserveAmmo: 120, eliminations: 0, shots: 0, hits: 0 });
     this.sendPrivateState(client);
   }
 
-  onLeave(client: Client): void {
+  override onLeave(client: Client): void {
     this.authenticatedPlayers.delete(client.sessionId);
     this.state.players.delete(client.sessionId);
-    this.inputs.delete(client.sessionId);
+    this.playerInputs.delete(client.sessionId);
     this.lastSequences.delete(client.sessionId);
     this.lastShots.delete(client.sessionId);
     this.reloadEnds.delete(client.sessionId);
@@ -143,7 +143,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     const input = parsePlayerInput(payload, lastSequence);
     if (!input) return;
     this.lastSequences.set(client.sessionId, input.sequence);
-    this.inputs.set(client.sessionId, input);
+    this.playerInputs.set(client.sessionId, input);
   }
 
   private handleFire(client: Client): void {
@@ -187,7 +187,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.state.elapsedSeconds += deltaSeconds;
 
     this.state.players.forEach((player, sessionId) => {
-      const input = this.inputs.get(sessionId);
+      const input = this.playerInputs.get(sessionId);
       if (input) {
         const next = movePlayer(player.x, player.z, input, deltaSeconds);
         player.x = next.x;
