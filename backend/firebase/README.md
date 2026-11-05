@@ -36,6 +36,12 @@ The Emulator Suite UI is available at `http://127.0.0.1:4000`.
 
 The Firestore Admin SDK bypasses Firestore Security Rules. Therefore server authorization, service-account permissions, input validation and audit logging remain mandatory. Never distribute an Admin SDK credential to the browser or mobile client.
 
+## TSI game-server integration
+
+The `server/` package connects to the emulators when `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099` and `FIRESTORE_EMULATOR_HOST=127.0.0.1:8080` are set. Its local-only room requires a Firebase ID token, verifies it with the Admin SDK, then provisions `users/{uid}`, `playerProfiles/{uid}` and `progression/{uid}` with server timestamps. Follow [the server setup guide](../../server/README.md) for the three-terminal workflow. The local server refuses production startup and must not be exposed publicly.
+
+The Admin SDK bypasses Firestore Security Rules. TSI uses that privilege only from the server to provision initial records. Never distribute an Admin SDK credential to the browser or mobile client.
+
 ## Important
 
 These tests exercise the local emulator only. They do not prove that production rules have been deployed, nor do they secure a Cloud Firestore project that is configured with different rules. Before using real Firebase credentials, verify the production project ID, rules deployment, Authentication settings, App Check configuration and service-account permissions.
