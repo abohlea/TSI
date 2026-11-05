@@ -42,6 +42,18 @@ export interface NetworkCallbacks {
   onShot?(result: NetworkShotResult): void;
 }
 
+export function getSessionTicketEndpoint(serverUrl: string): string {
+  const endpoint = new URL('/auth/session-ticket', serverUrl);
+  if (endpoint.protocol === 'ws:') endpoint.protocol = 'http:';
+  else if (endpoint.protocol === 'wss:') endpoint.protocol = 'https:';
+  if (endpoint.protocol !== 'http:' && endpoint.protocol !== 'https:') {
+    throw new Error('URL du serveur incompatible avec l’authentification HTTP.');
+  }
+  endpoint.search = '';
+  endpoint.hash = '';
+  return endpoint.toString();
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -121,7 +133,7 @@ export class TsiNetworkClient {
     let room: Room;
     if (getIdToken) {
       const idToken = await getIdToken();
-      const ticketUrl = new URL('/auth/session-ticket', url).toString();
+      const ticketUrl = getSessionTicketEndpoint(url);
       const response = await fetch(ticketUrl, {
         method: 'POST',
         headers: { Authorization: 'Bearer ' + idToken }
