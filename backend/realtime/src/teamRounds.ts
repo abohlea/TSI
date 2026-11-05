@@ -69,6 +69,9 @@ function closeRound(state: TeamMatchState, now: number, winner: TeamId | null, r
   if (matchWinner) {
     return { ...state, phase: 'finished', roundWins: wins, winner: matchWinner, finishReason: reason, intermissionEndsAt: null };
   }
+  if (state.round >= config.bestOf) {
+    return { ...state, phase: 'finished', roundWins: wins, winner: null, finishReason: reason, intermissionEndsAt: null };
+  }
   return {
     ...state,
     phase: 'intermission',
