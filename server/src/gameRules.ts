@@ -11,7 +11,7 @@ export interface PlayerPosition {
   yaw: number;
 }
 
-const BLOCKERS = [
+export const WORLD_BLOCKERS = [
   { minX: -30, maxX: -14, minZ: -31, maxZ: -13 },
   { minX: 12, maxX: 34, minZ: -44, maxZ: -28 },
   { minX: 35, maxX: 43, minZ: -2, maxZ: 6 },
@@ -36,7 +36,7 @@ function normalizeYaw(yaw: number): number {
 
 function isBlocked(x: number, z: number): boolean {
   const radius = 0.42;
-  return BLOCKERS.some((box) =>
+  return WORLD_BLOCKERS.some((box) =>
     x + radius > box.minX && x - radius < box.maxX &&
     z + radius > box.minZ && z - radius < box.maxZ
   );
