@@ -117,6 +117,60 @@ export function createArena(app: pc.Application): ArenaApi {
     obstacles.push({ minX: x - 1.35, maxX: x + 1.35, minZ: z - 0.95, maxZ: z + 0.95 });
   }
 
+  // Defensive wall sections and sandbag emplacements around the training lanes.
+  const wallSurface = material(new pc.Color(0.31, 0.34, 0.32), { roughness: 0.98 });
+  const sandbagSurface = material(new pc.Color(0.43, 0.39, 0.29), { roughness: 1 });
+  const metalSurface = material(new pc.Color(0.12, 0.16, 0.16), { metalness: 0.58, roughness: 0.72 });
+  const wallRuns = [
+    { x: -34, z: -22, length: 17, rotation: 0 },
+    { x: 34, z: -25, length: 20, rotation: 0 },
+    { x: 0, z: -52, length: 26, rotation: 90 }
+  ];
+  wallRuns.forEach((wall, index) => {
+    const root = new pc.Entity(`defensive-wall-${index + 1}`);
+    root.setPosition(wall.x, 0, wall.z);
+    root.setEulerAngles(0, wall.rotation, 0);
+    app.root.addChild(root);
+    primitive(root, 'wall-core', 'box', new pc.Vec3(0, 1.05, 0), new pc.Vec3(wall.length, 2.1, 0.62), wallSurface);
+    primitive(root, 'wall-top-cap', 'box', new pc.Vec3(0, 2.13, 0), new pc.Vec3(wall.length + 0.22, 0.14, 0.78), dark);
+    for (let segment = 0; segment < Math.floor(wall.length / 2); segment += 1) {
+      const x = -wall.length / 2 + 1 + segment * 2;
+      primitive(root, `wall-panel-seam-${segment}`, 'box', new pc.Vec3(x, 1.05, -0.32), new pc.Vec3(0.055, 2.0, 0.025), trim);
+      primitive(root, `wall-support-${segment}`, 'box', new pc.Vec3(x, 0.55, 0.38), new pc.Vec3(0.16, 1.1, 0.24), metalSurface);
+    }
+    obstacles.push({
+      minX: wall.x - (wall.rotation === 90 ? 0.65 : wall.length / 2 + 0.55),
+      maxX: wall.x + (wall.rotation === 90 ? 0.65 : wall.length / 2 + 0.55),
+      minZ: wall.z - (wall.rotation === 90 ? wall.length / 2 + 0.55 : 0.65),
+      maxZ: wall.z + (wall.rotation === 90 ? wall.length / 2 + 0.55 : 0.65)
+    });
+  });
+
+  const sandbagPositions = [
+    { x: -12, z: -16 }, { x: 12, z: -16 }, { x: -18, z: -31 }, { x: 18, z: -31 }
+  ];
+  sandbagPositions.forEach((position, index) => {
+    const root = new pc.Entity(`sandbag-emplacement-${index + 1}`);
+    root.setPosition(position.x, 0, position.z);
+    app.root.addChild(root);
+    for (let row = 0; row < 2; row += 1) {
+      for (let bag = 0; bag < 4 - row; bag += 1) {
+        primitive(root, `sandbag-${row}-${bag}`, 'capsule',
+          new pc.Vec3((bag - 1.5 + row * 0.5) * 0.62, 0.28 + row * 0.42, 0),
+          new pc.Vec3(0.58, 0.34, 0.38), sandbagSurface);
+      }
+    }
+    obstacles.push({ minX: position.x - 1.55, maxX: position.x + 1.55, minZ: position.z - 0.65, maxZ: position.z + 0.65 });
+  });
+
+  // Roadside concrete jersey barriers.
+  for (let index = 0; index < 5; index += 1) {
+    const x = -24 + index * 12;
+    primitive(app.root, `road-barrier-${index + 1}`, 'box', new pc.Vec3(x, 0.48, -3), new pc.Vec3(4.4, 0.96, 0.72), wallSurface);
+    primitive(app.root, `road-barrier-stripe-${index + 1}`, 'box', new pc.Vec3(x, 0.5, -3.38), new pc.Vec3(0.42, 0.72, 0.035), orange);
+    obstacles.push({ minX: x - 2.35, maxX: x + 2.35, minZ: -3.55, maxZ: -2.45 });
+  }
+
   for (let index = 0; index < 8; index += 1) {
     const x = index < 4 ? -43 : 43;
     const z = -48 + (index % 4) * 16;
