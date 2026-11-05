@@ -8,6 +8,7 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [TDD TSI V1](docs/TDD_TSI_V1.md) — architecture technique, réseau, données, sécurité et qualité.
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
+- [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `backend/realtime/` — room Colyseus locale avec déplacement, collisions de terrain, tirs sur cibles et dégâts validés côté serveur.
 
@@ -109,6 +110,7 @@ backend/realtime/
 3. Ajouter le combat joueur contre joueur, les dégâts et les règles de réanimation côté serveur.
 4. Intégrer Firebase Authentication et des tickets de session signés.
 5. Enregistrer les profils et résultats confirmés dans Firestore, puis intégrer Cloudinary pour les médias.
-6. Mesurer les performances réseau et graphiques sur appareils réels avant de figer l'architecture de production.
+6. Vérifier les règles Firestore avec l'émulateur avant d'activer les flux de données client.
+7. Mesurer les performances réseau et graphiques sur appareils réels avant de figer l'architecture de production.
 
 Les objectifs graphiques et de capacité du GDD sont des cibles à démontrer, pas des performances déjà acquises.
