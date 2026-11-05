@@ -161,7 +161,6 @@ export function createPlayer(app: pc.Application): PlayerRig {
   const chargingHandle = weapon.findByName('charging-handle') as pc.Entity;
   const magazineRotation = magazine.getLocalEulerAngles().clone();
   const weaponRestRotation = new pc.Vec3(0, 0, 0);
-  let authoredWeapon: pc.Entity | null = null;
   // Optional production GLB: keep the procedural blockout until a valid asset is present.
   app.assets.loadFromUrl('/assets/tsi/TSI-WPN-AR-01.glb', 'container', (error, asset) => {
     if (error || !asset?.resource) {
@@ -174,7 +173,6 @@ export function createPlayer(app: pc.Application): PlayerRig {
     model.setLocalEulerAngles(0, 0, 0);
     model.setLocalScale(1, 1, 1);
     weapon.addChild(model);
-    authoredWeapon = model;
     // Only hide primitive render components after the authored GLB is instantiated.
     const hideBlockout = (entity: pc.Entity): void => {
       if (entity !== model && entity.render) entity.render.enabled = false;
