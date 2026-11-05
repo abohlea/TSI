@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { v2 as cloudinary } from "cloudinary";
 import {
+  cloudinaryPlayerAvatarPrefix,
   createAvatarUploadSignature,
   readCloudinaryConfig,
   TSI_AVATAR_ALLOWED_FORMATS,
@@ -26,11 +27,21 @@ test("Cloudinary rejects partially configured credentials", () => {
   );
 });
 
-test("Cloudinary signing binds the upload to a player-specific avatar path", () => {
+test("Firebase UID is encoded safely in a Cloudinary player namespace", () => {
+  assert.equal(
+    cloudinaryPlayerAvatarPrefix("firebase:provider|opaque/id"),
+    "tsi/players/ZmlyZWJhc2U6cHJvdmlkZXJ8b3BhcXVlL2lk/avatars/"
+  );
+  assert.throws(() => cloudinaryPlayerAvatarPrefix(""), /UID is invalid/i);
+  assert.throws(() => cloudinaryPlayerAvatarPrefix("x".repeat(129)), /UID is invalid/i);
+});
+
+test("Cloudinary signing binds the upload to an isolated player avatar path", () => {
   const config = readCloudinaryConfig(validEnv as NodeJS.ProcessEnv);
   assert.ok(config);
 
-  const signed = createAvatarUploadSignature(config, "firebase_uid_123", 1_800_000_000_000, "12345678-abcd");
+  const uid = "firebase_uid_123";
+  const signed = createAvatarUploadSignature(config, uid, 1_800_000_000_000, "12345678-abcd");
 
   assert.equal(signed.cloudName, "tsi-demo");
   assert.equal(signed.apiKey, "123456789012345");
@@ -38,7 +49,10 @@ test("Cloudinary signing binds the upload to a player-specific avatar path", () 
   assert.equal(signed.timestamp, 1_800_000_000);
   assert.equal(signed.uploadPreset, "tsi_player_avatar_signed");
   assert.equal(signed.overwrite, false);
-  assert.match(signed.publicId, /^tsi\/players\/firebase_uid_123\/avatars\/avatar-12345678-abcd$/);
+  assert.equal(
+    signed.publicId,
+    `${cloudinaryPlayerAvatarPrefix(uid)}avatar-12345678-abcd`
+  );
   assert.equal(signed.uploadUrl, "https://api.cloudinary.com/v1_1/tsi-demo/image/upload");
 
   const expected = cloudinary.utils.api_sign_request({
@@ -56,11 +70,11 @@ test("avatar policy is deliberately limited to small raster images", () => {
   assert.equal(TSI_AVATAR_MAX_BYTES, 5 * 1024 * 1024);
 });
 
-test("avatar signature rejects invalid player identifiers", () => {
+test("avatar signature rejects invalid upload nonces", () => {
   const config = readCloudinaryConfig(validEnv as NodeJS.ProcessEnv);
   assert.ok(config);
   assert.throws(
-    () => createAvatarUploadSignature(config, "../other-player", 1_800_000_000_000, "12345678"),
-    /UID is invalid/i
+    () => createAvatarUploadSignature(config, "valid-uid", 1_800_000_000_000, "bad"),
+    /nonce is invalid/i
   );
 });
