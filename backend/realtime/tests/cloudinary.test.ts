@@ -3,6 +3,7 @@ import test from 'node:test';
 import { v2 as cloudinary } from 'cloudinary';
 import {
   cloudinaryPlayerAvatarPrefix,
+  isAllowedAvatarContent,
   createAvatarUploadSignature,
   readCloudinaryConfig,
   TSI_AVATAR_ALLOWED_FORMATS,
@@ -61,4 +62,16 @@ test('avatar signing rejects invalid nonces', () => {
   const config = readCloudinaryConfig(validEnv as NodeJS.ProcessEnv);
   assert.ok(config);
   assert.throws(() => createAvatarUploadSignature(config, 'valid-uid', 1_800_000_000_000, 'bad'), /nonce is invalid/i);
+});
+
+test('avatar binary validation rejects MIME spoofing and accepts supported signatures', () => {
+  const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0x00]);
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const webp = Buffer.from('RIFF0000WEBP', 'ascii');
+  assert.equal(isAllowedAvatarContent('image/jpeg', jpeg), true);
+  assert.equal(isAllowedAvatarContent('image/png', png), true);
+  assert.equal(isAllowedAvatarContent('image/webp', webp), true);
+  assert.equal(isAllowedAvatarContent('image/png', jpeg), false);
+  assert.equal(isAllowedAvatarContent('image/gif', Buffer.from('GIF89a')), false);
+  assert.equal(isAllowedAvatarContent('image/webp', Buffer.from('RIFFxxxxNOPE')), false);
 });
