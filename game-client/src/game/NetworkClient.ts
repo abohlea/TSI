@@ -1,5 +1,5 @@
-import { Client, Callbacks } from "@colyseus/sdk";
-import { Color, Entity, StandardMaterial, Vec3 } from "playcanvas";
+import { Client, Callbacks, type Room } from "@colyseus/sdk";
+import { Color, Entity, StandardMaterial } from "playcanvas";
 import type { Application } from "playcanvas";
 import type { ArenaScene } from "./arena";
 import { FieldTestState } from "../network/FieldTestState";
@@ -27,7 +27,7 @@ export class TsiFieldTestConnection implements NetworkPort {
   private readonly app: Application;
   private readonly arena: ArenaScene;
   private readonly remotePlayers = new Map<string, Entity>();
-  private room: Awaited<ReturnType<Client["joinOrCreate"]>> | null = null;
+  private room: Room<any, FieldTestState> | null = null;
   private sequence = 0;
   private controller: ControllerPort | null = null;
 
