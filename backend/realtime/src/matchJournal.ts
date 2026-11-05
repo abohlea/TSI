@@ -54,7 +54,7 @@ export async function recoverAbandonedMatches(now = Date.now()): Promise<number>
         startedAt: value.startedAt,
         endedAt: Math.max(value.startedAt, now),
         participants: value.participants,
-        winnerTeam: null,
+        winnerTeam: value.winnerTeam ?? null,
         teamWins: value.teamWins ?? { alpha: 0, bravo: 0 }
       });
       await document.ref.delete();
