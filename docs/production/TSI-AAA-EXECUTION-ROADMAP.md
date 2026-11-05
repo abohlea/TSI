@@ -49,7 +49,9 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Le client affiche les opérateurs éliminés/réapparus à partir de leur santé serveur.
 - Correction complémentaire : allocation des points de spawn libres sur connexion et réapparition, avec refus d'une neuvième entrée si aucun spawn n'est disponible ; les tests couvrent la reconnexion après départ et les huit places distinctes.
 - La limite de demandes de tickets est maintenant bornée en mémoire à 20 000 adresses IP et purge les entrées expirées avant de refuser une nouvelle adresse.
-- Limites restantes : équipes, manches, score de manche, hitboxes articulées, compensation de latence, tests multi-clients automatisés et anti-triche avancée.
+- Le cycle FFA serveur est maintenant implémenté : compte à rebours de 5 secondes, durée de 10 minutes, limite de 20 points, annonce de fin et sauvegarde idempotente du résultat ; le client reçoit les phases et le vainqueur.
+- Tests unitaires du cycle de vie ajoutés (compte à rebours, passage en jeu, limite de temps, limite de score et configuration invalide).
+- Limites restantes : équipes et manches successives, hitboxes articulées, compensation de latence, tests multi-clients automatisés et anti-triche avancée.
 
 ### Complément P1 — durcissement des tests serveur (5 novembre 2026)
 - Commit `15d333b066835840b1adb83088a570c2d0bfaeac` : tests de validation des séquences non sûres, valeurs non finies, bornes de pitch et séquences régressives.
@@ -98,8 +100,10 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 ### P1 — vertical slice de combat
 - [ ] Définir le modèle d'état joueur : santé, équipe, équipement, état de vie.
 - [ ] Implémenter tirs joueur contre joueur côté serveur, cadence, munitions, rechargement, validation de ligne de vue et dégâts.
-- [ ] Ajouter règles de mort, spectateur/réapparition et fin de manche.
-- [ ] Ajouter tests serveur de triche triviale : cadence impossible, valeurs non finies, séquence invalide, portée et tirs à travers obstacles.
+- [x] Ajouter une première fin de match FFA contrôlée (compte à rebours, chronomètre, score cible et résultat serveur).
+- [ ] Ajouter équipes, manches successives et spectateur.
+- [x] Ajouter tests du cycle de vie du match et de sa fin sur score/temps.
+- [ ] Ajouter tests serveur multi-clients et tests de triche triviale : cadence impossible, valeurs non finies, séquence invalide, portée et tirs à travers obstacles.
 - [ ] Construire une petite carte avec collisions et points de spawn validés.
 - **Acceptation :** deux à huit clients peuvent terminer plusieurs manches ; le serveur est la source de vérité ; les résultats sont identiques pour tous.
 
@@ -177,4 +181,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit valider par CI le nouvel enregistrement idempotent des matchs, les règles `playerStats` et les tests de signature Cloudinary. Ensuite, il faudra tester avec de vrais projets Firebase/Cloudinary configurés, renforcer la gestion des sessions de match (manches explicites et fin contrôlée), puis préparer une API média publique durcie. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
+La prochaine livraison doit valider par CI le cycle FFA et les résultats idempotents, puis ajouter équipes/manches successives et tests multi-clients. Les projets Firebase/Cloudinary réels, les secrets de déploiement, le stockage partagé, les lockfiles npm et les essais Android/iOS restent des validations externes ou de préparation avant production. L'API média reste volontairement désactivée en production tant qu'une architecture publique avec TLS, App Check, limites distribuées et contrôle de taille avant transfert n'est pas déployée. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
