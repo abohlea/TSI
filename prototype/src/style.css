@@ -105,3 +105,5 @@ button { font: inherit; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; }
 }
+
+.interact-button { right: max(106px, calc(env(safe-area-inset-right) + 106px)); bottom: max(112px, calc(env(safe-area-inset-bottom) + 112px)); width: 54px; height: 54px; background: rgba(42, 112, 104, .82); }
