@@ -44,6 +44,16 @@ export interface NetworkShotResult {
   targetPlayerId?: string;
 }
 
+export interface NetworkTeamPlayer {
+  playerId: string;
+  team: 'alpha' | 'bravo';
+  x: number;
+  z: number;
+  yaw: number;
+  health: number;
+  score: number;
+}
+
 export interface NetworkTeamMatchState {
   mode: 'teams-5v5';
   phase: 'active' | 'intermission' | 'finished';
@@ -67,6 +77,7 @@ export interface NetworkCallbacks {
   onMatchEnded?(state: NetworkMatchState): void;
   onTeamMatchState?(state: NetworkTeamMatchState): void;
   onTeamWelcome?(team: 'alpha' | 'bravo'): void;
+  onTeamPlayers?(players: NetworkTeamPlayer[]): void;
 }
 
 export function getSessionTicketEndpoint(serverUrl: string): string {
@@ -199,6 +210,32 @@ export class TsiNetworkClient {
         z: typeof payload.z === 'number' ? payload.z : 0
       });
       callbacks.onStatus('CONNECTÉ · ÉQUIPE ' + payload.team.toUpperCase());
+    });
+
+    room.onMessage('team-players', (payload: unknown) => {
+      if (!Array.isArray(payload)) return;
+      const players: NetworkTeamPlayer[] = [];
+      for (const candidate of payload) {
+        if (!isRecord(candidate) || typeof candidate.playerId !== 'string' ||
+            (candidate.team !== 'alpha' && candidate.team !== 'bravo') ||
+            ![candidate.x, candidate.z, candidate.yaw, candidate.health, candidate.score].every((v) => typeof v === 'number' && Number.isFinite(v))) continue;
+        players.push({ playerId: candidate.playerId, team: candidate.team,
+          x: candidate.x as number, z: candidate.z as number, yaw: candidate.yaw as number,
+          health: candidate.health as number, score: candidate.score as number });
+      }
+      callbacks.onTeamPlayers?.(players);
+    });
+
+    room.onMessage('team-self', (payload: unknown) => {
+      const state = parsePrivateState(payload);
+      if (state) callbacks.onSelf?.(state);
+    });
+
+    room.onMessage('team-shot', (payload: unknown) => {
+      if (!isRecord(payload) || typeof payload.accepted !== 'boolean') return;
+      callbacks.onShot?.({ accepted: payload.accepted,
+        ...(typeof payload.hit === 'boolean' ? { hit: payload.hit } : {}),
+        ...(typeof payload.eliminated === 'boolean' ? { eliminated: payload.eliminated } : {}) });
     });
 
     room.onMessage('team-match-state', (payload: unknown) => {
