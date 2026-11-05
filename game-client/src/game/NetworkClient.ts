@@ -2,7 +2,7 @@ import { Client, Callbacks } from "@colyseus/sdk";
 import { Color, Entity, StandardMaterial, Vec3 } from "playcanvas";
 import type { Application } from "playcanvas";
 import type { ArenaScene } from "./arena";
-import type { FieldTestState } from "../../../server/src/schema/FieldTestState.js";
+import type { FieldTestState } from "../network/FieldTestState";
 import type { NetworkPort } from "./PlayerController";
 
 interface ControllerPort {
