@@ -32,8 +32,7 @@ export const DEFAULT_TEAM_MATCH_CONFIG: Readonly<TeamMatchConfig> = Object.freez
 
 export function assignBalancedTeam(alphaCount: number, bravoCount: number): TeamId {
   if (!Number.isSafeInteger(alphaCount) || alphaCount < 0 ||
-      !Number.isSafeInteger(bravoCount) || bravoCount < 0 ||
-      Math.abs(alphaCount - bravoCount) > 1) {
+      !Number.isSafeInteger(bravoCount) || bravoCount < 0) {
     throw new Error('Invalid team population.');
   }
   return alphaCount <= bravoCount ? 'alpha' : 'bravo';
