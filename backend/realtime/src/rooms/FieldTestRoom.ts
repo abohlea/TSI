@@ -11,6 +11,7 @@ import {
 import { parsePlayerInput } from '../validation.js';
 import { consumeSessionTicket } from '../sessionTickets.js';
 import { persistMatchResult, type MatchParticipantResult } from '../matchResults.js';
+import { advanceMatchLifecycle, createMatchLifecycle, DEFAULT_MATCH_CONFIG, finishMatchLifecycle, getMatchRemainingMs } from '../matchLifecycle.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
@@ -54,14 +55,16 @@ export class FieldTestRoom extends Room {
   private readonly players = new Map<string, ServerPlayer>();
   private readonly targets: ServerTarget[] = createPracticeTargets();
   private readonly participants = new Map<string, MatchParticipantResult>();
-  private readonly matchStartedAt = Date.now();
+  private readonly match = createMatchLifecycle(Date.now());
+  private matchPersistenceStarted = false;
 
   override maxClients = MAX_PLAYERS_PER_TEST_ROOM;
   override maxMessagesPerSecond = 35;
   override patchRate = 50;
 
   override onCreate(): void {
-    this.setMetadata({ mode: 'field-test', build: '0.2.0' });
+    this.setMetadata({ mode: 'field-test-ffa', build: '0.3.0' });
+    this.broadcastMatchState();
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
     this.onMessage('reload', (client) => this.handleReload(client));
     this.onMessage('fire', (client) => {
@@ -92,6 +95,7 @@ export class FieldTestRoom extends Room {
   }
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
+    if (this.match.phase === 'finished') throw new Error('This match has already finished.');
     const spawn = findSpawnPosition(Array.from(this.players.values()).filter((candidate) => candidate.health > 0));
     if (!spawn) throw new Error('No free player spawn position is available.');
 
@@ -127,6 +131,7 @@ export class FieldTestRoom extends Room {
         z: player.z,
         serverStepMs: SERVER_STEP_MS
       });
+      client.send('match-state', this.matchStatePayload());
       this.sendPrivateState(client, player);
       this.broadcastSnapshot();
     }, 25);
@@ -138,19 +143,7 @@ export class FieldTestRoom extends Room {
   }
 
   override async onDispose(): Promise<void> {
-    if (this.participants.size === 0) return;
-    try {
-      await persistMatchResult({
-        matchId: this.roomId,
-        mode: 'field-test-ffa',
-        startedAt: this.matchStartedAt,
-        endedAt: Date.now(),
-        participants: Array.from(this.participants.values())
-      });
-    } catch (error) {
-      console.error('[TSI] Failed to persist authoritative match result:', error);
-      throw error;
-    }
+    await this.persistFinalResult(Date.now());
   }
 
   private handleInput(client: Client, payload: unknown): void {
@@ -172,7 +165,7 @@ export class FieldTestRoom extends Room {
 
   private handleReload(client: Client): void {
     const player = this.players.get(client.sessionId);
-    if (!player || player.health <= 0 || player.reloadEndsAt > Date.now()) return;
+    if (!player || this.match.phase !== 'active' || player.health <= 0 || player.reloadEndsAt > Date.now()) return;
     if (player.ammo >= WEAPON_MAGAZINE_SIZE || player.reserve <= 0) return;
 
     player.reloadEndsAt = Date.now() + RELOAD_DURATION_MS;
@@ -181,7 +174,7 @@ export class FieldTestRoom extends Room {
 
   private handleShot(client: Client, player: ServerPlayer): void {
     const now = Date.now();
-    if (player.health <= 0 || player.reloadEndsAt > now || now < player.nextShotAt) return;
+    if (this.match.phase !== 'active' || player.health <= 0 || player.reloadEndsAt > now || now < player.nextShotAt) return;
 
     if (player.ammo <= 0) {
       client.send('shot', { accepted: false, reason: 'empty' });
@@ -302,6 +295,55 @@ export class FieldTestRoom extends Room {
 
     updateTargetRespawns(this.targets, now);
     this.broadcastSnapshot();
+  }
+
+  private matchStatePayload(): Record<string, unknown> {
+    return {
+      phase: this.match.phase,
+      startsAt: this.match.startsAt,
+      endsAt: this.match.endsAt,
+      remainingMs: getMatchRemainingMs(this.match, Date.now()),
+      scoreLimit: DEFAULT_MATCH_CONFIG.scoreLimit,
+      winnerUid: this.match.winnerUid,
+      finishReason: this.match.finishReason
+    };
+  }
+
+  private broadcastMatchState(): void {
+    this.broadcast('match-state', this.matchStatePayload());
+  }
+
+  private getLeadingParticipantUid(): string | null {
+    const ranked = [...this.participants.values()].sort((a, b) => b.score - a.score || b.kills - a.kills);
+    if (ranked.length === 0) return null;
+    if (ranked.length > 1 && ranked[0]!.score === ranked[1]!.score && ranked[0]!.kills === ranked[1]!.kills) return null;
+    return ranked[0]!.uid;
+  }
+
+  private async endMatch(now: number, winnerUid: string | null, reason: 'score-limit' | 'time-limit'): Promise<void> {
+    if (this.match.phase === 'finished') return;
+    Object.assign(this.match, finishMatchLifecycle(this.match, now, winnerUid, reason));
+    this.broadcastMatchState();
+    this.broadcast('match-ended', { ...this.matchStatePayload(), winnerUid, reason });
+    await this.persistFinalResult(this.match.finishedAt ?? now);
+  }
+
+  private async persistFinalResult(endedAt: number): Promise<void> {
+    if (this.matchPersistenceStarted || this.participants.size === 0) return;
+    this.matchPersistenceStarted = true;
+    try {
+      await persistMatchResult({
+        matchId: this.roomId,
+        mode: 'field-test-ffa',
+        startedAt: this.match.createdAt,
+        endedAt: Math.max(this.match.createdAt, endedAt),
+        participants: Array.from(this.participants.values())
+      });
+    } catch (error) {
+      this.matchPersistenceStarted = false;
+      console.error('[TSI] Failed to persist authoritative match result:', error);
+      throw error;
+    }
   }
 
   private sendPrivateState(client: Client, player: ServerPlayer): void {
