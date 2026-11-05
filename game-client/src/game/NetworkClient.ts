@@ -10,9 +10,9 @@ interface ControllerPort {
   reconcileServerPosition(x: number, z: number, yaw: number): void;
 }
 
-interface LocalConnectionConfig {
+interface FirebaseConnectionConfig {
   serverUrl: string;
-  devToken: string;
+  idToken: string;
   displayName: string;
 }
 
@@ -36,15 +36,15 @@ export class TsiFieldTestConnection implements NetworkPort {
     this.arena = arena;
   }
 
-  async connect(config: LocalConnectionConfig, controller: ControllerPort): Promise<void> {
-    if (config.devToken.length < 24) {
-      throw new Error("Le jeton local doit contenir au moins 24 caractères.");
+  async connect(config: FirebaseConnectionConfig, controller: ControllerPort): Promise<void> {
+    if (config.idToken.length < 100) {
+      throw new Error("Le jeton Firebase ID est absent ou invalide.");
     }
 
     this.controller = controller;
     const client = new Client(config.serverUrl);
     const room = await client.joinOrCreate<FieldTestState>("field_test", {
-      devToken: config.devToken,
+      idToken: config.idToken,
       displayName: config.displayName
     });
     this.room = room;
