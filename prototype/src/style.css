@@ -114,3 +114,21 @@ button { font: inherit; }
   font-size: 0.68rem;
   line-height: 1.45;
 }
+
+
+.camera-mode-button {
+  pointer-events: auto;
+  margin-left: auto;
+  padding: 8px 12px;
+  border: 1px solid rgba(121, 214, 219, .48);
+  color: #eaf1f2;
+  background: rgba(7, 17, 25, .78);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+}
+.camera-mode-button:hover { background: rgba(53, 95, 105, .62); }
+.camera-mode-button:focus-visible { outline: 2px solid var(--orange); outline-offset: 3px; }
+.fps { margin-left: 0; }
