@@ -89,6 +89,8 @@ let fpsAccumulator = 0;
 let fpsFrames = 0;
 let networkSendAccumulator = 0;
 let drivingVehicle = false;
+let vehicleWheelRotation = 0;
+let vehicleSteering = 0;
 const openedDoors = new Set<pc.Entity>();
 const collectedCrates = new Set<pc.Entity>();
 let serverTargetPosition = { x: 0, z: 0 };
@@ -277,10 +279,12 @@ app.on('update', (dt: number) => {
       const vehicleDistance = playerPosition.distance(vehiclePosition);
       if (drivingVehicle) {
         drivingVehicle = false;
-        player.root.setPosition(vehiclePosition.x + 2.6, playerPosition.y, vehiclePosition.z);
+        player.root.enabled = true;
+        player.root.setPosition(vehiclePosition.x + 2.6, 0.04, vehiclePosition.z);
         hud.toast('VÉHICULE QUITTÉ');
       } else if (vehicleDistance < 5.2) {
         drivingVehicle = true;
+        player.root.enabled = false;
         hud.toast('VÉHICULE ACTIVÉ · E POUR SORTIR');
       } else {
         const nearbyCrate = arena.crates.find((crate) => !collectedCrates.has(crate) && playerPosition.distance(crate.getPosition()) < 3.2);
@@ -315,8 +319,14 @@ app.on('update', (dt: number) => {
     const normalizedX = moveLength > 1 ? moveX / moveLength : moveX;
     const normalizedZ = moveLength > 1 ? moveZ / moveLength : moveZ;
     const speed = drivingVehicle ? (controls.sprint ? 15 : 10) : (controls.sprint ? 8.2 : 5.2);
-    movingForAnimation = moveLength > 0.01;
-    sprintingForAnimation = controls.sprint;
+    movingForAnimation = moveLength > 0.01 && !drivingVehicle;
+    sprintingForAnimation = controls.sprint && !drivingVehicle;
+    vehicleSteering += ((drivingVehicle && moveLength > 0.01) ? clamp(controls.moveX, -1, 1) * 28 : 0 - vehicleSteering) * Math.min(1, dt * 7);
+    arena.steeringWheel.setLocalEulerAngles(90, 0, vehicleSteering);
+    if (drivingVehicle && moveLength > 0.01) {
+      vehicleWheelRotation += speed * dt * 42 * (controls.moveY >= 0 ? 1 : -1);
+      for (const wheel of arena.wheels) wheel.setLocalEulerAngles(vehicleWheelRotation, 0, 90);
+    }
 
     if (moveLength > 0.01) {
       const stepX = normalizedX * speed * dt;
