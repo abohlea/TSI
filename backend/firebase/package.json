@@ -10,7 +10,8 @@
   "scripts": {
     "test:unit": "tsx --test tests/*.test.ts",
     "test": "firebase --config ../../firebase.json emulators:exec --project demo-tsi-rules --only firestore \"npm run test:unit\"",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:server-integration": "firebase --config ../../firebase.json emulators:exec --project demo-tsi-rules --only firestore \"cd ../realtime && FIREBASE_PROJECT_ID=demo-tsi-rules FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 npm test\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "6.0.0",
