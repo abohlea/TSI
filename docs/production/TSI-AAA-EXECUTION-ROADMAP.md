@@ -38,7 +38,7 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Le workflow `.github/workflows/validate.yml` a été corrigé pour s'exécuter sur les branches de travail, les PR vers `main` et sur déclenchement manuel.
 - Trois jobs sont définis : prototype PlayCanvas (typecheck/build), serveur Colyseus (typecheck/tests/build) et règles Firestore (typecheck/tests avec émulateur).
 - Le cache npm invalide basé sur des chemins `package.json` a été retiré.
-- Exécution GitHub Actions déclenchée sur la branche de production : [run 42111251453](https://github.com/abohlea/TSI/actions/runs/42111251453). Son résultat doit être contrôlé avant de déclarer P0 validé.
+- Exécution GitHub Actions complète sur le HEAD de la branche : [run 42111350092](https://github.com/abohlea/TSI/actions/runs/42111350092) — succès pour typecheck/build PlayCanvas, typecheck/tests/build Colyseus et typecheck/tests Firestore. Cela valide ces commandes sur ce commit, mais ne clôt pas P0 tant que les lockfiles et l'installation reproductible `npm ci` ne sont pas en place.
 - Les lockfiles npm ne sont toujours pas présents ; l'installation utilise donc `npm install` et n'est pas encore totalement reproductible. Leur génération et leur commit restent requis.
 
 ### P1 — première boucle PvP locale (en cours)
