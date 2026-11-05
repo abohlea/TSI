@@ -1,5 +1,5 @@
 import * as pc from 'playcanvas';
-import { applyCc0ArenaMaterials, createArena } from './game/arena';
+import { applyCc0ArenaMaterials, createArena, loadCc0EnvironmentProps } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
@@ -58,6 +58,7 @@ app.root.addChild(fill);
 
 const arena = createArena(app);
 applyCc0ArenaMaterials(app, arena);
+loadCc0EnvironmentProps(app);
 const player = createPlayer(app);
 let cc0Operator: LoadedOperator | null = null;
 void loadCc0Operator(app, player.root).then((operator) => {
