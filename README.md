@@ -8,11 +8,11 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [TDD TSI V1](docs/TDD_TSI_V1.md) — architecture technique, réseau, données, sécurité et qualité.
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
+- [ADR-003](docs/adr/ADR-003-local-pvp-proof.md) — périmètre et limites de la première preuve PvP autoritaire.
 - [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
-- `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `server/` — serveur Colyseus local de référence, avec déplacement autoritaire, tirs sur cibles et première preuve PvP documentée.
-- `prototype/` — ancien client PlayCanvas relié à l'API de la room historique `backend/realtime/`.
-- `game-client/` — shell PlayCanvas visuel hors ligne ; son raccordement au serveur `server/` reste à réaliser.
+- `game-client/` — shell PlayCanvas visuel hors ligne ; son raccordement au protocole du serveur `server/` reste à réaliser.
+- `prototype/` et `backend/realtime/` — ancien prototype réseau, conservé comme référence et non raccordé au nouveau serveur PvP.
 
 **Important :** `server/` contient maintenant une preuve PvP côté serveur, mais aucun client jouable n'est encore raccordé à cette room. Le test reste local, limité à huit clients et ne constitue pas un serveur compétitif de production. Firebase Authentication, la persistance Firestore, Cloudinary, le matchmaking, la compensation de latence et l'anti-triche de production restent à intégrer.
 
@@ -50,17 +50,22 @@ npm run build
 npm run preview
 ```
 
-## Test local en room (mouvements et cibles validés serveur)
+## Vérifier le serveur PvP local
 
-Le serveur Colyseus est volontairement protégé pour le développement local. Il n'utilise pas encore Firebase Authentication.
+Le serveur Colyseus reste volontairement limité au développement local. Le client `game-client/` n'est pas encore raccordé à son protocole PvP : les commandes ci-dessous vérifient le serveur et ses règles, pas une partie visuelle multijoueur complète.
 
-1. Depuis `server`, installer les dépendances, copier `.env.example` vers `.env`, puis définir un jeton local aléatoire d'au moins 24 caractères.
-2. Démarrer le serveur avec `npm run dev`.
-3. Depuis `prototype`, copier `.env.example` vers `.env.local` et mettre exactement le même jeton dans `VITE_TSI_LOCAL_DEV_TOKEN`.
-4. Démarrer Vite avec `npm run dev`.
-5. Ouvrir deux fenêtres du navigateur sur la même machine et cliquer sur **REJOINDRE LE SERVEUR DE TEST**.
+Depuis `server` :
 
-Le serveur `server/` contient maintenant un prototype PvP autoritaire, mais le client `game-client/` n'est pas encore connecté à ce protocole. Le prototype réseau historique `prototype/` utilise une autre room et ne doit pas être présenté comme client PvP de `server/`. Ne jamais exposer ce serveur de test sur Internet ni réutiliser le jeton local en production. Le guide se trouve dans [server/README.md](server/README.md).
+```bash
+cp .env.example .env
+# Remplacer TSI_LOCAL_DEV_TOKEN par une valeur privée aléatoire d'au moins 24 caractères.
+npm install
+npm run check
+npm test
+npm run dev
+```
+
+Le serveur écoute uniquement sur `127.0.0.1:2567`, refuse `NODE_ENV=production` et n'accepte que le jeton local. Ne pas l'exposer à Internet, ne pas réutiliser le jeton en production et ne jamais le committer. Le guide complet se trouve dans [server/README.md](server/README.md).
 
 ## Commandes de test
 
@@ -90,11 +95,15 @@ prototype/
       player.ts
     ui/
       hud.ts
-backend/realtime/
+server/
   src/
     index.ts
+    combat.ts
+    gameRules.ts
     rooms/FieldTestRoom.ts
-    types.ts
+    schema/FieldTestState.ts
+  tests/
+backend/realtime/  # ancien prototype réseau
 ```
 
 ## Règles de sécurité
