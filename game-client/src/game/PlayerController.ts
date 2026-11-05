@@ -23,6 +23,8 @@ export class PlayerController {
   private touchX = 0;
   private touchY = 0;
   private joystickPointer: number | null = null;
+  private lookPointer: number | null = null;
+  private lastLook = { x: 0, y: 0 };
   private joystickCenter = { x: 0, y: 0 };
   private firing = false;
   private ammo = 30;
@@ -95,15 +97,22 @@ export class PlayerController {
   };
 
   private onCanvasPointerDown = (event: PointerEvent): void => {
+    if (matchMedia('(pointer:coarse)').matches) {
+      this.lookPointer = event.pointerId;
+      this.lastLook = { x: event.clientX, y: event.clientY };
+      this.canvas.setPointerCapture?.(event.pointerId);
+      return;
+    }
     if (event.button !== 0) return;
-    if (matchMedia('(pointer:fine)').matches && document.pointerLockElement !== this.canvas) {
+    if (document.pointerLockElement !== this.canvas) {
       void this.canvas.requestPointerLock?.();
     }
     this.firing = true;
   };
 
-  private onGlobalPointerUp = (): void => {
-    if (this.joystickPointer === null) this.firing = false;
+  private onGlobalPointerUp = (event: PointerEvent): void => {
+    if (event.pointerId === this.lookPointer) this.lookPointer = null;
+    if (this.joystickPointer === null && this.lookPointer === null) this.firing = false;
   };
 
   private onJoystickDown = (event: PointerEvent): void => {
@@ -117,8 +126,17 @@ export class PlayerController {
   };
 
   private onJoystickMove = (event: PointerEvent): void => {
-    if (event.pointerId !== this.joystickPointer) return;
-    this.setJoystick(event.clientX, event.clientY);
+    if (event.pointerId === this.joystickPointer) {
+      this.setJoystick(event.clientX, event.clientY);
+      return;
+    }
+    if (event.pointerId === this.lookPointer) {
+      const dx = event.clientX - this.lastLook.x;
+      const dy = event.clientY - this.lastLook.y;
+      this.lastLook = { x: event.clientX, y: event.clientY };
+      this.yaw -= dx * 0.22;
+      this.pitch = Math.max(-18, Math.min(25, this.pitch + dy * 0.16));
+    }
   };
 
   private onJoystickUp = (event: PointerEvent): void => {
