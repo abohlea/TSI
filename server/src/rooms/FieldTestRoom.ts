@@ -7,6 +7,12 @@ interface SpawnPoint {
   z: number;
 }
 
+interface PrivatePlayerState {
+  ammo: number;
+  reserveAmmo: number;
+  eliminations: number;
+}
+
 const PLAYER_SPAWNS: SpawnPoint[] = [
   { x: 0, z: 12 },
   { x: 3, z: 12 },
@@ -25,10 +31,6 @@ const TARGET_SPAWNS: SpawnPoint[] = [
   { x: 26, z: -18 }
 ];
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 export class FieldTestRoom extends Room<FieldTestState> {
   maxClients = 8;
   patchRate = 50;
@@ -38,6 +40,7 @@ export class FieldTestRoom extends Room<FieldTestState> {
   private readonly lastSequences = new Map<string, number>();
   private readonly lastShots = new Map<string, number>();
   private readonly reloadEnds = new Map<string, number>();
+  private readonly privatePlayers = new Map<string, PrivatePlayerState>();
   private readonly targetRespawns = new Map<number, number>();
 
   onCreate(): void {
@@ -65,15 +68,16 @@ export class FieldTestRoom extends Room<FieldTestState> {
   async onAuth(_client: Client, options: unknown): Promise<boolean> {
     if (process.env.NODE_ENV === "production") return false;
     const token = process.env.TSI_LOCAL_DEV_TOKEN;
-    if (!token || token.length < 24 || !isRecord(options)) return false;
-    return options.devToken === token;
+    if (!token || token.length < 24 || typeof options !== "object" || options === null) return false;
+    return (options as Record<string, unknown>).devToken === token;
   }
 
   onJoin(client: Client, options: unknown): void {
     const player = new PlayerState();
     const spawn = PLAYER_SPAWNS[(this.clients.length - 1) % PLAYER_SPAWNS.length];
-    const requestedName = isRecord(options) && typeof options.displayName === "string"
-      ? options.displayName
+    const requestedName = typeof options === "object" && options !== null &&
+      typeof (options as Record<string, unknown>).displayName === "string"
+      ? String((options as Record<string, unknown>).displayName)
       : "OPERATOR";
     player.displayName = requestedName.replace(/[^a-zA-Z0-9 _-]/g, "").trim().slice(0, 16) || "OPERATOR";
     player.x = spawn.x;
@@ -81,6 +85,8 @@ export class FieldTestRoom extends Room<FieldTestState> {
     player.yaw = 0;
     this.state.players.set(client.sessionId, player);
     this.inputs.set(client.sessionId, { sequence: 0, moveX: 0, moveZ: 0, yaw: 0 });
+    this.privatePlayers.set(client.sessionId, { ammo: 30, reserveAmmo: 120, eliminations: 0 });
+    this.sendPrivateState(client);
   }
 
   onLeave(client: Client): void {
@@ -89,6 +95,18 @@ export class FieldTestRoom extends Room<FieldTestState> {
     this.lastSequences.delete(client.sessionId);
     this.lastShots.delete(client.sessionId);
     this.reloadEnds.delete(client.sessionId);
+    this.privatePlayers.delete(client.sessionId);
+  }
+
+  private sendPrivateState(client: Client): void {
+    const values = this.privatePlayers.get(client.sessionId);
+    if (!values) return;
+    client.send("private", {
+      ammo: values.ammo,
+      reserveAmmo: values.reserveAmmo,
+      eliminations: values.eliminations,
+      reloading: this.reloadEnds.has(client.sessionId)
+    });
   }
 
   private handleInput(client: Client, payload: unknown): void {
@@ -101,13 +119,14 @@ export class FieldTestRoom extends Room<FieldTestState> {
 
   private handleFire(client: Client): void {
     const player = this.state.players.get(client.sessionId);
-    if (!player || player.ammo <= 0 || this.reloadEnds.has(client.sessionId)) return;
+    const privateState = this.privatePlayers.get(client.sessionId);
+    if (!player || !privateState || privateState.ammo <= 0 || this.reloadEnds.has(client.sessionId)) return;
 
     const now = this.state.elapsedSeconds;
     const lastShot = this.lastShots.get(client.sessionId) ?? -10;
     if (now - lastShot < 0.135) return;
     this.lastShots.set(client.sessionId, now);
-    player.ammo -= 1;
+    privateState.ammo -= 1;
 
     const radians = (player.yaw * Math.PI) / 180;
     const forwardX = Math.sin(radians);
@@ -128,20 +147,23 @@ export class FieldTestRoom extends Room<FieldTestState> {
     }
 
     if (nearest) {
-      const target = nearest;
-      target.health = Math.max(0, target.health - 34);
-      if (target.health === 0) {
-        target.active = false;
-        player.eliminations += 1;
-        this.targetRespawns.set(target.id, now + 3.2);
+      nearest.health = Math.max(0, nearest.health - 34);
+      if (nearest.health === 0) {
+        nearest.active = false;
+        privateState.eliminations += 1;
+        this.targetRespawns.set(nearest.id, now + 3.2);
       }
     }
+
+    this.sendPrivateState(client);
   }
 
   private handleReload(client: Client): void {
     const player = this.state.players.get(client.sessionId);
-    if (!player || player.ammo >= 30 || player.reserveAmmo <= 0 || this.reloadEnds.has(client.sessionId)) return;
+    const privateState = this.privatePlayers.get(client.sessionId);
+    if (!player || !privateState || privateState.ammo >= 30 || privateState.reserveAmmo <= 0 || this.reloadEnds.has(client.sessionId)) return;
     this.reloadEnds.set(client.sessionId, this.state.elapsedSeconds + 1.45);
+    this.sendPrivateState(client);
   }
 
   private simulate(deltaMilliseconds: number): void {
@@ -159,9 +181,14 @@ export class FieldTestRoom extends Room<FieldTestState> {
 
       const reloadAt = this.reloadEnds.get(sessionId);
       if (reloadAt !== undefined && this.state.elapsedSeconds >= reloadAt) {
-        const loaded = Math.min(30 - player.ammo, player.reserveAmmo);
-        player.ammo += loaded;
-        player.reserveAmmo -= loaded;
+        const privateState = this.privatePlayers.get(sessionId);
+        if (privateState) {
+          const loaded = Math.min(30 - privateState.ammo, privateState.reserveAmmo);
+          privateState.ammo += loaded;
+          privateState.reserveAmmo -= loaded;
+          const owner = this.clients.find((candidate) => candidate.sessionId === sessionId);
+          if (owner) this.sendPrivateState(owner);
+        }
         this.reloadEnds.delete(sessionId);
       }
     });
