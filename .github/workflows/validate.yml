@@ -2,20 +2,21 @@ name: TSI validation
 
 on:
   push:
-    branches: [main]
+    branches: ["**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: tsi-validation-${{ github.ref }}
-  cancel-in-progress: false
+  group: tsi-validation-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   prototype:
-    name: PlayCanvas client checks
+    name: PlayCanvas prototype typecheck and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -27,8 +28,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-          cache: npm
-          cache-dependency-path: prototype/package.json
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Type check
@@ -37,7 +36,7 @@ jobs:
         run: npm run build
 
   realtime:
-    name: Colyseus server checks
+    name: Colyseus server typecheck, tests and build
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -49,8 +48,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-          cache: npm
-          cache-dependency-path: backend/realtime/package.json
       - name: Install dependencies
         run: npm install --no-audit --no-fund
       - name: Type check
@@ -61,7 +58,7 @@ jobs:
         run: npm run build
 
   firebase-rules:
-    name: Firestore security rules
+    name: Firestore security rules emulator tests
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -73,8 +70,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.16.0'
-          cache: npm
-          cache-dependency-path: backend/firebase/package.json
       - name: Configure Java for Firestore Emulator
         uses: actions/setup-java@v4
         with:
@@ -84,5 +79,5 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Type check
         run: npm run typecheck
-      - name: Test Firestore rules in the local emulator
+      - name: Run Firestore rules tests
         run: npm test
