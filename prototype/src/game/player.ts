@@ -144,11 +144,11 @@ export function createPlayer(app: pc.Application): PlayerRig {
     setCameraMode(cameraEntity, firstPerson) {
       firstPersonView = firstPerson;
       if (firstPerson) {
-        weapon.reparent(cameraEntity);
+        cameraEntity.addChild(weapon);
         weapon.setLocalPosition(weaponFpsRest);
         weapon.setLocalEulerAngles(-1.5, -2.5, 0);
       } else {
-        weapon.reparent(root);
+        root.addChild(weapon);
         weapon.setLocalPosition(weaponRest);
         weapon.setLocalEulerAngles(weaponRestRotation);
       }
@@ -179,8 +179,9 @@ export function createPlayer(app: pc.Application): PlayerRig {
         : reloadProgress < 0.58 ? -0.28 : -0.28 * (1 - insert);
       magazine.setLocalPosition(magazineRest.x, magazineRest.y + magazineOffset, magazineRest.z);
       magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y + magazineOffset, magazineBaseRest.z);
-      magazine.setLocalEulerAngles(magazineRotation.x + remove * 12, magazineRotation.y, magazineRotation.z);
-      magazineBase.setLocalEulerAngles(remove * 12, 0, 0);
+      const magazineTilt = reloadProgress < 0.42 ? remove : reloadProgress < 0.58 ? 1 : 1 - insert;
+      magazine.setLocalEulerAngles(magazineRotation.x + magazineTilt * 12, magazineRotation.y, magazineRotation.z);
+      magazineBase.setLocalEulerAngles(magazineTilt * 12, 0, 0);
       if (chargingHandle) chargingHandle.setLocalPosition(0.095, 0.085, 0.105 + (reloadTime > 0 && reloadProgress > 0.84 ? 0.045 : 0));
       const rate = sprinting ? 13.5 : 9.5;
       const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
