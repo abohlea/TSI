@@ -146,9 +146,9 @@ test('spawn allocator chooses an unoccupied position after a player leaves', () 
   assert.ok(remaining.every((player) => Math.hypot(player.x - spawn.x, player.z - spawn.z) >= 1.36));
 });
 
-test('spawn allocator fills eight distinct positions and refuses a ninth', () => {
+test('spawn allocator fills ten distinct positions and refuses an eleventh', () => {
   const players: Array<{ x: number; z: number }> = [];
-  for (let index = 0; index < 8; index += 1) {
+  for (let index = 0; index < 10; index += 1) {
     const spawn = findSpawnPosition(players);
     assert.ok(spawn, `spawn ${index + 1} should be available`);
     players.push(spawn);
