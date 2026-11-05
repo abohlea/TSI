@@ -110,6 +110,10 @@ backend/realtime/
 
 Ces fichiers structurent les références de contenu ; les sons, modèles et effets référencés restent à créer/intégrer. Les valeurs d'armes sont des paramètres de prototype, pas la vérité compétitive serveur.
 
+## Production AAA — exécution et état réel
+
+- [Feuille de route d'exécution AAA](docs/production/TSI-AAA-EXECUTION-ROADMAP.md) — audit des éléments présents/manquants, backlog P0 à P7 et critères de sortie du vertical slice jusqu'à la release.
+
 ## Production AAA — bible complète
 
 - [TSI AAA Production Bible](docs/production/TSI-AAA-PRODUCTION-BIBLE.md) — cadre de production pour personnages, armes, animations, VFX/explosions, audio/voix, environnements, réseau, pipeline d'assets, performances et gates de validation.
