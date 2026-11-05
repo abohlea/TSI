@@ -39,3 +39,19 @@ Clips attendus : `AR01_Idle`, `AR01_Fire`, `AR01_Reload`, `AR01_Equip`, `AR01_Un
 6. Archiver le `.blend`, le GLB validé, les captures et la fiche de recette.
 
 **Limite de validation :** les modifications de code sont committées, mais aucun rendu visuel PlayCanvas, test de navigation, test Blender ou test Android physique n'est revendiqué ici.
+
+## Mise à jour — viewmodel et sockets runtime
+
+Le blockout runtime possède maintenant une paire de manches/gants dédiée à la caméra FPS. Ces éléments restent indépendants du corps TPS masqué, suivent un léger mouvement vertical et sont activés/désactivés avec le changement de caméra. La pose d'arme utilise désormais des rotations de repos distinctes en FPS et TPS afin d'éviter de conserver la rotation FPS en troisième personne.
+
+Sockets nommés créés sous le root runtime de l'arme :
+- `AR01_MuzzleFlashSocket`
+- `AR01_LeftHandGrip`
+- `AR01_RightHandGrip`
+- `AR01_EjectSocket`
+- `AR01_MagazineSocket`
+- `AR01_SightSocket`
+
+Le chargeur est maintenant masqué pendant la courte phase de retrait et ses nervures sont enfants de son entité, afin qu'elles disparaissent avec lui. C'est une simulation visuelle simple : il n'existe pas encore de chargeur détaché avec trajectoire, collision ou animation de main dédiée.
+
+**Important :** les manches, gants, pivots et sockets sont des primitives runtime. Ils définissent le contrat d'assemblage et permettent de préparer l'intégration, mais ne constituent ni un rig de personnage skinné ni un rig Blender exporté. Les clips finaux et l'asset GLB restent à fabriquer et à valider.
