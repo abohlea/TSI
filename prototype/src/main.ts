@@ -5,6 +5,7 @@ import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { getFirebaseIdToken, hasFirebaseUser, isFirebaseConfigured, signInWithGoogle } from './game/firebase';
+import { uploadPlayerAvatar } from './game/playerMedia';
 import { createHud } from './ui/hud';
 import './style.css';
 
@@ -65,6 +66,9 @@ const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
 const connectButton = document.getElementById('connect-button') as HTMLButtonElement | null;
 const firebaseLoginButton = document.getElementById('firebase-login-button') as HTMLButtonElement | null;
+const avatarUploadButton = document.getElementById('avatar-upload-button') as HTMLButtonElement | null;
+const avatarFileInput = document.getElementById('avatar-file-input') as HTMLInputElement | null;
+const avatarPreview = document.getElementById('avatar-preview') as HTMLImageElement | null;
 const connectionStatus = document.getElementById('connection-status');
 const touchControls = document.getElementById('touch-controls');
 const mobileLike = window.matchMedia('(pointer: coarse)').matches || window.innerWidth < 820;
@@ -73,6 +77,7 @@ if (touchControls && mobileLike) touchControls.classList.add('active');
 const serverUrl = import.meta.env.VITE_TSI_SERVER_URL ?? 'http://localhost:2567';
 const localDevToken = import.meta.env.VITE_TSI_LOCAL_DEV_TOKEN ?? '';
 if (firebaseLoginButton) firebaseLoginButton.disabled = !isFirebaseConfigured();
+if (avatarUploadButton) avatarUploadButton.disabled = !isFirebaseConfigured() || !hasFirebaseUser();
 if (connectButton && (!serverUrl || (localDevToken.length < 24 && !isFirebaseConfigured()))) {
   connectButton.disabled = true;
   if (connectionStatus) {
@@ -217,10 +222,41 @@ firebaseLoginButton?.addEventListener('click', async () => {
   try {
     await signInWithGoogle();
     connectionStatus.textContent = 'Compte Firebase connecté · connexion au serveur…';
+    if (avatarUploadButton) avatarUploadButton.disabled = false;
     connectButton?.click();
   } catch (error) {
     connectionStatus.textContent = error instanceof Error ? error.message : 'Connexion Firebase impossible.';
     firebaseLoginButton.disabled = false;
+  }
+});
+
+
+avatarUploadButton?.addEventListener('click', () => {
+  if (!hasFirebaseUser()) {
+    if (connectionStatus) connectionStatus.textContent = 'Connecte-toi à Firebase avant de choisir un avatar.';
+    return;
+  }
+  avatarFileInput?.click();
+});
+
+avatarFileInput?.addEventListener('change', async () => {
+  const file = avatarFileInput.files?.[0];
+  if (!file || !connectionStatus || !avatarUploadButton) return;
+  avatarUploadButton.disabled = true;
+  connectionStatus.textContent = 'Téléversement et vérification de l’avatar…';
+  try {
+    const avatar = await uploadPlayerAvatar(file, await getFirebaseIdToken());
+    if (avatarPreview) {
+      avatarPreview.src = avatar.secureUrl;
+      avatarPreview.hidden = false;
+    }
+    connectionStatus.textContent = 'Avatar enregistré sur le profil Firebase.';
+    hud.toast('AVATAR ENREGISTRÉ');
+  } catch (error) {
+    connectionStatus.textContent = error instanceof Error ? error.message : 'Échec du téléversement de l’avatar.';
+  } finally {
+    avatarUploadButton.disabled = !hasFirebaseUser();
+    avatarFileInput.value = '';
   }
 });
 
