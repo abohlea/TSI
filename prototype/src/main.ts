@@ -264,6 +264,7 @@ connectButton?.addEventListener('click', async () => {
     const message = error instanceof Error ? error.message : 'Erreur de connexion au serveur local.';
     connectionStatus.textContent = message;
     connectButton.disabled = false;
+    if (firebaseLoginButton && isFirebaseConfigured()) firebaseLoginButton.disabled = false;
     hud.toast('CONNEXION AU SERVEUR IMPOSSIBLE');
   }
 });
