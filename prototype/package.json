@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "playcanvas": "2.23.3",
-    "@colyseus/sdk": "0.18.9"
+    "@colyseus/sdk": "0.18.9",
+    "firebase": "13.2.0"
   },
   "devDependencies": {
     "typescript": "7.0.2",
