@@ -68,7 +68,7 @@ const materialPattern = /concrete|asphalt|road|gravel|dirt|soil|sand|rock|stone|
 const textureCandidates = Object.entries(textureCatalogue)
   .filter(([id, asset]) => materialPattern.test(`${id} ${asset.name ?? ''} ${asset.description ?? ''} ${(asset.tags ?? []).join(' ')}`))
   .sort((a, b) => (b[1].download_count ?? 0) - (a[1].download_count ?? 0))
-  .slice(0, 12);
+  .slice(0, 6);
 
 if (textureCandidates.length < 5) throw new Error('Poly Haven returned too few suitable CC0 terrain textures');
 
@@ -82,13 +82,16 @@ const downloadedTextures = [];
 for (const [id, metadata] of textureCandidates) {
   const fileTree = await getJson(`${polyHavenApi}/files/${encodeURIComponent(id)}`);
   const files = flattenFiles(fileTree);
-  const resolution = files.some((file) => file.path.includes('4k')) ? '4k' : '2k';
-  const maps = files.filter((file) =>
+  // 2K keeps the Android package practical while retaining enough detail for mobile.
+  // Bundle only the three maps that are useful to the current PBR renderer.
+  const resolution = files.some((file) => file.path.includes('2k')) ? '2k' : '1k';
+  const mapPatterns = [/diff|albedo|color/i, /normal/i, /rough/i];
+  const maps = mapPatterns.flatMap((pattern) => files.filter((file) =>
     file.path.includes(resolution) &&
     /\.(jpg|jpeg|png)$/i.test(new URL(file.url).pathname) &&
-    /diff|albedo|color|rough|normal|bump|ao|ambient|metal|disp/i.test(file.path.join(' '))
-  );
-  const unique = [...new Map(maps.map((file) => [file.url, file])).values()].slice(0, 8);
+    pattern.test(file.path.join(' '))
+  ).slice(0, 1));
+  const unique = [...new Map(maps.map((file) => [file.url, file])).values()];
   if (!unique.length) {
     console.log(`Skipped ${metadata.name}: no supported ${resolution} image maps`);
     continue;
