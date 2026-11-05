@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canOccupyPosition, createPracticeTargets, findSpawnPosition, resolveAuthoritativePlayerShot, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
+import { canOccupyPosition, createPracticeTargets, findSpawnPosition, resolveAuthoritativeCombatShot, resolveAuthoritativePlayerShot, resolveAuthoritativeShot, updateTargetRespawns } from '../src/world.js';
 
 test('practice world blocks players inside structures and outside world bounds', () => {
   assert.equal(canOccupyPosition(0, 4), true);
@@ -154,4 +154,33 @@ test('spawn allocator fills ten distinct positions and refuses an eleventh', () 
     players.push(spawn);
   }
   assert.equal(findSpawnPosition(players), null);
+});
+
+
+test('one authoritative ray hits the nearer player before a practice target', () => {
+  const targets = createPracticeTargets();
+  const players = [
+    { playerId: 'shooter', x: 0, z: 4, health: 100 },
+    { playerId: 'enemy', x: 0, z: -10, health: 100 }
+  ];
+  const result = resolveAuthoritativeCombatShot('shooter', 0, 1.55, 4, 0, 0, players, targets, 2000);
+  assert.deepEqual(result, {
+    hit: true, eliminated: false, targetKind: 'player', targetId: 'enemy'
+  });
+  assert.equal(players[1]?.health, 66);
+  assert.equal(targets[1]?.health, 100);
+});
+
+test('one authoritative ray hits the nearer practice target before a player', () => {
+  const targets = createPracticeTargets();
+  const players = [
+    { playerId: 'shooter', x: 0, z: 4, health: 100 },
+    { playerId: 'enemy', x: 0, z: -40, health: 100 }
+  ];
+  const result = resolveAuthoritativeCombatShot('shooter', 0, 1.55, 4, 0, 0, players, targets, 2000);
+  assert.deepEqual(result, {
+    hit: true, eliminated: false, targetKind: 'practice', targetId: 'target-2'
+  });
+  assert.equal(players[1]?.health, 100);
+  assert.equal(targets[1]?.health, 66);
 });
