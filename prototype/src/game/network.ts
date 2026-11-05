@@ -31,6 +31,7 @@ export interface NetworkShotResult {
   hit?: boolean;
   eliminated?: boolean;
   reason?: string;
+  targetPlayerId?: string;
 }
 
 export interface NetworkCallbacks {
@@ -146,7 +147,8 @@ export class TsiNetworkClient {
         accepted: payload.accepted,
         ...(typeof payload.hit === 'boolean' ? { hit: payload.hit } : {}),
         ...(typeof payload.eliminated === 'boolean' ? { eliminated: payload.eliminated } : {}),
-        ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {})
+        ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {}),
+        ...(typeof payload.targetPlayerId === 'string' ? { targetPlayerId: payload.targetPlayerId } : {})
       });
     });
 
