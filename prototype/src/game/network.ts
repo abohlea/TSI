@@ -194,6 +194,10 @@ export class TsiNetworkClient {
       if (!isRecord(payload) || (payload.team !== 'alpha' && payload.team !== 'bravo')) return;
       if (typeof payload.playerId === 'string') this._playerId = payload.playerId;
       callbacks.onTeamWelcome?.(payload.team);
+      callbacks.onWelcome?.(payload.playerId, {
+        x: typeof payload.x === 'number' ? payload.x : 0,
+        z: typeof payload.z === 'number' ? payload.z : 0
+      });
       callbacks.onStatus('CONNECTÉ · ÉQUIPE ' + payload.team.toUpperCase());
     });
 
@@ -226,6 +230,32 @@ export class TsiNetworkClient {
       const z = typeof payload.z === 'number' ? payload.z : 0;
       callbacks.onWelcome?.(payload.playerId, { x, z });
       callbacks.onStatus('SERVEUR LOCAL CONNECTÉ');
+    });
+
+    room.onMessage('team-players', (payload: unknown) => {
+      if (!Array.isArray(payload)) return;
+      const players: NetworkPlayerSnapshot[] = [];
+      for (const candidate of payload) {
+        if (!isRecord(candidate) || typeof candidate.playerId !== 'string' ||
+            typeof candidate.x !== 'number' || !Number.isFinite(candidate.x) ||
+            typeof candidate.z !== 'number' || !Number.isFinite(candidate.z) ||
+            typeof candidate.yaw !== 'number' || !Number.isFinite(candidate.yaw) ||
+            typeof candidate.health !== 'number' || !Number.isFinite(candidate.health)) continue;
+        players.push({ playerId: candidate.playerId, x: candidate.x, z: candidate.z, yaw: candidate.yaw, health: candidate.health });
+      }
+      callbacks.onSnapshot({ serverTime: Date.now(), players, targets: [] });
+    });
+
+    room.onMessage('team-self', (payload: unknown) => {
+      const state = parsePrivateState(payload);
+      if (state) callbacks.onSelf?.(state);
+    });
+
+    room.onMessage('team-shot', (payload: unknown) => {
+      if (!isRecord(payload) || typeof payload.accepted !== 'boolean') return;
+      callbacks.onShot?.({ accepted: payload.accepted,
+        ...(typeof payload.hit === 'boolean' ? { hit: payload.hit } : {}),
+        ...(typeof payload.eliminated === 'boolean' ? { eliminated: payload.eliminated } : {}) });
     });
 
     room.onMessage('snapshot', (payload: unknown) => {
