@@ -25,7 +25,7 @@ function material(color: pc.Color, options: { metalness?: number; roughness?: nu
   const result = new pc.StandardMaterial();
   result.diffuse = color;
   result.metalness = options.metalness ?? 0.05;
-  result.roughness = options.roughness ?? 0.82;
+  result.gloss = 1 - (options.roughness ?? 0.82);
   if (options.emissive) result.emissive = options.emissive;
   result.update();
   return result;
