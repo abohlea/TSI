@@ -202,13 +202,17 @@ export class TsiNetworkClient {
     this.sequence = 0;
 
     room.onMessage('team-welcome', (payload: unknown) => {
-      if (!isRecord(payload) || (payload.team !== 'alpha' && payload.team !== 'bravo')) return;
-      if (typeof payload.playerId === 'string') this._playerId = payload.playerId;
+      if (
+        !isRecord(payload) ||
+        (payload.team !== 'alpha' && payload.team !== 'bravo') ||
+        typeof payload.playerId !== 'string' ||
+        typeof payload.x !== 'number' || !Number.isFinite(payload.x) ||
+        typeof payload.z !== 'number' || !Number.isFinite(payload.z)
+      ) return;
+
+      this._playerId = payload.playerId;
       callbacks.onTeamWelcome?.(payload.team);
-      callbacks.onWelcome?.(payload.playerId, {
-        x: typeof payload.x === 'number' ? payload.x : 0,
-        z: typeof payload.z === 'number' ? payload.z : 0
-      });
+      callbacks.onWelcome?.(payload.playerId, { x: payload.x, z: payload.z });
       callbacks.onStatus('CONNECTÉ · ÉQUIPE ' + payload.team.toUpperCase());
     });
 
