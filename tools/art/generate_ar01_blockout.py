@@ -25,7 +25,7 @@ def output_path():
     return os.path.abspath("//TSI-WPN-AR-01-blockout.glb")
 
 def clear_scene():
-    bpy.ops.object.select_all(action="SELECT)
+    bpy.ops.object.select_all(action="SELECT")
     bpy.ops.object.delete(use_global=False)
     for datablocks in (bpy.data.materials, bpy.data.collections):
         # Keep Blender's master scene collection intact.
