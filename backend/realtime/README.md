@@ -64,7 +64,7 @@ Health check: `http://localhost:2567/health`.
 
 - The local token is only a development guard. It is delivered to the browser and is not a production credential. Production authentication uses Firebase ID tokens verified server-side.
 - Production clients exchange a Firebase Authentication ID token for a 45-second signed game-session ticket at `POST /auth/session-ticket` using `Authorization: Bearer <Firebase-ID-token>`. The room accepts only that ticket; the ticket is consumed once during room authentication.
-- Configure `TSI_SESSION_TICKET_SECRET` with at least 32 random characters in the production runtime. Keep it outside GitHub and rotate it through the deployment secret manager.
+- Configure `TSI_SESSION_TICKET_SECRET` with at least 32 random characters and `TSI_ALLOWED_ORIGINS` with comma-separated exact browser origins in the production runtime. Keep it outside GitHub and rotate it through the deployment secret manager.
 - The endpoint has a basic per-IP in-memory limit (10 requests/minute). The ticket nonce store is also in-memory and single-process only; before horizontal scaling, replace both with a shared atomic store such as Redis. Do not run multiple production instances with this prototype ticket store.
 - Do not expose this local server to the public internet or reuse the token for any other service.
 - Production joins use short-lived signed tickets. The client exchanges a Firebase Authentication ID token at `POST /auth/session-ticket`; the server verifies it with Firebase Admin (including revoked-token checks) and returns a ticket valid for 45 seconds.
