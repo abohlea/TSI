@@ -12,7 +12,7 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `backend/realtime/` — room Colyseus locale avec déplacement, tirs sur cibles et première boucle PvP FFA (dégâts, élimination et réapparition) validés côté serveur.
 
-**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions du terrain, les dégâts, les éliminations et la réapparition après quatre secondes. Le PvP reste un prototype FFA : hitboxes simplifiées, pas de manches/équipes ni de compensation de latence. Les comptes Firebase, la persistance Firestore, les médias Cloudinary et le matchmaking de production ne sont pas encore intégrés.
+**Important :** le tir hors ligne reste local au navigateur. Dans la room locale, le serveur valide les tirs sur les six cibles et les autres joueurs, la cadence, les munitions, le rechargement, les collisions du terrain, les dégâts, les éliminations et la réapparition après quatre secondes. Le PvP reste un prototype FFA : hitboxes simplifiées, pas de manches/équipes ni de compensation de latence. Le code de connexion Firebase et les tickets serveur sont présents sur cette branche, mais nécessitent encore la configuration d'un vrai projet. Les profils/résultats Firestore, le flux Cloudinary et le matchmaking public ne sont pas encore livrés dans cette architecture.
 
 ## Stack du prototype
 
@@ -50,7 +50,7 @@ npm run preview
 
 ## Test local en room (mouvements et cibles validés serveur)
 
-Le serveur Colyseus est volontairement protégé pour le développement local. Il n'utilise pas encore Firebase Authentication.
+Le serveur Colyseus garde un mode local par jeton pour les tests. Un flux distinct Firebase Authentication + ticket signé est préparé pour les environnements configurés ; il n'est pas nécessaire pour lancer l'entraînement local.
 
 1. Depuis `backend/realtime`, installer les dépendances, copier `.env.example` vers `.env`, puis définir un jeton local aléatoire d'au moins 24 caractères.
 2. Démarrer le serveur avec `npm run dev`.
@@ -58,7 +58,7 @@ Le serveur Colyseus est volontairement protégé pour le développement local. I
 4. Démarrer Vite avec `npm run dev`.
 5. Ouvrir deux fenêtres du navigateur sur la même machine et cliquer sur **REJOINDRE LE SERVEUR DE TEST**.
 
-Les deux clients doivent utiliser le même serveur local. Les déplacements et tirs sur les cibles de pratique sont validés par la room ; le score et les munitions proviennent du serveur. Le combat joueur contre joueur est maintenant disponible en version expérimentale locale (FFA, hitbox sphérique simplifiée et réapparition temporisée). Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
+Les deux clients doivent utiliser le même serveur local. Les déplacements et tirs sur les cibles de pratique sont validés par la room ; le score et les munitions proviennent du serveur. Le combat joueur contre joueur est maintenant disponible en version expérimentale locale (FFA, hitbox sphérique simplifiée et réapparition temporisée avec points de spawn libres). Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
 
 ## Commandes de test
 
@@ -126,9 +126,9 @@ Ces fichiers structurent les références de contenu ; les sons, modèles et eff
 
 1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
 2. Vérifier la scène et les commandes sur de vrais appareils Android et iOS.
-3. Ajouter le combat joueur contre joueur, les dégâts et les règles de réanimation côté serveur.
-4. Intégrer Firebase Authentication et des tickets de session signés.
-5. Enregistrer les profils et résultats confirmés dans Firestore, puis intégrer Cloudinary pour les médias.
+3. Ajouter équipes, manches, résultats persistants et tests multi-clients au combat autoritaire.
+4. Finaliser l'initialisation des profils et l'écriture idempotente des résultats dans Firestore.
+5. Brancher le flux d'avatar Cloudinary après validation du compte et des limites d'upload.
 6. Vérifier les règles Firestore avec l'émulateur avant d'activer les flux de données client.
 7. Mesurer les performances réseau et graphiques sur appareils réels avant de figer l'architecture de production.
 
