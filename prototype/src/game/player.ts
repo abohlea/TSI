@@ -62,17 +62,40 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(root, 'shoulder-mark', 'box', new pc.Vec3(0.4, 1.49, -0.13), new pc.Vec3(0.12, 0.15, 0.045), orange);
   part(root, 'belt-tool', 'box', new pc.Vec3(-0.34, 0.78, -0.02), new pc.Vec3(0.1, 0.22, 0.12), metal);
 
-  // Articulated blockout limbs; pivots allow a first procedural run cycle.
-  const armLeft = part(root, 'arm-left', 'capsule', new pc.Vec3(-0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
-  const armRight = part(root, 'arm-right', 'capsule', new pc.Vec3(0.43, 1.08, -0.02), new pc.Vec3(0.2, 0.56, 0.2), armor);
-  const legLeft = part(root, 'leg-left', 'capsule', new pc.Vec3(-0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
-  const legRight = part(root, 'leg-right', 'capsule', new pc.Vec3(0.18, 0.45, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
-  part(root, 'knee-pad-left', 'box', new pc.Vec3(-0.18, 0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
-  part(root, 'knee-pad-right', 'box', new pc.Vec3(0.18, 0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
-  part(root, 'boot-left', 'box', new pc.Vec3(-0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
-  part(root, 'boot-right', 'box', new pc.Vec3(0.18, 0.12, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
-  part(root, 'forearm-guard-left', 'box', new pc.Vec3(-0.44, 0.95, -0.14), new pc.Vec3(0.19, 0.22, 0.08), dark);
-  part(root, 'forearm-guard-right', 'box', new pc.Vec3(0.44, 0.95, -0.14), new pc.Vec3(0.19, 0.22, 0.08), dark);
+  // Hierarchical limb pivots: feet, knee pads and forearms now follow the gait.
+  const armLeft = new pc.Entity('arm-left-pivot');
+  armLeft.setLocalPosition(-0.43, 1.48, -0.02);
+  root.addChild(armLeft);
+  part(armLeft, 'upper-arm-left', 'capsule', new pc.Vec3(0, -0.27, 0), new pc.Vec3(0.2, 0.56, 0.2), armor);
+  part(armLeft, 'forearm-left', 'capsule', new pc.Vec3(0, -0.62, -0.015), new pc.Vec3(0.17, 0.38, 0.18), fabric);
+  part(armLeft, 'elbow-pad-left', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), webbing);
+  part(armLeft, 'forearm-guard-left', 'box', new pc.Vec3(0, -0.62, -0.14), new pc.Vec3(0.18, 0.2, 0.07), dark);
+  part(armLeft, 'glove-left', 'sphere', new pc.Vec3(0, -0.86, -0.06), new pc.Vec3(0.19, 0.15, 0.18), rubber);
+
+  const armRight = new pc.Entity('arm-right-pivot');
+  armRight.setLocalPosition(0.43, 1.48, -0.02);
+  root.addChild(armRight);
+  part(armRight, 'upper-arm-right', 'capsule', new pc.Vec3(0, -0.27, 0), new pc.Vec3(0.2, 0.56, 0.2), armor);
+  part(armRight, 'forearm-right', 'capsule', new pc.Vec3(0, -0.62, -0.015), new pc.Vec3(0.17, 0.38, 0.18), fabric);
+  part(armRight, 'elbow-pad-right', 'box', new pc.Vec3(0, -0.43, -0.14), new pc.Vec3(0.21, 0.18, 0.08), webbing);
+  part(armRight, 'forearm-guard-right', 'box', new pc.Vec3(0, -0.62, -0.14), new pc.Vec3(0.18, 0.2, 0.07), dark);
+  part(armRight, 'glove-right', 'sphere', new pc.Vec3(0, -0.86, -0.06), new pc.Vec3(0.19, 0.15, 0.18), rubber);
+
+  const legLeft = new pc.Entity('leg-left-pivot');
+  legLeft.setLocalPosition(-0.18, 0.78, 0);
+  root.addChild(legLeft);
+  part(legLeft, 'thigh-left', 'capsule', new pc.Vec3(0, -0.31, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
+  part(legLeft, 'knee-pad-left', 'box', new pc.Vec3(0, -0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
+  part(legLeft, 'shin-left', 'capsule', new pc.Vec3(0, -0.68, 0), new pc.Vec3(0.19, 0.48, 0.2), fabric);
+  part(legLeft, 'boot-left', 'box', new pc.Vec3(0, -0.68, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
+
+  const legRight = new pc.Entity('leg-right-pivot');
+  legRight.setLocalPosition(0.18, 0.78, 0);
+  root.addChild(legRight);
+  part(legRight, 'thigh-right', 'capsule', new pc.Vec3(0, -0.31, 0), new pc.Vec3(0.24, 0.68, 0.25), fabric);
+  part(legRight, 'knee-pad-right', 'box', new pc.Vec3(0, -0.39, -0.17), new pc.Vec3(0.24, 0.18, 0.1), armor);
+  part(legRight, 'shin-right', 'capsule', new pc.Vec3(0, -0.68, 0), new pc.Vec3(0.19, 0.48, 0.2), fabric);
+  part(legRight, 'boot-right', 'box', new pc.Vec3(0, -0.68, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
 
   // Head, helmet, visor and communications equipment.
   part(root, 'neck', 'cylinder', new pc.Vec3(0, 1.72, 0), new pc.Vec3(0.18, 0.16, 0.18), fabric);
@@ -103,8 +126,7 @@ export function createPlayer(app: pc.Application): PlayerRig {
     part(root, `side-utility-pouch-${side}`, 'box', new pc.Vec3(side * 0.34, 0.77, 0.03), new pc.Vec3(0.18, 0.25, 0.24), canvas);
     part(root, `thigh-drop-pouch-${side}`, 'box', new pc.Vec3(side * 0.2, 0.57, -0.17), new pc.Vec3(0.19, 0.2, 0.12), webbing);
     part(root, `boot-ankle-strap-${side}`, 'box', new pc.Vec3(side * 0.18, 0.16, -0.08), new pc.Vec3(0.29, 0.055, 0.43), webbing);
-    part(root, `glove-${side}`, 'sphere', new pc.Vec3(side * 0.44, 0.79, -0.08), new pc.Vec3(0.2, 0.16, 0.19), rubber);
-    part(root, `elbow-pad-${side}`, 'box', new pc.Vec3(side * 0.45, 1.02, 0.02), new pc.Vec3(0.22, 0.2, 0.22), webbing);
+
   }
   part(root, 'rear-pack-main', 'box', new pc.Vec3(0, 1.38, 0.34), new pc.Vec3(0.48, 0.56, 0.3), canvas);
   part(root, 'rear-pack-top', 'sphere', new pc.Vec3(0, 1.68, 0.35), new pc.Vec3(0.43, 0.22, 0.28), webbing);
