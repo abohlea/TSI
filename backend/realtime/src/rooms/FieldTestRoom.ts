@@ -10,6 +10,7 @@ import {
 } from '../types.js';
 import { parsePlayerInput } from '../validation.js';
 import { consumeSessionTicket } from '../sessionTickets.js';
+import { persistMatchResult, type MatchParticipantResult } from '../matchResults.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
@@ -27,6 +28,7 @@ import {
 
 interface LocalAuth {
   playerId: string;
+  persistent: boolean;
 }
 
 interface ServerPlayer extends PlayerSnapshot {
@@ -51,6 +53,8 @@ const PLAYER_RESPAWN_DELAY_MS = 4000;
 export class FieldTestRoom extends Room {
   private readonly players = new Map<string, ServerPlayer>();
   private readonly targets: ServerTarget[] = createPracticeTargets();
+  private readonly participants = new Map<string, MatchParticipantResult>();
+  private readonly matchStartedAt = Date.now();
 
   override maxClients = MAX_PLAYERS_PER_TEST_ROOM;
   override maxMessagesPerSecond = 35;
@@ -69,7 +73,7 @@ export class FieldTestRoom extends Room {
 
   override async onAuth(_client: Client, options: unknown): Promise<LocalAuth> {
     if (isRecord(options) && typeof options.sessionTicket === 'string') {
-      return consumeSessionTicket(options.sessionTicket);
+      return { ...consumeSessionTicket(options.sessionTicket), persistent: true };
     }
     if (process.env.NODE_ENV === 'production') {
       throw new Error('A short-lived game session ticket is required.');
@@ -84,7 +88,7 @@ export class FieldTestRoom extends Room {
     if (options.devToken.length < 24 || options.devToken !== expectedToken) {
       throw new Error('Invalid local development token.');
     }
-    return { playerId: randomUUID() };
+    return { playerId: randomUUID(), persistent: false };
   }
 
   override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
@@ -111,6 +115,9 @@ export class FieldTestRoom extends Room {
     };
 
     this.players.set(client.sessionId, player);
+    if (auth.persistent && !this.participants.has(auth.playerId)) {
+      this.participants.set(auth.playerId, { uid: auth.playerId, score: 0, kills: 0, deaths: 0, joinedAt: Date.now() });
+    }
     this.clock.setTimeout(() => {
       if (!this.players.has(client.sessionId)) return;
       client.send('welcome', {
@@ -128,6 +135,22 @@ export class FieldTestRoom extends Room {
   override onLeave(client: Client): void {
     this.players.delete(client.sessionId);
     this.broadcastSnapshot();
+  }
+
+  override async onDispose(): Promise<void> {
+    if (this.participants.size === 0) return;
+    try {
+      await persistMatchResult({
+        matchId: this.roomId,
+        mode: 'field-test-ffa',
+        startedAt: this.matchStartedAt,
+        endedAt: Date.now(),
+        participants: Array.from(this.participants.values())
+      });
+    } catch (error) {
+      console.error('[TSI] Failed to persist authoritative match result:', error);
+      throw error;
+    }
   }
 
   private handleInput(client: Client, payload: unknown): void {
@@ -187,6 +210,10 @@ export class FieldTestRoom extends Room {
         victim.moveX = 0;
         victim.moveZ = 0;
         player.score += 1;
+        const killerResult = this.participants.get(player.playerId);
+        if (killerResult) { killerResult.score += 1; killerResult.kills += 1; }
+        const victimResult = this.participants.get(victim.playerId);
+        if (victimResult) victimResult.deaths += 1;
         this.broadcast('player-eliminated', {
           killerId: player.playerId,
           playerId: victim.playerId,
@@ -214,7 +241,11 @@ export class FieldTestRoom extends Room {
       now
     );
 
-    if (result.eliminated) player.score += 1;
+    if (result.eliminated) {
+      player.score += 1;
+      const participant = this.participants.get(player.playerId);
+      if (participant) participant.score += 1;
+    }
     client.send('shot', {
       accepted: true,
       hit: result.hit,
