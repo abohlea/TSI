@@ -14,7 +14,7 @@ import {
 
 const UPLOAD_PATH = '/v1/media/avatar/upload';
 const WINDOW_MS = 60_000;
-const MAX_SIGNATURES = 8;
+const MAX_UPLOADS = 8;
 const MAX_PLAYERS = 20_000;
 
 interface RateEntry { startedAt: number; count: number; }
@@ -67,7 +67,7 @@ function createRateLimiter() {
   return (uid: string, now = Date.now()): boolean => {
     const previous = entries.get(uid);
     if (previous && now - previous.startedAt < WINDOW_MS) {
-      if (previous.count >= MAX_SIGNATURES) return false;
+      if (previous.count >= MAX_UPLOADS) return false;
       previous.count += 1;
       return true;
     }
@@ -138,7 +138,7 @@ export async function startCloudinaryMediaApi(): Promise<void> {
     process.env.TSI_ALLOWED_ORIGINS ?? 'http://localhost:5173,http://127.0.0.1:5173')
     .split(',').map((value) => value.trim()).filter(Boolean));
   configureCloudinary(config);
-  const allowSignature = createRateLimiter();
+  const allowUpload = createRateLimiter();
 
   const api = createServer(async (request, response) => {
     const origin = request.headers.origin;
@@ -157,10 +157,12 @@ export async function startCloudinaryMediaApi(): Promise<void> {
     }
 
     try {
-      const uid = await authenticate(request);
+      let uid: string | null;
+      try { uid = await authenticate(request); }
+      catch { json(response, 401, { error: 'Firebase authentication failed.' }); return; }
       if (!uid) { json(response, 401, { error: 'A valid Firebase bearer token is required.' }); return; }
       if (path === UPLOAD_PATH) {
-        if (!allowSignature(uid)) { json(response, 429, { error: 'Avatar upload rate limit reached.' }); return; }
+        if (!allowUpload(uid)) { json(response, 429, { error: 'Avatar upload rate limit reached.' }); return; }
         const bytes = await readAvatarBytes(request);
         const publicId = cloudinaryPlayerAvatarPrefix(uid) + 'avatar-' + randomUUID();
         const uploaded = await new Promise<CloudinaryResource>((resolve, reject) => {
@@ -174,8 +176,12 @@ export async function startCloudinaryMediaApi(): Promise<void> {
           Readable.from([bytes]).pipe(stream);
         });
         const assetId = typeof uploaded.asset_id === 'string' ? uploaded.asset_id : '';
-        const avatar = validateResource(uploaded, uid, config.cloudName, publicId, assetId);
-        if (!avatar) throw new Error('Cloudinary asset failed TSI avatar validation.');
+        const avatar = assetId ? validateResource(uploaded, uid, config.cloudName, publicId, assetId) : null;
+        if (!avatar) {
+          await cloudinary.uploader.destroy(publicId, { resource_type: 'image', type: 'upload', invalidate: true })
+            .catch((error: unknown) => console.warn('[TSI Media API] Invalid avatar cleanup failed:', error));
+          throw new Error('Cloudinary asset failed TSI avatar validation.');
+        }
         const db = getFirestore(getFirebaseAdminApp());
         await db.doc('playerProfiles/' + uid).set({ avatar, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
         json(response, 200, { avatar });
@@ -196,6 +202,10 @@ export async function startCloudinaryMediaApi(): Promise<void> {
       json(response, 500, { error: 'Media request could not be completed.' });
     }
   });
+
+  api.requestTimeout = 30_000;
+  api.headersTimeout = 10_000;
+  api.maxHeadersCount = 32;
 
   await new Promise<void>((resolve, reject) => {
     api.once('error', reject);
