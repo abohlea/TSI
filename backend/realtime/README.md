@@ -55,7 +55,8 @@ Health check: `http://localhost:2567/health`.
 - The server validates finite input values, sequence order, pitch range and normalized movement magnitude.
 - The server applies movement speed limits, world bounds and practice-map obstacle collisions.
 - The server owns target health, shot cooldown, magazine, reserve ammo, reload completion, score and target respawn.
-- The server performs a simple ray/sphere hit test and blocks shots behind the practice-map obstacle boxes.
+- The server performs a simple ray/sphere hit test against practice targets and other players, choosing the nearest visible hit and blocking shots behind practice-map obstacle boxes.
+- Player health and damage are server-owned; eliminated players cannot move or shoot and respawn after a server-controlled delay.
 - Public room snapshots contain player positions and target states; each player receives their own ammo and score privately.
 - Clients interpolate remote player silhouettes.
 
@@ -65,10 +66,10 @@ Health check: `http://localhost:2567/health`.
 - The room refuses all joins when `NODE_ENV=production`.
 - Do not expose this local server to the public internet or reuse the token for any other service.
 - Firebase Authentication and signed server tickets are not integrated yet.
-- Player-vs-player damage, player health changes, revives, full anti-cheat analysis, Firebase Authentication, signed session tickets, persistent results and production matchmaking are not implemented yet.
+- The PvP implementation is a local free-for-all proof using approximate spherical hit volumes and the practice-map obstacle boxes. It does not include teams, revives, lag compensation, production anti-cheat, Firebase Authentication, signed session tickets, persistent results or production matchmaking.
 - Do not use this room for public or ranked matches.
 
-The room validates movement and practice-target combat only. Its simple raycast uses the training world's obstacle boxes and is not yet a complete physics or competitive combat simulation.
+The room validates movement, practice-target combat and basic player-vs-player hits locally. Its simple raycast uses spherical hit volumes and the training world's obstacle boxes; it is not a complete physics, lag-compensation or competitive combat simulation.
 
 ## Useful commands
 
