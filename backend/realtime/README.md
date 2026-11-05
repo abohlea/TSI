@@ -51,9 +51,13 @@ Health check: `http://localhost:2567/health`.
 - A browser client can request a Colyseus room.
 - The server rejects missing or incorrect local development tokens.
 - The server creates a player identity and spawn point.
-- Clients send sequenced movement intents.
-- The server clamps input magnitude, applies a speed limit and world bounds.
-- The server broadcasts snapshots; clients display remote player silhouettes.
+- Clients send sequenced movement and aim inputs.
+- The server validates finite input values, sequence order, pitch range and normalized movement magnitude.
+- The server applies movement speed limits, world bounds and practice-map obstacle collisions.
+- The server owns target health, shot cooldown, magazine, reserve ammo, reload completion, score and target respawn.
+- The server performs a simple ray/sphere hit test and blocks shots behind the practice-map obstacle boxes.
+- Public room snapshots contain player positions and target states; each player receives their own ammo and score privately.
+- Clients interpolate remote player silhouettes.
 
 ## Security limitations
 
@@ -61,10 +65,10 @@ Health check: `http://localhost:2567/health`.
 - The room refuses all joins when `NODE_ENV=production`.
 - Do not expose this local server to the public internet or reuse the token for any other service.
 - Firebase Authentication and signed server tickets are not integrated yet.
-- Server-side map collision, hit validation, health, weapon cooldowns, anti-cheat analysis, persistent results and matchmaking policies are not implemented yet.
+- Player-vs-player damage, player health changes, revives, full anti-cheat analysis, Firebase Authentication, signed session tickets, persistent results and production matchmaking are not implemented yet.
 - Do not use this room for public or ranked matches.
 
-The room currently validates movement magnitude, input sequence and a broad world boundary. It is a network engineering test, not a complete authoritative combat simulation.
+The room validates movement and practice-target combat only. Its simple raycast uses the training world's obstacle boxes and is not yet a complete physics or competitive combat simulation.
 
 ## Useful commands
 
