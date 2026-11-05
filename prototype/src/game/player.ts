@@ -171,10 +171,12 @@ export function createPlayer(app: pc.Application): PlayerRig {
       const reloadProgress = reloadTime > 0 ? 1 - reloadTime / 1.25 : 0;
       // Three readable reload beats: lower/remove, seat, then settle. This is a
       // procedural placeholder until authored AR01_Reload animation data exists.
-      const remove = reloadProgress < 0.42 ? Math.sin(Math.min(1, reloadProgress / 0.42) * Math.PI * 0.5) : 0;
-      const insert = reloadProgress >= 0.58 && reloadProgress < 0.86
-        ? Math.sin(((reloadProgress - 0.58) / 0.28) * Math.PI * 0.5) : 0;
-      const magazineOffset = -remove * 0.28 + insert * 0.28;
+      const remove = Math.sin(Math.min(1, reloadProgress / 0.42) * Math.PI * 0.5);
+      const insert = reloadProgress >= 0.58
+        ? Math.sin(Math.min(1, (reloadProgress - 0.58) / 0.28) * Math.PI * 0.5) : 0;
+      const magazineOffset = reloadProgress < 0.42
+        ? -remove * 0.28
+        : reloadProgress < 0.58 ? -0.28 : -0.28 * (1 - insert);
       magazine.setLocalPosition(magazineRest.x, magazineRest.y + magazineOffset, magazineRest.z);
       magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y + magazineOffset, magazineBaseRest.z);
       magazine.setLocalEulerAngles(magazineRotation.x + remove * 12, magazineRotation.y, magazineRotation.z);
