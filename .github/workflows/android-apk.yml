@@ -1,6 +1,12 @@
 name: Build Android APK
 
 on:
+  push:
+    branches:
+      - build/android-content-expansion
+    paths:
+      - "prototype/**"
+      - ".github/workflows/android-apk.yml"
   pull_request:
     branches:
       - build/android-production-field-test
