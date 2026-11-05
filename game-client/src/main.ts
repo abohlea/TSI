@@ -38,8 +38,6 @@ async function boot(): Promise<void> {
   app.setCanvasFillMode(FILLMODE_FILL_WINDOW);
   app.setCanvasResolution(RESOLUTION_AUTO);
   app.graphicsDevice.maxPixelRatio = Math.min(window.devicePixelRatio || 1, 1.5);
-  app.scene.gammaCorrection = 1;
-  app.scene.toneMapping = 1;
 
   const arena = buildArena(app);
   const hud = new GameHUD();
