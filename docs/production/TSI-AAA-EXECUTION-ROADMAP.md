@@ -62,6 +62,8 @@ Les références de contenu dans le code sont des identifiants d'assets attendus
 - Le client échange l'ID token dans `POST /auth/session-ticket`. Le serveur renvoie un ticket HMAC-SHA256 valable 45 secondes ; le hook `onAuth` Colyseus consomme ce ticket une seule fois.
 - Le serveur refuse le démarrage en production si `TSI_SESSION_TICKET_SECRET` ne contient pas au moins 32 caractères. L'endpoint autorise les requêtes navigateur par CORS avec bearer token ; les secrets Admin ne sont jamais exposés au client.
 - Tests unitaires ajoutés pour validité, expiration, réutilisation et altération du ticket.
+- Le serveur crée maintenant, dans une transaction Firestore idempotente au premier échange de ticket, les documents `users/{uid}`, `playerProfiles/{uid}` et `progression/{uid}` sans écraser les profils existants.
+- Un test d'intégration dédié vérifie la création et la préservation des données sur Firestore Emulator ; le job Firebase CI installe aussi les dépendances Colyseus pour exécuter ce test.
 - Limites : le registre des nonces et la limite de débit sont en mémoire (instance unique seulement) ; la connexion Google exige la configuration du projet Firebase et l'activation du fournisseur dans la console ; aucun déploiement ni test avec un vrai projet Firebase ; aucune écriture de résultat Firestore. Cette intégration n'est pas encore validée en exécution ni prête à l'exploitation multi-instance.
 - Commits clés : `12d8a18` (tickets), `501e3fb` (tests), `927e3e0` (endpoint), `64048bc` (consommation room), `34ae89f` (tests renforcés), `4d9c684` (SDK web), `c1332bb` (Firebase client), `0b2e0ba` (client ticket), `ba98a9e` (connexion UI), `92b2dbc` (CORS), `8621271` (documentation).
 
@@ -125,8 +127,8 @@ Le Battle Royale 60 joueurs reste hors engagement jusqu'à ce que les tests de c
 ### P5 — identité, comptes et persistance
 - [x] Intégration de code Firebase Authentication (Google côté client, vérification ID token côté serveur).
 - [x] Tickets de session signés, courts, à usage unique (45 secondes, single-process).
-- [ ] API de confiance pour profil et progression.
-- [ ] Règles Firestore et tests émulateur.
+- [x] Initialisation serveur des documents de compte, profil public et progression (idempotente).
+- [x] Règles Firestore et tests émulateur pour les accès clients ; test d'intégration d'initialisation du profil ajouté, en attente de run CI sur le nouveau HEAD.
 - [ ] Écriture des résultats uniquement après validation serveur, avec idempotence.
 - [ ] Cloudinary réservé aux médias et uploads autorisés.
 - **Acceptation :** tests d'accès refusé, jetons expirés/réutilisés et résultats falsifiés rejetés.
@@ -172,4 +174,4 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 
 ## 6. Prochaine exécution
 
-La prochaine livraison doit obtenir un run CI vert sur le HEAD après les corrections spawn/rate-limit, puis terminer l'écriture idempotente des résultats Firestore et brancher le flux Cloudinary à cette architecture PlayCanvas/Colyseus. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances. Les lockfiles npm restent bloquants pour une installation réellement reproductible.
+La prochaine livraison doit obtenir un run CI vert sur le HEAD après les corrections spawn/rate-limit et le test d'intégration profil. Ensuite, terminer l'écriture idempotente des résultats de match Firestore et porter le flux Cloudinary dans l'architecture PlayCanvas/Colyseus. Le stockage partagé des tickets sera requis avant toute montée en plusieurs instances. Les lockfiles npm restent bloquants pour une installation réellement reproductible.
