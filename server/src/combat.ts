@@ -106,20 +106,8 @@ export function resolveAuthoritativeHit(
   const directionX = Math.sin(yaw);
   const directionZ = -Math.cos(yaw);
   let nearestDistance = MAX_SHOT_RANGE;
-  let nearest: AuthoritativeHit = { kind: "miss" };
-
-  const consider = (
-    distance: number | null,
-    hit: Exclude<AuthoritativeHit, { kind: "miss" }>
-  ): void => {
-    if (distance === null || distance >= nearestDistance) return;
-    const blocked = blockers.some((blocker) =>
-      rayHitsBlocker(originX, originZ, directionX, directionZ, blocker, distance)
-    );
-    if (blocked) return;
-    nearestDistance = distance;
-    nearest = hit;
-  };
+  let nearestTarget: CombatTarget | null = null;
+  let nearestPlayer: CombatPlayer | null = null;
 
   for (const target of targets) {
     if (!target.active || target.health <= 0) continue;
@@ -127,7 +115,15 @@ export function resolveAuthoritativeHit(
       originX, originZ, directionX, directionZ,
       target.x, target.z, TARGET_HIT_RADIUS
     );
-    consider(distance, { kind: "target", targetId: target.id, eliminated: false });
+    if (distance === null || distance >= nearestDistance) continue;
+    const blocked = blockers.some((blocker) =>
+      rayHitsBlocker(originX, originZ, directionX, directionZ, blocker, distance)
+    );
+    if (blocked) continue;
+
+    nearestDistance = distance;
+    nearestTarget = target;
+    nearestPlayer = null;
   }
 
   for (const player of players) {
@@ -136,26 +132,33 @@ export function resolveAuthoritativeHit(
       originX, originZ, directionX, directionZ,
       player.x, player.z, PLAYER_HIT_RADIUS
     );
-    consider(distance, { kind: "player", sessionId: player.sessionId, eliminated: false });
+    if (distance === null || distance >= nearestDistance) continue;
+    const blocked = blockers.some((blocker) =>
+      rayHitsBlocker(originX, originZ, directionX, directionZ, blocker, distance)
+    );
+    if (blocked) continue;
+
+    nearestDistance = distance;
+    nearestPlayer = player;
+    nearestTarget = null;
   }
 
-  if (nearest.kind === "target") {
-    const target = targets.find((candidate) => candidate.id === nearest.targetId);
-    if (!target) return { kind: "miss" };
-    target.health = Math.max(0, target.health - PLAYER_DAMAGE);
-    nearest.eliminated = target.health === 0;
-    if (nearest.eliminated) target.active = false;
-    return nearest;
+  if (nearestPlayer) {
+    nearestPlayer.health = Math.max(0, nearestPlayer.health - PLAYER_DAMAGE);
+    nearestPlayer.setHealth?.(nearestPlayer.health);
+    return {
+      kind: "player",
+      sessionId: nearestPlayer.sessionId,
+      eliminated: nearestPlayer.health === 0
+    };
   }
 
-  if (nearest.kind === "player") {
-    const player = players.find((candidate) => candidate.sessionId === nearest.sessionId);
-    if (!player) return { kind: "miss" };
-    player.health = Math.max(0, player.health - PLAYER_DAMAGE);
-    player.setHealth?.(player.health);
-    nearest.eliminated = player.health === 0;
-    return nearest;
+  if (nearestTarget) {
+    nearestTarget.health = Math.max(0, nearestTarget.health - PLAYER_DAMAGE);
+    const eliminated = nearestTarget.health === 0;
+    if (eliminated) nearestTarget.active = false;
+    return { kind: "target", targetId: nearestTarget.id, eliminated };
   }
 
-  return nearest;
+  return { kind: "miss" };
 }
