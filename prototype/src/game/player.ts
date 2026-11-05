@@ -133,6 +133,21 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(weapon, 'selector-mark', 'box', new pc.Vec3(0.095, 0.015, 0.045), new pc.Vec3(0.012, 0.025, 0.055), orange);
   part(weapon, 'muzzle-ring', 'cylinder', new pc.Vec3(0, 0.015, -0.72), new pc.Vec3(0.073, 0.035, 0.073), orange).setLocalEulerAngles(90, 0, 0);
 
+  // Named attachment pivots are stable targets for future authored GLB parts and VFX.
+  const sockets: Array<[string, pc.Vec3]> = [
+    ['AR01_MuzzleFlashSocket', new pc.Vec3(0, 0.015, -0.79)],
+    ['AR01_LeftHandGrip', new pc.Vec3(-0.01, -0.105, -0.25)],
+    ['AR01_RightHandGrip', new pc.Vec3(0.015, -0.035, 0.12)],
+    ['AR01_EjectSocket', new pc.Vec3(0.095, 0.055, 0.02)],
+    ['AR01_MagazineSocket', new pc.Vec3(0, -0.16, 0.04)],
+    ['AR01_SightSocket', new pc.Vec3(0, 0.22, -0.02)]
+  ];
+  for (const [name, position] of sockets) {
+    const socket = new pc.Entity(name);
+    socket.setLocalPosition(position);
+    weapon.addChild(socket);
+  }
+
   const muzzleFlash = part(weapon, 'muzzle-flash', 'sphere', new pc.Vec3(0, 0.015, -0.78), new pc.Vec3(0.16, 0.16, 0.28), orange);
   muzzleFlash.enabled = false;
 
@@ -189,6 +204,8 @@ export function createPlayer(app: pc.Application): PlayerRig {
       const magazineOffset = reloadProgress < 0.42
         ? -remove * 0.28
         : reloadProgress < 0.58 ? -0.28 : -0.28 * (1 - insert);
+      magazine.enabled = !(reloadProgress >= 0.42 && reloadProgress < 0.58);
+      magazineBase.enabled = magazine.enabled;
       magazine.setLocalPosition(magazineRest.x, magazineRest.y + magazineOffset, magazineRest.z);
       magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y + magazineOffset, magazineBaseRest.z);
       const magazineTilt = reloadProgress < 0.42 ? remove : reloadProgress < 0.58 ? 1 : 1 - insert;
