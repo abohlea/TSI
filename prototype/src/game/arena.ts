@@ -215,3 +215,34 @@ export function applyCc0ArenaMaterials(app: pc.Application, arena: ArenaApi): vo
     })
     .catch((error: unknown) => console.warn('CC0 arena material manifest unavailable:', error));
 }
+
+/** Loads a small set of verified, non-rigged CC0 environment models into the arena. */
+export function loadCc0EnvironmentProps(app: pc.Application): void {
+  void fetch('/assets/cc0/manifest.json')
+    .then((response) => {
+      if (!response.ok) throw new Error(`Asset manifest unavailable: ${response.status}`);
+      return response.json() as Promise<{ models?: Array<{ name?: string; file?: string; rigged?: boolean }> }>;
+    })
+    .then((manifest) => {
+      const props = (manifest.models ?? [])
+        .filter((model) => model.file && !model.rigged &&
+          /crate|barrel|sandbag|barrier|vehicle|truck|tree|rock|rubble|prop|building/i.test(model.name ?? ''))
+        .slice(0, 6);
+      props.forEach((model, index) => {
+        if (!model.file) return;
+        app.assets.loadFromUrl(model.file, 'container', (error, asset) => {
+          if (error || !asset?.resource) {
+            console.warn('Unable to load CC0 environment model:', model.file, error);
+            return;
+          }
+          const entity = asset.resource.instantiateRenderEntity({ castShadows: true, receiveShadows: true });
+          entity.name = `tsi-cc0-environment-${index + 1}`;
+          const side = index % 2 === 0 ? -1 : 1;
+          entity.setPosition(side * (31 + Math.floor(index / 2) * 3), 0, -11 - Math.floor(index / 2) * 13);
+          entity.setLocalScale(1, 1, 1);
+          app.root.addChild(entity);
+        });
+      });
+    })
+    .catch((error: unknown) => console.warn('CC0 environment models unavailable:', error));
+}
