@@ -32,7 +32,10 @@ const gobkit = await getJson(gobkitManifestUrl);
 if (!Array.isArray(gobkit.packs)) throw new Error('Gobkit manifest packs[] missing');
 const packIds = new Set(['gobkit-human004-pack', 'gobkit-human012-pack', 'gobkit-human007-pack']);
 const packs = gobkit.packs.filter((pack) =>
-  packIds.has(pack.id) || pack.kind === 'environment' || /environment|nature|prop/i.test(pack.id ?? '')
+  packIds.has(pack.id) || pack.kind === 'environment' ||
+  /environment|nature|prop|weapon|military|vehicle|building|industrial|urban|ruins|barrier/i.test(
+    `${pack.id ?? ''} ${pack.name ?? ''} ${pack.kind ?? ''}`
+  )
 );
 const models = packs.flatMap((pack) => {
   const license = String(pack.license ?? '');
@@ -68,7 +71,7 @@ const materialPattern = /concrete|asphalt|road|gravel|dirt|soil|sand|rock|stone|
 const textureCandidates = Object.entries(textureCatalogue)
   .filter(([id, asset]) => materialPattern.test(`${id} ${asset.name ?? ''} ${asset.description ?? ''} ${(asset.tags ?? []).join(' ')}`))
   .sort((a, b) => (b[1].download_count ?? 0) - (a[1].download_count ?? 0))
-  .slice(0, 6);
+  .slice(0, 8);
 
 if (textureCandidates.length < 5) throw new Error('Poly Haven returned too few suitable CC0 terrain textures');
 
@@ -82,10 +85,10 @@ const downloadedTextures = [];
 for (const [id, metadata] of textureCandidates) {
   const fileTree = await getJson(`${polyHavenApi}/files/${encodeURIComponent(id)}`);
   const files = flattenFiles(fileTree);
-  // 2K keeps the Android package practical while retaining enough detail for mobile.
-  // Bundle only the three maps that are useful to the current PBR renderer.
-  const resolution = files.some((file) => file.path.includes('2k')) ? '2k' : '1k';
-  const mapPatterns = [/diff|albedo|color/i, /normal|nor_gl|nor_dx|bump/i];
+  // Prefer 4K maps for close-range tactical surfaces, falling back to 2K/1K.
+  // Bundle diffuse, normal and ambient-occlusion maps used by the mobile renderer.
+  const resolution = ['4k', '2k', '1k'].find((candidate) => files.some((file) => file.path.includes(candidate))) ?? '1k';
+  const mapPatterns = [/diff|albedo|color/i, /normal|nor_gl|nor_dx|bump/i, /ao|ambient.?occlusion/i];
   const maps = mapPatterns.flatMap((pattern) => files.filter((file) =>
     file.path.includes(resolution) &&
     /\.(jpg|jpeg|png)$/i.test(new URL(file.url).pathname) &&
@@ -145,4 +148,7 @@ const textureBytes = downloadedTextures.reduce((sum, item) => sum + item.files.r
 const hdriBytes = downloadedHdris.reduce((sum, item) => sum + item.bytes, 0);
 const totalBytes = modelBytes + textureBytes + hdriBytes;
 console.log(`Total bundled CC0 content: ${toMiB(totalBytes)} MiB (${downloadedModels.length} models, ${downloadedTextures.length} material sets, ${downloadedHdris.length} HDRIs)`);
+if (totalBytes < 100 * 1024 * 1024) {
+  console.warn('CC0 content is still below 100 MiB; add more useful licensed models/materials before expecting the APK size gate to pass.');
+}
 console.log('APK target: >=100 MiB; the Android workflow checks the actual packaged APK size.');
