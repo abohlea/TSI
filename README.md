@@ -8,9 +8,10 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [TDD TSI V1](docs/TDD_TSI_V1.md) — architecture technique, réseau, données, sécurité et qualité.
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
-- `prototype/` — premier terrain d'entraînement PlayCanvas, en cours de construction.
+- `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
+- `backend/realtime/` — première room Colyseus locale pour tester l'identité de session et la synchronisation des déplacements.
 
-**Important :** le prototype initial est local et mono-joueur. Il ne contient pas encore d'authentification Firebase, de persistance Firestore, de téléversement Cloudinary ni de serveur multijoueur. Ces intégrations viendront après validation du cœur de jeu et des règles de sécurité.
+**Important :** le mode d'entraînement et les tirs sur cibles restent locaux au navigateur. Le serveur de test synchronise uniquement les déplacements entre clients ; il ne valide pas encore les tirs, les dégâts, les collisions complètes, les récompenses ou les résultats. Firebase Authentication, Firestore et Cloudinary ne sont pas encore connectés.
 
 ## Stack du prototype
 
@@ -46,6 +47,18 @@ npm run build
 npm run preview
 ```
 
+## Test multijoueur local (déplacements uniquement)
+
+Le serveur Colyseus est volontairement protégé pour le développement local. Il n'utilise pas encore Firebase Authentication.
+
+1. Depuis `backend/realtime`, installer les dépendances, copier `.env.example` vers `.env`, puis définir un jeton local aléatoire d'au moins 24 caractères.
+2. Démarrer le serveur avec `npm run dev`.
+3. Depuis `prototype`, copier `.env.example` vers `.env.local` et mettre exactement le même jeton dans `VITE_TSI_LOCAL_DEV_TOKEN`.
+4. Démarrer Vite avec `npm run dev`.
+5. Ouvrir deux fenêtres du navigateur sur la même machine et cliquer sur **REJOINDRE LE SERVEUR DE TEST**.
+
+Les deux clients doivent utiliser le même serveur local. Ne jamais exposer ce serveur de test sur Internet ou réutiliser le jeton en production. Le guide complet se trouve dans [backend/realtime/README.md](backend/realtime/README.md).
+
 ## Commandes de test
 
 - **W / A / S / D** ou **Z / Q / S / D** : déplacement
@@ -70,9 +83,15 @@ prototype/
       arena.ts
       combat.ts
       input.ts
+      network.ts
       player.ts
     ui/
       hud.ts
+backend/realtime/
+  src/
+    index.ts
+    rooms/FieldTestRoom.ts
+    types.ts
 ```
 
 ## Règles de sécurité
@@ -85,11 +104,11 @@ prototype/
 
 ## Prochaines étapes
 
-1. Vérifier le build TypeScript et la scène sur navigateur.
-2. Tester les commandes sur Android et iOS.
-3. Ajuster caméra, mouvement et collisions.
-4. Créer un serveur de simulation distinct et valider le réseau.
-5. Ajouter les services Firebase et Cloudinary uniquement via des couches sécurisées.
-6. Réévaluer l'aptitude de PlayCanvas à satisfaire les exigences de rendu et de distribution mobile avant de figer la technologie de production.
+1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
+2. Vérifier la scène et les commandes sur de vrais appareils Android et iOS.
+3. Ajouter la collision autoritaire, les tirs et les dégâts côté serveur.
+4. Intégrer Firebase Authentication et les tickets de session signés.
+5. Enregistrer les profils et résultats confirmés dans Firestore, puis intégrer Cloudinary pour les médias.
+6. Mesurer les performances réseau et graphiques avant de figer l'architecture de production.
 
 Les objectifs graphiques et de capacité du GDD sont des cibles à démontrer, pas des performances déjà acquises.
