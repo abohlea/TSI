@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { defineRoom, defineServer } from "colyseus";
 import { FieldTestRoom } from "./rooms/FieldTestRoom.js";
 
