@@ -50,6 +50,21 @@ test('rejects non-finite and implausible camera pitch', () => {
   assert.equal(parsePlayerInput({ ...validInput, pitch: 70 }, 0), null);
 });
 
+test('rejects unsafe sequence numbers and non-finite aim or movement values', () => {
+  assert.equal(parsePlayerInput({ ...validInput, sequence: Number.MAX_SAFE_INTEGER + 1 }, 0), null);
+  assert.equal(parsePlayerInput({ ...validInput, yaw: Number.POSITIVE_INFINITY }, 0), null);
+  assert.equal(parsePlayerInput({ ...validInput, moveZ: Number.NEGATIVE_INFINITY }, 0), null);
+});
+
+test('accepts the documented camera pitch boundaries', () => {
+  assert.equal(parsePlayerInput({ ...validInput, pitch: -45 }, 0)?.pitch, -45);
+  assert.equal(parsePlayerInput({ ...validInput, pitch: 45 }, 0)?.pitch, 45);
+});
+
+test('rejects an input sequence that moves backwards', () => {
+  assert.equal(parsePlayerInput({ ...validInput, sequence: 3 }, 4), null);
+});
+
 test('accepts a validated held-fire input', () => {
   const result = parsePlayerInput({ ...validInput, shoot: true }, 0);
   assert.ok(result);
