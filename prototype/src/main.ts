@@ -66,7 +66,7 @@ if (touchControls && mobileLike) touchControls.classList.add('active');
 
 let active = false;
 let yaw = 0;
-let pitch = -7;
+let pitch = -2.4;
 let ammo = 30;
 let reserve = 90;
 let kills = 0;
