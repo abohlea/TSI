@@ -172,6 +172,10 @@ export class TsiNetworkClient {
     this.room.send('input', { ...input, sequence: this.sequence });
   }
 
+  sendFire(): void {
+    this.room?.send('fire');
+  }
+
   sendReload(): void {
     this.room?.send('reload');
   }
