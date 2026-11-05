@@ -55,6 +55,10 @@ export class FieldTestRoom extends Room {
     this.setMetadata({ mode: 'field-test', build: '0.2.0' });
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
     this.onMessage('reload', (client) => this.handleReload(client));
+    this.onMessage('fire', (client) => {
+      const player = this.players.get(client.sessionId);
+      if (player) this.handleShot(client, player);
+    });
     this.setTimestep((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
   }
 
