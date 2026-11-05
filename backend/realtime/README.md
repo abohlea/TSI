@@ -70,9 +70,10 @@ Health check: `http://localhost:2567/health`.
 - Production joins use short-lived signed tickets. The client exchanges a Firebase Authentication ID token at `POST /auth/session-ticket`; the server verifies it with Firebase Admin (including revoked-token checks) and returns a ticket valid for 45 seconds.
 - The ticket is HMAC-SHA256 signed with `TSI_SESSION_TICKET_SECRET` (minimum 32 characters) and is consumed once by the room authentication hook.
 - The prototype now includes Firebase Web SDK Google sign-in and requests the ticket before joining. Configure the Firebase Web App values in `prototype/.env.local`, enable Google as a sign-in provider, and add the browser domain to Firebase Authentication authorized domains.
+- On the first successful ticket exchange, the trusted server creates missing `users/{uid}`, `playerProfiles/{uid}` and `progression/{uid}` documents in one Firestore transaction. Existing profile/progression data is never overwritten by a later login.
 - Production runtime must provide Application Default Credentials/workload identity, `FIREBASE_PROJECT_ID`, and `TSI_SESSION_TICKET_SECRET`. Never commit service-account private keys.
 - The ticket nonce store and basic per-IP rate limit are in-memory and single-process only. Do not horizontally scale this prototype; use a shared atomic store (for example Redis) before running multiple server instances.
-- The Firebase client and one-time ticket exchange are wired in code, but still require a real Firebase project, production origin configuration, cross-origin deployment validation, and integration tests.
+- The Firebase client, one-time ticket exchange and idempotent profile provisioning are wired in code. The profile integration test runs against the Firestore emulator in CI; a real Firebase project, production origin configuration and end-to-end deployment validation are still required.
 - The local room now includes experimental free-for-all player damage, health, eliminations and timed respawns. Teams, rounds, revives, hitbox animation/validation, lag compensation, full anti-cheat analysis, persistent results and production matchmaking are not implemented yet.
 - Do not use this room for public or ranked matches.
 
