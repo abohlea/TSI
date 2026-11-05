@@ -3,6 +3,7 @@ import { createArena } from './game/arena';
 import { resolvePracticeShot } from './game/combat';
 import { GameInput } from './game/input';
 import { createPlayer, createRemotePlayer } from './game/player';
+import { loadCc0Operator } from './game/cc0Operator';
 import { TsiNetworkClient, type NetworkSnapshot } from './game/network';
 import { getFirebaseIdToken, hasFirebaseUser, isFirebaseConfigured, signInWithGoogle } from './game/firebase';
 import { createHud } from './ui/hud';
@@ -57,6 +58,9 @@ app.root.addChild(fill);
 
 const arena = createArena(app);
 const player = createPlayer(app);
+void loadCc0Operator(app, player.root).catch((error: unknown) => {
+  console.warn('CC0 operator asset unavailable; using the local TSI blockout:', error);
+});
 const input = new GameInput(canvas);
 const hud = createHud();
 const network = new TsiNetworkClient();
