@@ -59,3 +59,43 @@ test('match result validation rejects duplicate identities and impossible timest
   await assert.rejects(() => persistMatchResult(base), /duplicate match participant/i);
   await assert.rejects(() => persistMatchResult({ ...base, matchId: 'bad-time', participants: [], endedAt: 50 }), /timestamps/i);
 });
+
+
+test('team match results persist the winning side and award wins to every teammate', {
+  skip: !process.env.FIRESTORE_EMULATOR_HOST
+}, async () => {
+  process.env.FIREBASE_PROJECT_ID ??= 'demo-tsi-rules';
+  const matchId = 'team-match-test-' + randomUUID();
+  const alphaUid = 'alpha-player-' + randomUUID();
+  const bravoUid = 'bravo-player-' + randomUUID();
+  const db = getFirestore(getFirebaseAdminApp());
+  const matchRef = db.doc('matchSummaries/' + matchId);
+  const alphaStats = db.doc('playerStats/' + alphaUid);
+  const bravoStats = db.doc('playerStats/' + bravoUid);
+  const now = Date.now();
+  const input = {
+    matchId,
+    mode: 'field-test-teams' as const,
+    winnerTeam: 'bravo' as const,
+    teamWins: { alpha: 1, bravo: 2 },
+    startedAt: now - 180_000,
+    endedAt: now,
+    participants: [
+      { uid: alphaUid, team: 'alpha' as const, score: 2, kills: 2, deaths: 5, joinedAt: now - 179_000 },
+      { uid: bravoUid, team: 'bravo' as const, score: 5, kills: 5, deaths: 2, joinedAt: now - 178_000 }
+    ]
+  };
+
+  try {
+    assert.equal(await persistMatchResult(input), true);
+    assert.equal(await persistMatchResult(input), false);
+    const [match, alpha, bravo] = await Promise.all([matchRef.get(), alphaStats.get(), bravoStats.get()]);
+    assert.equal(match.get('winnerTeam'), 'bravo');
+    assert.deepEqual(match.get('teamWins'), { alpha: 1, bravo: 2 });
+    assert.equal(match.get('winnerUid'), null);
+    assert.equal(alpha.get('wins'), 0);
+    assert.equal(bravo.get('wins'), 1);
+  } finally {
+    await Promise.all([matchRef.delete(), alphaStats.delete(), bravoStats.delete()]);
+  }
+});
