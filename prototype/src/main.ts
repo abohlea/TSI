@@ -188,6 +188,8 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
         player.playHit();
         if (remote.health <= 0) cc0Operator?.playAction('death');
         else cc0Operator?.playAction('hit');
+      } else if (previousSelfHealth <= 0 && remote.health > 0) {
+        cc0Operator?.revive();
       }
       previousSelfHealth = remote.health;
       player.root.enabled = remote.health > 0;
@@ -209,6 +211,8 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     if (remote.health < view.health) {
       if (remote.health <= 0) view.operator?.playAction('death');
       else view.operator?.playAction('hit');
+    } else if (view.health <= 0 && remote.health > 0) {
+      view.operator?.revive();
     }
     view.health = remote.health;
     view.targetX = remote.x;
