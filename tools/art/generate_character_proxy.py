@@ -132,6 +132,18 @@ def build():
     B("TSI_insignia",(0,-.27,1.49),(.07,.012,.025),ORANGE,"chest",.008)
     for z in (1.24,1.34):
         for y in (-.255,.255): B("utility_pouch",(0,y,z),(.14,.075,.095),GRAPH,"spine")
+    # Layered chest rig, segmented abdominal plates and harness hardware.
+    for z,w in ((1.34,.29),(1.27,.27),(1.20,.25)):
+        B("abdominal_armor",(0,-.251,z),(w,.025,.055),STEEL,"spine",.012)
+        B("abdominal_edge",(0,-.269,z+.019),(w*.82,.009,.008),ORANGE,"spine",.003)
+    for y in (-.17,.17):
+        B("vest_molle_rail",(0,y,1.39),(.018,.018,.19),STEEL,"chest",.004)
+        for z in (1.32,1.37,1.42):
+            B("molle_loop",(0,y-.012,z),(.012,.012,.025),ORANGE,"chest",.003)
+    B("belt_core",(0,0,1.08),(.30,.49,.065),GRAPH,"pelvis",.018)
+    B("belt_buckle",(0,-.258,1.08),(.075,.018,.045),STEEL,"pelvis",.008)
+    for y in (-.19,.19):
+        B("belt_module",(0,y,1.075),(.09,.07,.07),STEEL,"pelvis",.012)
     # shoulders, arms, gloves
     for side,s in (("L",1),("R",-1)):
         E("shoulder_"+side,(0,s*.27,1.49),(.17,.18,.16),GRAPH,"clavicle."+side)
@@ -139,6 +151,8 @@ def build():
         E("upper_arm_"+side,(0,s*.34,1.37),(.105,.12,.19),FAB,"upper_arm."+side)
         E("elbow_"+side,(0,s*.43,1.27),(.105,.11,.10),GRAPH,"lower_arm."+side)
         E("forearm_"+side,(0,s*.43,1.13),(.10,.105,.16),GRAPH,"lower_arm."+side)
+        B("forearm_outer_plate_"+side,(-.012,s*.43,1.15),(.12,.018,.12),STEEL,"lower_arm."+side,.012)
+        B("forearm_orange_inlay_"+side,(-.012,s*.443,1.16),(.065,.008,.012),ORANGE,"lower_arm."+side,.003)
         E("glove_"+side,(.025,s*.43,.96),(.095,.09,.09),STEEL,"hand."+side)
         B("wrist_band_"+side,(0,s*.43,1.02),(.10,.10,.035),ORANGE,"hand."+side,.01)
     # Individual articulated finger geometry, weighted to matching phalange bones.
@@ -167,10 +181,17 @@ def build():
     # legs, kneepads and boots
     for side,s in (("L",1),("R",-1)):
         E("thigh_"+side,(0,s*.13,.70),(.14,.14,.23),FAB,"thigh."+side)
+        B("thigh_outer_plate_"+side,(-.015,s*.255,.72),(.17,.018,.20),GRAPH,"thigh."+side,.018)
+        B("thigh_panel_inlay_"+side,(-.026,s*.268,.73),(.105,.009,.035),STEEL,"thigh."+side,.006)
+        B("thigh_orange_mark_"+side,(.025,s*.269,.66),(.045,.009,.018),ORANGE,"thigh."+side,.004)
         E("knee_"+side,(.025,s*.13,.51),(.13,.15,.11),GRAPH,"shin."+side)
         B("knee_mark_"+side,(.03,s*.13,.52),(.06,.012,.025),ORANGE,"shin."+side,.006)
         E("shin_guard_"+side,(0,s*.13,.31),(.12,.13,.20),GRAPH,"shin."+side)
+        B("shin_ridge_"+side,(-.035,s*.13,.34),(.11,.012,.11),STEEL,"shin."+side,.01)
+        B("shin_orange_marker_"+side,(-.045,s*.139,.31),(.035,.008,.018),ORANGE,"shin."+side,.003)
         E("boot_"+side,(.12,s*.13,.10),(.20,.14,.10),STEEL,"foot."+side)
+        B("boot_toe_cap_"+side,(.245,s*.13,.115),(.07,.13,.045),GRAPH,"foot."+side,.012)
+        B("boot_sole_"+side,(.13,s*.13,.045),(.27,.15,.025),GRAPH,"foot."+side,.008)
     # Join the proxy into one skinned mesh and compute smooth two-bone weights.
     # Geometry remains stylized/segmented, but joints now deform continuously with the rig.
     bpy.ops.object.select_all(action="DESELECT")
@@ -180,11 +201,11 @@ def build():
     bpy.ops.object.join()
     mesh.name="TSI001_Skinned_Proxy"
     mesh.parent=None
-    groups={name:mesh.vertex_groups.new(name=name) for name in bones}
+    groups={bone.name:mesh.vertex_groups.new(name=bone.name) for bone in arm_data.bones}
     segments={}
-    for name in bones:
-        b=arm_data.bones[name]
-        segments[name]=(arm.matrix_world @ b.head_local, arm.matrix_world @ b.tail_local)
+    for bone in arm_data.bones:
+        name=bone.name
+        segments[name]=(arm.matrix_world @ bone.head_local, arm.matrix_world @ bone.tail_local)
     def segment_distance(point, a, b):
         ab=b-a
         denom=ab.length_squared
