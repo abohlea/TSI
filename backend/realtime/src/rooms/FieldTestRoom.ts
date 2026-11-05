@@ -72,6 +72,8 @@ export class FieldTestRoom extends Room {
     client.send('welcome', {
       playerId: player.playerId,
       roomId: this.roomId,
+      x: player.x,
+      z: player.z,
       serverStepMs: SERVER_STEP_MS
     });
     this.broadcastSnapshot();
