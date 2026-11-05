@@ -34,6 +34,8 @@ interface RequestLike extends AsyncIterable<Uint8Array> {
 interface ResponseLike {
   status(code: number): ResponseLike;
   json(body: Record<string, unknown>): unknown;
+  setHeader(name: string, value: string): void;
+  end(): unknown;
 }
 const ticketRequests = new Map<string, { count: number; resetAt: number }>();
 const TICKET_RATE_LIMIT = 10;
@@ -54,11 +56,19 @@ const server = defineServer({
       });
     });
 
+    app.options('/auth/session-ticket', (_request: unknown, response: ResponseLike) => {
+      response.setHeader('Access-Control-Allow-Origin', '*');
+      response.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+      response.setHeader('Access-Control-Allow-Headers', 'Authorization');
+      response.status(204).end();
+    });
+
     app.post('/auth/session-ticket', async (request: unknown, response: ResponseLike) => {
       if (!isProduction) {
         response.status(404).json({ error: 'Session-ticket endpoint is production-only.' });
         return;
       }
+      response.setHeader('Access-Control-Allow-Origin', '*');
       const req = request as RequestLike;
       const ip = req.ip ?? req.socket?.remoteAddress ?? 'unknown';
       const now = Date.now();
