@@ -16,7 +16,7 @@ import {
 import {
   canOccupyPosition,
   findSpawnPosition,
-  resolveAuthoritativePlayerShot,
+  resolveAuthoritativeCombatShot,
   SPRINT_SPEED,
   WALK_SPEED,
   WEAPON_COOLDOWN_MS,
@@ -193,11 +193,11 @@ export class TeamMatchRoom extends Room {
     shooter.ammo -= 1;
 
     const opponents = [...this.players.values()].filter((candidate) => candidate.team !== shooter.team);
-    const result = resolveAuthoritativePlayerShot(
-      shooter.playerId, shooter.x, 1.55, shooter.z, shooter.yaw, shooter.pitch, opponents
+    const result = resolveAuthoritativeCombatShot(
+      shooter.playerId, shooter.x, 1.55, shooter.z, shooter.yaw, shooter.pitch, opponents, [], now
     );
-    if (result.hit && result.targetPlayerId) {
-      const victim = opponents.find((candidate) => candidate.playerId === result.targetPlayerId);
+    if (result.targetKind === 'player') {
+      const victim = opponents.find((candidate) => candidate.playerId === result.targetId);
       if (victim && result.eliminated) {
         victim.respawnAt = now + ROUND_RESPAWN_MS;
         victim.moveX = 0; victim.moveZ = 0; victim.sprint = false;
@@ -215,7 +215,7 @@ export class TeamMatchRoom extends Room {
         this.queueCheckpoint();
       }
     }
-    client.send('team-shot', { accepted: true, hit: result.hit, eliminated: result.eliminated });
+    client.send('team-shot', { accepted: true, hit: result.hit, eliminated: result.eliminated, targetPlayerId: result.targetKind === 'player' ? result.targetId : null });
     this.sendPrivate(client, shooter);
     this.broadcastPlayers();
   }
