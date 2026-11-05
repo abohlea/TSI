@@ -97,6 +97,14 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(legRight, 'shin-right', 'capsule', new pc.Vec3(0, -0.68, 0), new pc.Vec3(0.19, 0.48, 0.2), fabric);
   part(legRight, 'boot-right', 'box', new pc.Vec3(0, -0.68, -0.08), new pc.Vec3(0.28, 0.2, 0.42), rubber);
 
+  // Spine and neck pivots form the upper-body portion of the procedural rig.
+  const spine = new pc.Entity('spine-pivot');
+  spine.setLocalPosition(0, 0.88, 0);
+  root.addChild(spine);
+  const headPivot = new pc.Entity('head-pivot');
+  headPivot.setLocalPosition(0, 1.82, 0);
+  root.addChild(headPivot);
+
   // Head, helmet, visor and communications equipment.
   part(root, 'neck', 'cylinder', new pc.Vec3(0, 1.72, 0), new pc.Vec3(0.18, 0.16, 0.18), fabric);
   part(root, 'head', 'sphere', new pc.Vec3(0, 1.94, 0), new pc.Vec3(0.42, 0.48, 0.4), fabric);
@@ -180,10 +188,14 @@ export function createPlayer(app: pc.Application): PlayerRig {
       const rate = sprinting ? 13.5 : 9.5;
       const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
       const swing = Math.sin(animationTime * rate) * amplitude;
-      legLeft.setLocalEulerAngles(swing * 38, 0, 0);
-      legRight.setLocalEulerAngles(-swing * 38, 0, 0);
-      armLeft.setLocalEulerAngles(-swing * 13, 0, -5);
-      armRight.setLocalEulerAngles(swing * 13, 0, 5);
+      const counterSwing = Math.sin(animationTime * rate + Math.PI * 0.5) * amplitude;
+      legLeft.setLocalEulerAngles(swing * 38, 0, swing * 3);
+      legRight.setLocalEulerAngles(-swing * 38, 0, -swing * 3);
+      // Arms counterbalance the legs; the rifle arm stays tighter while running.
+      armLeft.setLocalEulerAngles(-swing * (sprinting ? 20 : 14), 0, -5);
+      armRight.setLocalEulerAngles(swing * (sprinting ? 8 : 5), 0, 5);
+      spine.setLocalEulerAngles(moving ? counterSwing * (sprinting ? 3.5 : 2) : 0, 0, moving ? swing * 1.5 : 0);
+      headPivot.setLocalEulerAngles(moving ? -counterSwing * 1.2 : Math.sin(animationTime * 1.1) * 0.7, 0, moving ? -swing * 0.8 : 0);
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
       weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
       recoil = Math.max(0, recoil - deltaTime * 7.5);
