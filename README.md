@@ -103,6 +103,13 @@ backend/realtime/
 - Les combats publics nécessiteront un serveur dédié autoritaire.
 - Aucun service payant ne doit être activé sans validation du propriétaire du projet.
 
+## Code de contenu — arsenal et présentation de combat
+
+- `prototype/src/game/content/weapons.ts` — catalogue TypeScript provisoire des quatre premières familles d'armes et de leurs références de présentation.
+- `prototype/src/game/content/combatPresentation.ts` — registre des événements VFX/audio (tirs, impacts, explosions, pas, voix et élimination), avec options de réduction des flashes et secousses.
+
+Ces fichiers structurent les références de contenu ; les sons, modèles et effets référencés restent à créer/intégrer. Les valeurs d'armes sont des paramètres de prototype, pas la vérité compétitive serveur.
+
 ## Production AAA — bible complète
 
 - [TSI AAA Production Bible](docs/production/TSI-AAA-PRODUCTION-BIBLE.md) — cadre de production pour personnages, armes, animations, VFX/explosions, audio/voix, environnements, réseau, pipeline d'assets, performances et gates de validation.
