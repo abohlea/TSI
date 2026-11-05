@@ -27,6 +27,10 @@ export async function provisionPlayerProfile(uid: string): Promise<ProvisionedPl
       transaction.get(progressionRef)
     ]);
 
+    if (user.exists && user.get('accountStatus') !== 'active') {
+      throw new Error('TSI account is not active.');
+    }
+
     const createdAt = FieldValue.serverTimestamp();
     if (!user.exists) {
       transaction.create(userRef, {
