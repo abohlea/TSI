@@ -3,18 +3,19 @@ import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { v2 as cloudinary } from "cloudinary";
 import { authenticateFirebasePlayer, getTsiAdminApp } from "../firebase/adminAuth.js";
 import {
+  cloudinaryPlayerAvatarPrefix,
   configureCloudinary,
   createAvatarUploadSignature,
   readCloudinaryConfig,
   TSI_AVATAR_ALLOWED_FORMATS,
-  TSI_AVATAR_MAX_BYTES,
-  type CloudinaryRuntimeConfig
+  TSI_AVATAR_MAX_BYTES
 } from "./cloudinary.js";
 
 const SIGNATURE_PATH = "/v1/media/avatar/signature";
 const CONFIRM_PATH = "/v1/media/avatar/confirm";
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX_SIGNATURES = 8;
+const RATE_LIMIT_MAX_PLAYERS = 20_000;
 
 interface RateLimitEntry {
   windowStartedAt: number;
@@ -110,6 +111,12 @@ function createRateLimiter() {
   return (uid: string, now = Date.now()): boolean => {
     const previous = entries.get(uid);
     if (!previous || now - previous.windowStartedAt >= RATE_LIMIT_WINDOW_MS) {
+      if (!previous && entries.size >= RATE_LIMIT_MAX_PLAYERS) {
+        for (const [key, value] of entries) {
+          if (now - value.windowStartedAt >= RATE_LIMIT_WINDOW_MS) entries.delete(key);
+        }
+      }
+      if (!previous && entries.size >= RATE_LIMIT_MAX_PLAYERS) return false;
       entries.set(uid, { windowStartedAt: now, count: 1 });
       return true;
     }
@@ -130,6 +137,7 @@ async function authenticateRequest(request: IncomingMessage): Promise<string | n
 function validateAvatarResource(
   resource: CloudinaryResource,
   uid: string,
+  cloudName: string,
   expectedPublicId: string,
   expectedAssetId: string
 ): AvatarRecord | null {
@@ -140,14 +148,15 @@ function validateAvatarResource(
   const width = typeof resource.width === "number" ? resource.width : 0;
   const height = typeof resource.height === "number" ? resource.height : 0;
   const bytes = typeof resource.bytes === "number" ? resource.bytes : 0;
-  const ownerPrefix = `tsi/players/${uid}/avatars/`;
+  const ownerPrefix = cloudinaryPlayerAvatarPrefix(uid);
+  const expectedUrlPrefix = `https://res.cloudinary.com/${cloudName}/image/upload/`;
 
   if (
     assetId !== expectedAssetId ||
     publicId !== expectedPublicId ||
     !publicId.startsWith(ownerPrefix) ||
     resource.resource_type !== "image" ||
-    !secureUrl.startsWith("https://res.cloudinary.com/") ||
+    !secureUrl.startsWith(expectedUrlPrefix) ||
     !(TSI_AVATAR_ALLOWED_FORMATS as readonly string[]).includes(format) ||
     !Number.isInteger(width) ||
     !Number.isInteger(height) ||
@@ -241,7 +250,7 @@ export async function startCloudinaryMediaApi(): Promise<void> {
         return;
       }
 
-      const ownerPrefix = `tsi/players/${uid}/avatars/`;
+      const ownerPrefix = cloudinaryPlayerAvatarPrefix(uid);
       if (!publicId.startsWith(ownerPrefix)) {
         json(response, 403, { error: "This asset does not belong to the authenticated player." });
         return;
@@ -251,8 +260,23 @@ export async function startCloudinaryMediaApi(): Promise<void> {
         resource_type: "image",
         type: "upload"
       }) as CloudinaryResource;
-      const avatar = validateAvatarResource(resource, uid, publicId, assetId);
+      const avatar = validateAvatarResource(resource, uid, config.cloudName, publicId, assetId);
       if (!avatar) {
+        // Do not leave an invalid image attached to this player's unique upload ID.
+        // This cleanup is best-effort only; quota/cost controls must exist before production.
+        if (
+          resource.asset_id === assetId &&
+          resource.public_id === publicId &&
+          resource.resource_type === "image"
+        ) {
+          await cloudinary.uploader.destroy(publicId, {
+            resource_type: "image",
+            type: "upload",
+            invalidate: true
+          }).catch((error: unknown) => {
+            console.warn("[TSI Media API] Invalid avatar cleanup failed:", error);
+          });
+        }
         json(response, 422, { error: "Cloudinary asset failed TSI avatar validation." });
         return;
       }
