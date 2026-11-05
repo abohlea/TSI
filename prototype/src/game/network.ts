@@ -26,6 +26,16 @@ export interface NetworkSnapshot {
   targets: NetworkTargetSnapshot[];
 }
 
+export interface NetworkMatchState {
+  phase: 'countdown' | 'active' | 'finished';
+  startsAt: number;
+  endsAt: number;
+  remainingMs: number;
+  scoreLimit: number;
+  winnerUid: string | null;
+  finishReason: 'score-limit' | 'time-limit' | null;
+}
+
 export interface NetworkShotResult {
   accepted: boolean;
   hit?: boolean;
@@ -40,6 +50,8 @@ export interface NetworkCallbacks {
   onSnapshot(snapshot: NetworkSnapshot): void;
   onSelf?(state: NetworkPrivateState): void;
   onShot?(result: NetworkShotResult): void;
+  onMatchState?(state: NetworkMatchState): void;
+  onMatchEnded?(state: NetworkMatchState): void;
 }
 
 export function getSessionTicketEndpoint(serverUrl: string): string {
@@ -93,6 +105,19 @@ function parseSnapshot(value: unknown): NetworkSnapshot | null {
   }
 
   return { serverTime: value.serverTime, players, targets };
+}
+
+function parseMatchState(value: unknown): NetworkMatchState | null {
+  if (!isRecord(value) ||
+      (value.phase !== 'countdown' && value.phase !== 'active' && value.phase !== 'finished') ||
+      typeof value.startsAt !== 'number' || !Number.isFinite(value.startsAt) ||
+      typeof value.endsAt !== 'number' || !Number.isFinite(value.endsAt) ||
+      typeof value.remainingMs !== 'number' || !Number.isFinite(value.remainingMs) ||
+      typeof value.scoreLimit !== 'number' || !Number.isInteger(value.scoreLimit) ||
+      !(typeof value.winnerUid === 'string' || value.winnerUid === null) ||
+      !(value.finishReason === 'score-limit' || value.finishReason === 'time-limit' || value.finishReason === null)) return null;
+  return { phase: value.phase, startsAt: value.startsAt, endsAt: value.endsAt, remainingMs: value.remainingMs,
+    scoreLimit: value.scoreLimit, winnerUid: value.winnerUid, finishReason: value.finishReason };
 }
 
 function parsePrivateState(value: unknown): NetworkPrivateState | null {
@@ -162,6 +187,16 @@ export class TsiNetworkClient {
     room.onMessage('snapshot', (payload: unknown) => {
       const snapshot = parseSnapshot(payload);
       if (snapshot) callbacks.onSnapshot(snapshot);
+    });
+
+    room.onMessage('match-state', (payload: unknown) => {
+      const state = parseMatchState(payload);
+      if (state) callbacks.onMatchState?.(state);
+    });
+
+    room.onMessage('match-ended', (payload: unknown) => {
+      const state = parseMatchState(payload);
+      if (state) callbacks.onMatchEnded?.(state);
     });
 
     room.onMessage('self', (payload: unknown) => {
