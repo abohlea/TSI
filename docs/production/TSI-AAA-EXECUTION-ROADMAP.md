@@ -182,3 +182,11 @@ Ne jamais appeler « AAA terminé » un ensemble de spécifications, un prototyp
 ## 6. Prochaine exécution
 
 La prochaine livraison doit valider par CI le cycle FFA et les résultats idempotents, puis ajouter équipes/manches successives et tests multi-clients. Les projets Firebase/Cloudinary réels, les secrets de déploiement, le stockage partagé, les lockfiles npm et les essais Android/iOS restent des validations externes ou de préparation avant production. L'API média reste volontairement désactivée en production tant qu'une architecture publique avec TLS, App Check, limites distribuées, délais d'expiration et supervision n'est pas déployée. Le stockage partagé des tickets/rate limits et des lockfiles npm restent requis avant une exploitation multi-instance.
+
+### Complément P1 — noyau de règles équipes et manches (5 novembre 2026)
+- [x] Ajouter un module TypeScript déterministe pour l'affectation équilibrée alpha/bravo et le cycle best-of-three.
+- [x] Définir manches de trois minutes, objectif de cinq éliminations, pause de huit secondes et victoire au meilleur des trois.
+- [x] Couvrir équilibrage, score cible, transition inter-manches, timeout, égalité et immutabilité après fin par tests unitaires.
+- [ ] Intégrer le module à la room Colyseus et au client : le mode actif reste FFA tant que l'affectation, les tirs alliés, les resets, le HUD et les tests multi-clients ne sont pas livrés.
+- [ ] Ajouter une persistance durable crash-safe (outbox/queue transactionnelle) avant de considérer les résultats résistants aux arrêts brutaux.
+- Détail des règles et de la frontière d'intégration : `docs/production/TSI-TEAM-MODE.md`.
