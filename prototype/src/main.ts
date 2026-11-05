@@ -62,6 +62,7 @@ const input = new GameInput(canvas);
 const hud = createHud();
 const network = new TsiNetworkClient();
 const selectedRoom = new URLSearchParams(window.location.search).get('mode') === 'teams' ? 'team_match' : 'field_test';
+let lastTeamStateKey = '';
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
@@ -295,6 +296,9 @@ connectButton?.addEventListener('click', async () => {
         hud.toast('ÉQUIPE ' + team.toUpperCase() + ' · MODE 5V5');
       },
       onTeamMatchState(state) {
+        const stateKey = state.phase + ':' + state.round + ':' + (state.winner ?? '');
+        if (stateKey === lastTeamStateKey) return;
+        lastTeamStateKey = stateKey;
         if (state.phase === 'active') {
           hud.toast('MANCHE ' + state.round + '/3 · ALPHA ' + state.matchScore.alpha + ' — BRAVO ' + state.matchScore.bravo);
         } else if (state.phase === 'intermission') {
