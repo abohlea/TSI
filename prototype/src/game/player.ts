@@ -31,6 +31,8 @@ export interface PlayerRig {
   weapon: pc.Entity;
   updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
   triggerShot(): void;
+  triggerReload(): void;
+  triggerHit(): void;
 }
 
 export function createPlayer(app: pc.Application): PlayerRig {
@@ -169,10 +171,18 @@ export function createPlayer(app: pc.Application): PlayerRig {
   let animationTime = 0;
   let muzzleTimer = 0;
   let recoil = 0;
+  let reloadBlend = 0;
+  let hitReact = 0;
 
   return {
     root,
     weapon,
+    triggerReload() {
+      reloadBlend = 1;
+    },
+    triggerHit() {
+      hitReact = 1;
+    },
     triggerShot() {
       muzzleTimer = 0.055;
       recoil = 1;
@@ -186,11 +196,15 @@ export function createPlayer(app: pc.Application): PlayerRig {
       legLeft.setLocalEulerAngles(swing * 38, 0, swing * 3);
       legRight.setLocalEulerAngles(-swing * 38, 0, -swing * 3);
       // Arms counterbalance the legs; the rifle arm stays tighter while running.
-      armLeft.setLocalEulerAngles(-swing * (sprinting ? 20 : 14), 0, -5);
-      armRight.setLocalEulerAngles(swing * (sprinting ? 8 : 5), 0, 5);
+      reloadBlend = Math.max(0, reloadBlend - deltaTime * 0.72);
+      hitReact = Math.max(0, hitReact - deltaTime * 2.8);
+      const reloadPose = reloadBlend > 0 ? Math.sin((1 - reloadBlend) * Math.PI) : 0;
+      armLeft.setLocalEulerAngles(-swing * (sprinting ? 20 : 14) - reloadPose * 52 - hitReact * 12, 0, -5 - reloadPose * 18);
+      armRight.setLocalEulerAngles(swing * (sprinting ? 8 : 5) - reloadPose * 24 - hitReact * 8, 0, 5 + reloadPose * 12);
       headPivot.setLocalEulerAngles(moving ? -swing * 1.2 : Math.sin(animationTime * 1.1) * 0.7, 0, moving ? -swing * 0.8 : 0);
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
-      weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
+      weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob - reloadPose * 0.13, weaponRest.z + recoil * 0.075);
+      weapon.setLocalEulerAngles(reloadPose * 18, 0, reloadPose * 9);
       recoil = Math.max(0, recoil - deltaTime * 7.5);
       muzzleTimer = Math.max(0, muzzleTimer - deltaTime);
       if (muzzleTimer === 0) muzzleFlash.enabled = false;
@@ -198,8 +212,13 @@ export function createPlayer(app: pc.Application): PlayerRig {
   };
 }
 
-/** Detailed remote soldier variant for networked players; final skinned GLB will replace this blockout. */
-export function createRemotePlayer(app: pc.Application, playerId: string): pc.Entity {
+export interface RemotePlayerRig {
+  root: pc.Entity;
+  updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
+}
+
+/** Procedural animated remote soldier; replaceable by a skinned GLB rig. */
+export function createRemotePlayer(app: pc.Application, playerId: string): RemotePlayerRig {
   const root = new pc.Entity(`remote-operator-${playerId}`);
   let hash = 0;
   for (let index = 0; index < playerId.length; index += 1) hash = (hash * 31 + playerId.charCodeAt(index)) >>> 0;
@@ -237,19 +256,41 @@ export function createRemotePlayer(app: pc.Application, playerId: string): pc.En
   part(root, 'remote-radio-antenna', 'cylinder', new pc.Vec3(0.21, 1.68, 0.32), new pc.Vec3(0.018, 0.36, 0.018), metal);
   part(root, 'remote-shoulder-patch', 'box', new pc.Vec3(0.39, 1.48, -0.15), new pc.Vec3(0.14, 0.16, 0.035), accent);
 
-  // Arms, gloves, elbow guards, trousers, knee pads and boots.
+  // Articulated remote limbs, so networked soldiers animate with their motion.
+  const remoteArms: pc.Entity[] = [];
+  const remoteLegs: pc.Entity[] = [];
   for (const side of [-1, 1]) {
-    part(root, `remote-arm-${side}`, 'capsule', new pc.Vec3(side * 0.43, 1.08, -0.01), new pc.Vec3(0.2, 0.57, 0.2), cloth);
+    const arm = new pc.Entity(`remote-arm-pivot-${side}`);
+    arm.setLocalPosition(side * 0.43, 1.46, -0.01);
+    root.addChild(arm);
+    part(arm, `remote-arm-${side}`, 'capsule', new pc.Vec3(0, -0.28, 0), new pc.Vec3(0.2, 0.57, 0.2), cloth);
+    part(arm, `remote-elbow-pad-${side}`, 'box', new pc.Vec3(0, -0.46, -0.13), new pc.Vec3(0.2, 0.18, 0.1), dark);
+    part(arm, `remote-glove-${side}`, 'sphere', new pc.Vec3(0, -0.7, -0.04), new pc.Vec3(0.18, 0.15, 0.18), dark);
     part(root, `remote-shoulder-pad-${side}`, 'sphere', new pc.Vec3(side * 0.42, 1.46, 0), new pc.Vec3(0.29, 0.25, 0.28), armor);
-    part(root, `remote-elbow-pad-${side}`, 'box', new pc.Vec3(side * 0.44, 0.98, -0.13), new pc.Vec3(0.2, 0.18, 0.1), dark);
-    part(root, `remote-glove-${side}`, 'sphere', new pc.Vec3(side * 0.44, 0.76, -0.04), new pc.Vec3(0.18, 0.15, 0.18), dark);
-    part(root, `remote-leg-${side}`, 'capsule', new pc.Vec3(side * 0.18, 0.43, 0), new pc.Vec3(0.24, 0.68, 0.25), cloth);
-    part(root, `remote-knee-pad-${side}`, 'box', new pc.Vec3(side * 0.18, 0.4, -0.16), new pc.Vec3(0.24, 0.18, 0.1), armor);
-    part(root, `remote-boot-${side}`, 'box', new pc.Vec3(side * 0.18, 0.12, -0.08), new pc.Vec3(0.29, 0.2, 0.42), dark);
+    remoteArms.push(arm);
+
+    const leg = new pc.Entity(`remote-leg-pivot-${side}`);
+    leg.setLocalPosition(side * 0.18, 0.76, 0);
+    root.addChild(leg);
+    part(leg, `remote-leg-${side}`, 'capsule', new pc.Vec3(0, -0.31, 0), new pc.Vec3(0.24, 0.68, 0.25), cloth);
+    part(leg, `remote-knee-pad-${side}`, 'box', new pc.Vec3(0, -0.39, -0.16), new pc.Vec3(0.24, 0.18, 0.1), armor);
+    part(leg, `remote-boot-${side}`, 'box', new pc.Vec3(0, -0.68, -0.08), new pc.Vec3(0.29, 0.2, 0.42), dark);
     part(root, `remote-thigh-pouch-${side}`, 'box', new pc.Vec3(side * 0.2, 0.59, -0.16), new pc.Vec3(0.17, 0.2, 0.11), armor);
+    remoteLegs.push(leg);
   }
 
   root.setPosition(0, 0.04, 0);
   app.root.addChild(root);
-  return root;
+  let gaitTime = 0;
+  return {
+    root,
+    updateAnimation(deltaTime, moving, sprinting) {
+      gaitTime += deltaTime;
+      const gait = Math.sin(gaitTime * (sprinting ? 13 : 9.5)) * (moving ? (sprinting ? 0.48 : 0.3) : 0.018);
+      remoteLegs[0].setLocalEulerAngles(gait * 38, 0, gait * 3);
+      remoteLegs[1].setLocalEulerAngles(-gait * 38, 0, -gait * 3);
+      remoteArms[0].setLocalEulerAngles(-gait * (sprinting ? 18 : 13), 0, -4);
+      remoteArms[1].setLocalEulerAngles(gait * (sprinting ? 18 : 13), 0, 4);
+    }
+  };
 }
