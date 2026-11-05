@@ -143,11 +143,14 @@ def build():
         bpy.ops.object.mode_set(mode="OBJECT")
         act=arm.animation_data.action
         act.name=name
-        for f in (1,12,24):
-            if f not in [k[0] for k in keys]:
-                for fc in act.fcurves:
-                    for kp in fc.keyframe_points:
-                        kp.interpolation="BEZIER"
+        for fc in act.fcurves:
+            for kp in fc.keyframe_points:
+                kp.interpolation="BEZIER"
+        # Preserve each action as its own NLA strip so the glTF exporter can emit all clips.
+        track=arm.animation_data.nla_tracks.new()
+        track.name=name
+        strip=track.strips.new(name, 1, act)
+        strip.name=name
         arm.animation_data.action=None
     action("TSI_Character_Idle_Rifle",[(1,{}),(12,{"chest":(.015,0,0)}),(24,{})])
     action("TSI_Character_Walk_Forward",[(1,{"thigh.L":(.45,0,0),"thigh.R":(-.45,0,0)}),(12,{"thigh.L":(-.45,0,0),"thigh.R":(.45,0,0)}),(24,{"thigh.L":(.45,0,0),"thigh.R":(-.45,0,0)})])
