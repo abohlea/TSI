@@ -117,6 +117,22 @@ def build():
     cylinder_x(col, "MuzzleDevice", (0.87, 0.0, 0.02), 0.031, 0.075, graphite)
     box(col, "MuzzleAccent", (0.87, 0.0, 0.02), (0.018, 0.066, 0.066), orange, 0.004)
 
+    # Hard-surface side panels, fasteners and cooling ribs.
+    for side in (-1, 1):
+        y = side * 0.079
+        box(col, "ReceiverSidePanel_%s" % side, (-0.005, y, 0.012), (0.30, 0.009, 0.085), steel, 0.008)
+        box(col, "ReceiverInset_%s" % side, (-0.005, y + side * 0.006, 0.012), (0.18, 0.004, 0.042), graphite, 0.004)
+        for i in range(3):
+            x = -0.105 + i * 0.075
+            cylinder_x(col, "ReceiverFastener_%s_%02d" % (side, i), (x, y + side * 0.008, 0.035), 0.008, 0.006, orange if i == 0 else steel, 12)
+        for i in range(6):
+            x = 0.245 + i * 0.046
+            box(col, "HandguardCoolingRib_%s_%02d" % (side, i), (x, y, 0.015), (0.012, 0.012, 0.082), steel, 0.003)
+    box(col, "LowerReceiverPanel", (0.04, 0.0, -0.085), (0.24, 0.115, 0.018), steel, 0.006)
+    box(col, "TopRailFront", (0.31, 0.0, 0.096), (0.29, 0.065, 0.018), steel, 0.003)
+    for i in range(9):
+        box(col, "RailNotch_%02d" % i, (0.19 + i * 0.03, 0.0, 0.108), (0.009, 0.07, 0.009), polymer, 0.001)
+
     # Stock and cheek rest.
     box(col, "StockBridge", (-0.34, 0.0, -0.005), (0.30, 0.075, 0.095), steel, 0.012)
     box(col, "StockButtpad", (-0.51, 0.0, -0.005), (0.045, 0.105, 0.15), polymer, 0.012)
@@ -128,17 +144,31 @@ def build():
         0.012, (0.0, -0.22, 0.0))
     box(col, "TriggerGuard", (0.105, 0.0, -0.085), (0.12, 0.012, 0.055), steel, 0.006)
 
+    # Grip side panel and trigger detail.
+    box(col, "GripSidePanel", (-0.04, -0.047, -0.15), (0.075, 0.006, 0.13), graphite, 0.005, (0.0, -0.22, 0.0))
+    box(col, "Trigger", (0.105, 0.0, -0.105), (0.012, 0.012, 0.045), orange, 0.003)
+
     # Magazine, kept separate for a future reload animation.
     box(col, "Magazine", (0.12, 0.0, -0.205), (0.13, 0.085, 0.19), polymer,
         0.012, (0.0, -0.12, 0.0))
     box(col, "MagazineBase", (0.12, 0.0, -0.305), (0.14, 0.09, 0.025), graphite, 0.006)
     box(col, "MagazineMark", (0.12, -0.044, -0.205), (0.045, 0.004, 0.055), orange, 0.002)
 
+    # Magazine ribs and floorplate details.
+    for i in range(4):
+        box(col, "MagazineRib_%02d" % i, (0.12, -0.046, -0.14 - i * 0.035), (0.082, 0.004, 0.008), steel, 0.002)
+    box(col, "MagazineWitnessWindow", (0.12, -0.047, -0.235), (0.025, 0.004, 0.045), orange, 0.002)
+
     # Original compact optic silhouette.
     box(col, "OpticMount", (0.04, 0.0, 0.16), (0.14, 0.075, 0.025), steel, 0.005)
     box(col, "OpticHousing", (0.04, 0.0, 0.215), (0.13, 0.065, 0.085), graphite, 0.012)
     box(col, "OpticLensFront", (0.108, 0.0, 0.215), (0.006, 0.052, 0.058), glass, 0.002)
     box(col, "OpticLensRear", (-0.028, 0.0, 0.215), (0.006, 0.052, 0.058), glass, 0.002)
+
+    # Optic adjustment turrets and protective hood.
+    cylinder_x(col, "OpticWindageTurret", (0.04, -0.044, 0.215), 0.018, 0.025, steel, 16)
+    cylinder_x(col, "OpticElevationTurret", (0.04, 0.0, 0.267), 0.014, 0.05, steel, 16)
+    box(col, "OpticHood", (0.04, 0.0, 0.263), (0.15, 0.078, 0.012), graphite, 0.004)
 
     # Small authored accents, intentionally restrained.
     box(col, "ReceiverMark", (-0.07, -0.073, 0.015), (0.12, 0.004, 0.018), orange, 0.002)
@@ -165,12 +195,10 @@ def build():
             obj.parent = root
             obj.matrix_world = world
 
-    # Keep the generated asset isolated from the scene's default collection.
+    # Export meshes AND empty sockets so runtime attachment points survive GLB export.
+    bpy.ops.object.select_all(action="DESELECT")
     for obj in list(col.objects):
-        if obj.type == "MESH":
-            obj.select_set(True)
-        else:
-            obj.select_set(False)
+        obj.select_set(True)
     bpy.context.view_layer.objects.active = next((o for o in col.objects if o.name == PREFIX + "Body"), None)
 
     path = output_path()
@@ -179,7 +207,7 @@ def build():
                               use_selection=True, export_apply=True,
                               export_yup=True, export_materials="EXPORT")
     print("AR-01 BLOCKOUT GLB EXPORTED:", path)
-    print("NOTE: validate scale, socket transforms, materials and PlayCanvas import before runtime use.")
+    print("NOTE: detailed blockout only; validate scale, sockets, materials and PlayCanvas import.")
 
 if __name__ == "__main__":
     build()
