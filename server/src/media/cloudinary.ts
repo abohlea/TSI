@@ -58,6 +58,17 @@ export function readCloudinaryConfig(
   return { cloudName, apiKey, apiSecret, uploadPreset };
 }
 
+export function cloudinaryPlayerAvatarPrefix(uid: string): string {
+  if (!uid || Buffer.byteLength(uid, "utf8") > 128) {
+    throw new Error("Firebase UID is invalid.");
+  }
+
+  // Firebase UIDs are opaque identifiers. Base64url avoids assuming that a
+  // provider-issued UID contains only ASCII path-safe characters.
+  const safeUid = Buffer.from(uid, "utf8").toString("base64url");
+  return `tsi/players/${safeUid}/avatars/`;
+}
+
 export function configureCloudinary(config: CloudinaryRuntimeConfig): void {
   cloudinary.config({
     cloud_name: config.cloudName,
@@ -73,15 +84,13 @@ export function createAvatarUploadSignature(
   nowMs = Date.now(),
   nonce = randomUUID()
 ): CloudinaryAvatarSignature {
-  if (!/^[a-zA-Z0-9_-]{1,128}$/.test(uid)) {
-    throw new Error("Firebase UID is invalid.");
-  }
+  const ownerPrefix = cloudinaryPlayerAvatarPrefix(uid);
   if (!/^[a-zA-Z0-9-]{8,64}$/.test(nonce)) {
     throw new Error("Upload nonce is invalid.");
   }
 
   const timestamp = Math.floor(nowMs / 1000);
-  const publicId = `tsi/players/${uid}/avatars/avatar-${nonce}`;
+  const publicId = `${ownerPrefix}avatar-${nonce}`;
   const signedParams = {
     overwrite: false,
     public_id: publicId,
