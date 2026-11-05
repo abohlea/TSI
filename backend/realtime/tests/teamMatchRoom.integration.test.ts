@@ -59,6 +59,7 @@ describe('TeamMatchRoom Colyseus integration', () => {
     const welcome = await player.waitForMessage('team-welcome');
     const originalSessionId = player.sessionId;
 
+    const reconnected = new Promise<void>((resolve) => player.onReconnect(resolve));
     const droppedRoster = observer.waitForMessage('team-players');
     player.connection.close(4010);
     const roster = await droppedRoster;
@@ -67,7 +68,6 @@ describe('TeamMatchRoom Colyseus integration', () => {
     );
     assert.equal(droppedPlayer?.connected, false);
 
-    const reconnected = new Promise<void>((resolve) => player.onReconnect(resolve));
     await reconnected;
 
     assert.equal(player.sessionId, originalSessionId);
