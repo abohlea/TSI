@@ -11,6 +11,7 @@ export interface CombatPlayer {
   x: number;
   z: number;
   health: number;
+  setHealth?(health: number): void;
 }
 
 export interface CombatBlocker {
@@ -151,6 +152,7 @@ export function resolveAuthoritativeHit(
     const player = players.find((candidate) => candidate.sessionId === nearest.sessionId);
     if (!player) return { kind: "miss" };
     player.health = Math.max(0, player.health - PLAYER_DAMAGE);
+    player.setHealth?.(player.health);
     nearest.eliminated = player.health === 0;
     return nearest;
   }
