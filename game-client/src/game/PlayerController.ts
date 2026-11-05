@@ -1,4 +1,4 @@
-import { Application, Entity, Vec3 } from 'playcanvas';
+import { Application, Vec3 } from 'playcanvas';
 import type { ArenaScene, TargetDummy } from './arena';
 
 export interface HUDPort {
