@@ -64,7 +64,7 @@ Schéma logique :
                       v
                SERVEUR DE SESSION AUTORITAIRE
                       ^
-                      | UDP / trafic de partie
+                      | WebSocket / trafic de partie (premier prototype)
                       |
                     CLIENTS
 
@@ -173,7 +173,7 @@ Le client envoie une intention d'action. Il ne transmet jamais une instruction d
 
 Le transport par défaut documenté de Colyseus est WebSocket. Ce transport est pratique pour la première version et le test du matchmaking, mais fonctionne au-dessus de TCP et n'est pas automatiquement optimal pour un shooter rapide soumis à pertes de paquets.
 
-Le navigateur n'expose pas un socket UDP brut comme une application native. WebTransport est une piste à évaluer selon le support des navigateurs et des appareils ; WebRTC DataChannels peuvent également être étudiés si le modèle de connexion le justifie.
+Le navigateur n'expose pas un socket UDP brut comme une application native. WebTransport est une piste à évaluer selon le support des navigateurs et des appareils ; WebRTC DataChannels peuvent également être étudiés si le modèle de connexion le justifie. Le transport choisi doit être testé sur les réseaux mobiles réels.
 
 **Décision :** débuter avec WebSocket/Colyseus pour le test en petit groupe. Si les mesures de latence, gigue, pertes et sensation de tir ne satisfont pas les exigences, réévaluer le transport avant de construire le Battle Royale complet. Ne pas promettre un netcode compétitif tant que cette porte n'est pas passée.
 
@@ -348,13 +348,13 @@ Sources : [Cloudinary Pricing](https://cloudinary.com/pricing) et [Billing and P
 
 ## 9. Hébergement des serveurs — Render exclu
 
-L'hébergeur de partie devra prendre en charge un processus Linux persistant, UDP et ports configurables, CPU soutenu, mémoire suffisante, démarrage/arrêt de sessions, logs par instance, supervision, isolation des matchs, protection réseau, régions testables et gestion sécurisée des secrets.
+L'hébergeur de partie devra prendre en charge un processus Node.js persistant, WebSocket sur TLS/HTTPS, CPU soutenu, mémoire suffisante, démarrage/arrêt de rooms, logs par instance, supervision, isolation des matchs, protection réseau, régions testables et gestion sécurisée des secrets. Si le transport évolue vers WebTransport ou une solution native, les ports et protocoles requis seront réévalués.
 
 Un hébergement de site web ou HTTP uniquement ne répond pas automatiquement à ces besoins.
 
 **Développement :** serveur de session autoritaire lancé sur la machine du développeur.
 
-**Laboratoire :** machine ou VM de test à durée limitée, uniquement après comparaison de la latence, du CPU, de la mémoire, des ports UDP et du coût réel.
+**Laboratoire :** machine ou VM de test à durée limitée, uniquement après comparaison de la latence, du CPU, de la mémoire, du comportement WebSocket et du coût réel.
 
 **Bêta et production :** fournisseur à choisir après mesures. Render reste exclu. Aucun fournisseur ne sera qualifié de haut de gamme ou de gratuit sans vérification de ses conditions et performances.
 
@@ -490,7 +490,7 @@ Un jalon n'est accepté que si le build est reproductible, les tests obligatoire
 - Migration Firestore documentée.
 - Procédure de retour arrière préparée.
 
-GitHub peut automatiser les contrôles et tests. La compilation PlayCanvas complète peut nécessiter des runners adaptés et beaucoup de stockage ; ne pas supposer qu'un runner gratuit standard suffira.
+GitHub peut automatiser les contrôles et tests. Le build client PlayCanvas/Vite est un bundle web statique. Les workflows doivent aussi vérifier les types du serveur Node.js, ses tests de rooms et les règles de sécurité ; les limitations de temps et de stockage du runner restent à contrôler.
 
 ## 17. Phases techniques
 
@@ -581,7 +581,8 @@ Ne pas inventer de calendrier ou de coût avant ces preuves.
 - [Cloud Functions — FAQ et facturation](https://firebase.google.com/docs/functions/faq-and-troubleshooting)
 - [Cloudinary — Tarifs](https://cloudinary.com/pricing)
 - [Cloudinary — Crédits et plans](https://cloudinary.com/documentation/billing_and_plans)
-- [Epic — Serveurs dédiés PlayCanvas](https://dev.epicgames.com/documentation/unreal-engine/setting-up-dedicated-servers-in-unreal-engine)
+- [PlayCanvas — Engine standalone](https://developer.playcanvas.com/user-manual/engine/standalone/)
+- [Colyseus — documentation](https://docs.colyseus.io/)
 
 ## 21. Décision finale d'architecture
 
