@@ -9,6 +9,7 @@ import {
   type TargetSnapshot
 } from '../types.js';
 import { parsePlayerInput } from '../validation.js';
+import { verifyFirebasePlayerToken } from '../firebaseAuth.js';
 import {
   canOccupyPosition,
   createPracticeTargets,
@@ -67,9 +68,13 @@ export class FieldTestRoom extends Room {
     this.setTimestep((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
   }
 
-  override onAuth(_client: Client, options: unknown): LocalAuth {
+  override async onAuth(_client: Client, options: unknown): Promise<LocalAuth> {
     if (process.env.NODE_ENV === 'production') {
-      throw new Error('Local development authentication is disabled in production.');
+      if (!isRecord(options) || typeof options.idToken !== 'string') {
+        throw new Error('A Firebase Authentication ID token is required.');
+      }
+      const identity = await verifyFirebasePlayerToken(options.idToken);
+      return { playerId: identity.playerId };
     }
     if (process.env.TSI_ENABLE_LOCAL_AUTH !== 'true') {
       throw new Error('Local room authentication is not enabled.');
