@@ -333,3 +333,71 @@ Trois environnements distincts sont requis.
 **Production :** projet Firebase distinct, accès d'administration limité, secrets séparés, Cloudinary de production, serveurs dédiés, alertes, sauvegardes et procédure de retour arrière.
 
 Ne pas mélanger comptes, clés, médias et données entre les environnements.
+
+
+## 11. Sécurité et modèle de menace
+
+Menaces à couvrir :
+- client modifié ;
+- répétition ou falsification de tickets ;
+- déplacement ou vitesse impossible ;
+- cadence de tir impossible ;
+- manipulation de dégâts ou munitions ;
+- lecture d'informations non visibles ;
+- duplication de récompenses ;
+- vol de compte ;
+- abus de Firestore ;
+- upload de médias malveillants ou inappropriés ;
+- déni de service ;
+- fuite de secrets.
+
+Mesures :
+- autorité serveur sur le combat ;
+- authentification et autorisation sur les API ;
+- tickets courts et liés à une partie ;
+- règles Firestore restrictives ;
+- App Check en complément ;
+- secrets hors du dépôt ;
+- limites de fréquence et de taille ;
+- journalisation sans jetons ;
+- analyse des comportements impossibles ;
+- procédures de modération, sanctions et contestation.
+
+Aucun système anti-triche ne garantit l'absence totale de fraude. Les sanctions sévères ne doivent pas être décidées à partir d'un signal isolé peu fiable.
+
+## 12. Secrets et GitHub
+
+Ne jamais versionner un compte de service Firebase, un secret Cloudinary, une clé privée de signature, un jeton de publication, un certificat de signature mobile, un mot de passe ou un fichier d'environnement réel.
+
+Un fichier exemple peut documenter les variables attendues, sans valeur secrète. Les vrais secrets restent dans un gestionnaire adapté ou dans l'environnement local protégé.
+
+Le dépôt suit le code, les documents, les configurations et les scripts. Les gros fichiers binaires Unreal nécessitent une stratégie contrôlée (Git LFS ou stockage adapté après vérification des quotas). Ne pas committer caches, builds générés ou fichiers temporaires.
+
+## 13. Performance mobile
+
+Profils proposés :
+- **Minimum :** objectif 30 FPS stable sur la matrice d'appareils définie.
+- **Standard :** compromis qualité et fréquence.
+- **Élevé :** objectif 60 FPS sur les appareils capables, si température et batterie le permettent.
+
+Ces profils sont des cibles à mesurer, pas des garanties.
+
+Mesures obligatoires : CPU jeu et rendu, GPU, RAM, mémoire graphique, temps de chargement, température après session prolongée, batterie, taille de l'application, FPS moyens et percentiles, latence et pertes réseau.
+
+Stratégies : niveaux de détail, budgets de matériaux et d'effets, streaming de textures, chargement asynchrone, déchargement des zones, limitation d'acteurs visibles et tests sur téléphones réels.
+
+La lisibilité du combat passe avant les effets lourds.
+
+## 14. Observabilité
+
+Outils envisagés :
+- Crashlytics pour les crashs ;
+- Performance Monitoring pour certaines mesures client ;
+- Analytics pour des événements produit minimaux ;
+- App Check pour les services compatibles ;
+- logs serveur structurés ;
+- tableau de bord pour disponibilité, sessions, matchmaking, réseau et consommation.
+
+Mesures à suivre : connexions réussies/échouées, attente et erreurs de matchmaking, serveurs actifs, CPU/mémoire/bande passante par serveur, ping/gigue/perte, crashs par appareil, opérations Firestore et crédits Cloudinary.
+
+Ne jamais enregistrer mots de passe, jetons, secrets ou données personnelles inutiles.
