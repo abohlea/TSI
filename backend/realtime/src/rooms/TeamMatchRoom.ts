@@ -42,6 +42,7 @@ interface TeamPlayer {
   sprint: boolean;
   nextShotAt: number;
   respawnAt: number;
+  connected: boolean;
 }
 interface Participant extends MatchParticipantResult { team: TeamId }
 
@@ -99,7 +100,8 @@ export class TeamMatchRoom extends Room {
     const player: TeamPlayer = {
       playerId: auth.playerId, team, x: spawn.x, z: spawn.z, yaw: team === 'alpha' ? 0 : 180,
       pitch: -2.4, health: 100, ammo: WEAPON_MAGAZINE_SIZE, reserve: WEAPON_STARTING_RESERVE,
-      score: 0, lastSequence: 0, moveX: 0, moveZ: 0, sprint: false, nextShotAt: 0, respawnAt: 0
+      score: 0, lastSequence: 0, moveX: 0, moveZ: 0, sprint: false, nextShotAt: 0, respawnAt: 0,
+      connected: true
     };
     this.players.set(client.sessionId, player);
     this.teams.set(client.sessionId, team);
@@ -119,10 +121,47 @@ export class TeamMatchRoom extends Room {
     this.queueCheckpoint();
   }
 
-  override onLeave(client: Client): void {
-    this.players.delete(client.sessionId);
-    this.teams.delete(client.sessionId);
-    this.reloadEnds.delete(client.sessionId);
+  override onDrop(client: Client, _code?: number): void {
+    const player = this.players.get(client.sessionId);
+    if (!player) return;
+    if (this.match.phase === 'finished') {
+      this.removePlayer(client.sessionId);
+      return;
+    }
+
+    // Keep the seat, team and authoritative player state for a short network
+    // interruption. A timed-out reconnection is finalized by onLeave().
+    player.connected = false;
+    player.moveX = 0;
+    player.moveZ = 0;
+    player.sprint = false;
+    this.broadcastPlayers();
+    this.allowReconnection(client, 25);
+  }
+
+  override onReconnect(client: Client): void {
+    const player = this.players.get(client.sessionId);
+    if (!player) return;
+    player.connected = true;
+    player.moveX = 0;
+    player.moveZ = 0;
+    player.sprint = false;
+    client.send('team-welcome', {
+      playerId: player.playerId, team: player.team, roomId: this.roomId, x: player.x, z: player.z
+    });
+    client.send('team-match-state', this.matchPayload());
+    this.sendPrivate(client, player);
+    this.broadcastPlayers();
+  }
+
+  override onLeave(client: Client, _code?: number): void {
+    this.removePlayer(client.sessionId);
+  }
+
+  private removePlayer(sessionId: string): void {
+    this.players.delete(sessionId);
+    this.teams.delete(sessionId);
+    this.reloadEnds.delete(sessionId);
     this.broadcastPlayers();
   }
 
@@ -287,7 +326,7 @@ export class TeamMatchRoom extends Room {
   private broadcastPlayers(): void {
     this.broadcast('team-players', [...this.players.values()].map((player) => ({
       playerId: player.playerId, team: player.team, x: player.x, z: player.z,
-      yaw: player.yaw, health: player.health, score: player.score
+      yaw: player.yaw, health: player.health, score: player.score, connected: player.connected
     })));
   }
 
