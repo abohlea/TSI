@@ -79,6 +79,31 @@ export function createPracticeTargets(): ServerTarget[] {
   }));
 }
 
+export interface SpawnPosition {
+  x: number;
+  z: number;
+}
+
+const PLAYER_SPAWN_POINTS: readonly SpawnPosition[] = [
+  { x: -2, z: 5 },
+  { x: 2, z: 5 },
+  { x: -2, z: 9 },
+  { x: 2, z: 9 },
+  { x: -6, z: 5 },
+  { x: 6, z: 5 },
+  { x: -6, z: 9 },
+  { x: 6, z: 9 }
+];
+
+/** Select an unused, walkable spawn point so reconnecting players cannot overlap. */
+export function findSpawnPosition(players: readonly Pick<SpawnPosition, 'x' | 'z'>[]): SpawnPosition | null {
+  const minimumSeparation = PLAYER_RADIUS * 2 + 0.2;
+  return PLAYER_SPAWN_POINTS.find((spawn) =>
+    canOccupyPosition(spawn.x, spawn.z) &&
+    players.every((player) => Math.hypot(player.x - spawn.x, player.z - spawn.z) >= minimumSeparation)
+  ) ?? null;
+}
+
 export function canOccupyPosition(x: number, z: number): boolean {
   if (x < -WORLD_LIMIT || x > WORLD_LIMIT || z < -WORLD_LIMIT || z > WORLD_LIMIT) {
     return false;
