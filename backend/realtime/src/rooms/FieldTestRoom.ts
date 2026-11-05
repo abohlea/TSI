@@ -13,7 +13,6 @@ import {
   createPracticeTargets,
   resolveAuthoritativeShot,
   SPRINT_SPEED,
-  TARGET_RESPAWN_MS,
   updateTargetRespawns,
   WALK_SPEED,
   WEAPON_COOLDOWN_MS,
