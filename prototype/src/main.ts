@@ -165,6 +165,7 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
   for (const remote of snapshot.players) {
     if (remote.playerId === network.playerId) {
       serverTargetPosition = { x: remote.x, z: remote.z };
+      player.root.enabled = remote.health > 0;
       continue;
     }
     visibleRemoteIds.add(remote.playerId);
@@ -179,6 +180,7 @@ function applyNetworkSnapshot(snapshot: NetworkSnapshot): void {
     view.targetX = remote.x;
     view.targetZ = remote.z;
     view.targetYaw = remote.yaw;
+    view.root.enabled = remote.health > 0;
   }
 
   for (const targetSnapshot of snapshot.targets) {
@@ -236,7 +238,8 @@ connectButton?.addEventListener('click', async () => {
         }
         if (result.accepted) player.triggerShot();
         if (result.hit) hud.showHit();
-        if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
+        if (result.eliminated && result.targetPlayerId) hud.toast('OPÉRATEUR ÉLIMINÉ · VALIDÉ SERVEUR');
+        else if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
       },
       onSnapshot: applyNetworkSnapshot
     });
