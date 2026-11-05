@@ -132,6 +132,7 @@ function fire(): void {
 
   ammo -= 1;
   shotCooldown = 0.115;
+  player.triggerShot();
   hud.setAmmo(ammo, reserve);
   const cameraPosition = camera.getPosition().clone();
   const direction = aimPointForPlayer().sub(cameraPosition).normalize();
@@ -233,6 +234,7 @@ connectButton?.addEventListener('click', async () => {
           hud.toast('CHARGEUR VIDE · RECHARGE');
           return;
         }
+        if (result.accepted) player.triggerShot();
         if (result.hit) hud.showHit();
         if (result.eliminated) hud.toast('CIBLE NEUTRALISÉE · VALIDÉE SERVEUR');
       },
@@ -261,6 +263,8 @@ app.on('update', (dt: number) => {
   }
   updateTargets(performance.now());
 
+  let movingForAnimation = false;
+  let sprintingForAnimation = false;
   if (active) {
     const controls = input.read();
     yaw += controls.yawDelta;
@@ -276,6 +280,8 @@ app.on('update', (dt: number) => {
     const normalizedX = moveLength > 1 ? moveX / moveLength : moveX;
     const normalizedZ = moveLength > 1 ? moveZ / moveLength : moveZ;
     const speed = controls.sprint ? 8.2 : 5.2;
+    movingForAnimation = moveLength > 0.01;
+    sprintingForAnimation = controls.sprint;
 
     if (moveLength > 0.01) {
       const stepX = normalizedX * speed * dt;
@@ -315,6 +321,7 @@ app.on('update', (dt: number) => {
     }
   }
 
+  player.updateAnimation(dt, movingForAnimation, sprintingForAnimation);
   const remoteBlend = 1 - Math.exp(-12 * dt);
   for (const view of remotePlayers.values()) {
     const current = view.root.getPosition();
