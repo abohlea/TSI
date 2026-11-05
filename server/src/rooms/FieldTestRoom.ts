@@ -1,6 +1,7 @@
 import { Client, Room } from "colyseus";
 import { FieldTestState, PlayerState, TargetState } from "../schema/FieldTestState.js";
 import { movePlayer, parsePlayerInput, type PlayerInput } from "../gameRules.js";
+import { resolvePracticeShot } from "../combatRules.js";
 
 interface SpawnPoint {
   x: number;
@@ -133,32 +134,17 @@ export class FieldTestRoom extends Room<FieldTestState> {
     privateState.ammo -= 1;
     privateState.shots += 1;
 
-    const radians = (player.yaw * Math.PI) / 180;
-    const forwardX = Math.sin(radians);
-    const forwardZ = -Math.cos(radians);
-    let nearest: TargetState | null = null;
-    let nearestDistance = 70;
-
-    for (const target of this.state.targets.values()) {
-      if (!target.active) continue;
-      const dx = target.x - player.x;
-      const dz = target.z - player.z;
-      const along = dx * forwardX + dz * forwardZ;
-      const miss = Math.abs(dx * forwardZ - dz * forwardX);
-      if (along > 0 && along < nearestDistance && miss <= 1.05) {
-        nearest = target;
-        nearestDistance = along;
-      }
-    }
-
-    if (nearest) {
+    const shot = resolvePracticeShot(
+      player.x,
+      player.z,
+      player.yaw,
+      Array.from(this.state.targets.values())
+    );
+    if (shot.hit) {
       privateState.hits += 1;
-      nearest.health = Math.max(0, nearest.health - 34);
-      if (nearest.health === 0) {
-        nearest.active = false;
-        privateState.eliminations += 1;
-        this.targetRespawns.set(nearest.id, now + 3.2);
-      }
+      if (shot.eliminated) privateState.eliminations += 1;
+      const target = this.state.targets.get(String(shot.targetId));
+      if (target && shot.eliminated) this.targetRespawns.set(target.id, now + 3.2);
     }
 
     this.sendPrivateState(client);
