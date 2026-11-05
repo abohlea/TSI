@@ -16,7 +16,7 @@ Le script crée un opérateur tactique humanoïde d'environ 1,9 m, palette graph
 
 ## Limites explicites
 
-C'est un proxy de pipeline, pas l'opérateur final. Les pièces d'armure sont parentées rigidement aux os : il n'y a pas de skinning organique, de doigts articulés, d'IK, de retopologie, d'UV dédiés, de textures PBR finales, de LOD, ni de capture de mouvement. Les animations sont des mouvements de validation très simples et ne doivent pas être utilisées comme animations de combat finales.
+C'est un proxy de pipeline, pas l'opérateur final. Les pièces du proxy sont réunies dans un mesh skinné unique avec un modificateur Armature et des poids calculés automatiquement par distance aux segments osseux (deux influences normalisées par sommet). Cela permet de tester la déformation du squelette, mais les volumes restent stylisés et segmentés : ce n'est pas un skinning artistique final. Il n'y a pas encore de doigts articulés, d'IK, de retopologie, d'UV dédiés, de textures PBR finales, de LOD, ni de capture de mouvement. Les animations sont des mouvements de validation très simples et ne doivent pas être utilisées comme animations de combat finales.
 
 Le script source est versionné, mais le GLB n'est pas généré dans le dépôt par ce commit : l'environnement de travail ne dispose pas d'une exécution Blender vérifiée. Après génération, ouvrir le GLB dans Blender ou un viewer glTF, vérifier la présence du rig, des meshes, des trois sockets et des quatre clips, puis effectuer le test d'intégration PlayCanvas avant toute activation runtime.
 
