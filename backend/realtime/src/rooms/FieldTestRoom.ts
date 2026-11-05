@@ -28,13 +28,13 @@ export class FieldTestRoom extends Room {
   override maxMessagesPerSecond = 35;
   override patchRate = 50;
 
-  onCreate(): void {
+  override onCreate(): void {
     this.setMetadata({ mode: 'field-test', build: '0.1.0' });
     this.onMessage('input', (client, payload: unknown) => this.handleInput(client, payload));
     this.setTimestep((deltaTime) => this.simulate(deltaTime), SERVER_STEP_MS);
   }
 
-  onAuth(_client: Client, options: unknown): LocalAuth {
+  override onAuth(_client: Client, options: unknown): LocalAuth {
     // Never allow the shared development token to authenticate a production room.
     if (process.env.NODE_ENV === 'production') {
       throw new Error('Local development authentication is disabled in production.');
@@ -56,7 +56,7 @@ export class FieldTestRoom extends Room {
     return { playerId: randomUUID() };
   }
 
-  onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
+  override onJoin(client: Client, _options: unknown, auth: LocalAuth): void {
     const player: ServerPlayer = {
       playerId: auth.playerId,
       x: (this.players.size % 2 === 0 ? -2 : 2),
@@ -83,7 +83,7 @@ export class FieldTestRoom extends Room {
     this.broadcastSnapshot();
   }
 
-  onLeave(client: Client): void {
+  override onLeave(client: Client): void {
     this.players.delete(client.sessionId);
     this.broadcastSnapshot();
   }
