@@ -64,12 +64,37 @@ let cc0Operator: LoadedOperator | null = null;
 void loadCc0Operator(app, player.root).then((operator) => {
   cc0Operator = operator;
   cc0Operator.setLocomotion(false, false);
+  applyCameraMode();
 }).catch((error: unknown) => {
   console.warn('CC0 operator asset unavailable; using the local TSI blockout:', error);
 });
 const input = new GameInput(canvas);
 const hud = createHud();
 const network = new TsiNetworkClient();
+let cameraMode: 'third' | 'first' = 'third';
+const cameraModeButton = document.getElementById('camera-mode-button') as HTMLButtonElement | null;
+
+function applyCameraMode(): void {
+  player.root.children.forEach((child) => {
+    child.enabled = cameraMode === 'third' || child.name === 'ar-01-rifle';
+  });
+  if (camera.camera) camera.camera.fov = cameraMode === 'first' ? 78 : 66;
+  if (cameraModeButton) {
+    cameraModeButton.textContent = cameraMode === 'first' ? 'FPS' : 'TPS';
+    cameraModeButton.setAttribute('aria-label', cameraMode === 'first' ? 'Passer en troisième personne' : 'Passer en première personne');
+  }
+}
+
+function toggleCameraMode(): void {
+  cameraMode = cameraMode === 'third' ? 'first' : 'third';
+  applyCameraMode();
+  hud.toast(cameraMode === 'first' ? 'CAMÉRA PREMIÈRE PERSONNE' : 'CAMÉRA TROISIÈME PERSONNE');
+}
+
+cameraModeButton?.addEventListener('click', toggleCameraMode);
+window.addEventListener('keydown', (event: KeyboardEvent) => {
+  if (event.code === 'KeyV' && !event.repeat) toggleCameraMode();
+});
 
 const startOverlay = document.getElementById('start-overlay');
 const startButton = document.getElementById('start-button');
@@ -395,11 +420,13 @@ app.on('update', (dt: number) => {
 
   const position = player.root.getPosition();
   const radians = yaw * Math.PI / 180;
-  const desiredCamera = new pc.Vec3(
-    position.x + Math.sin(radians) * 5.5,
-    position.y + 2.55,
-    position.z + Math.cos(radians) * 5.5
-  );
+  const desiredCamera = cameraMode === 'first'
+    ? new pc.Vec3(position.x, position.y + 1.62, position.z)
+    : new pc.Vec3(
+      position.x + Math.sin(radians) * 5.5,
+      position.y + 2.55,
+      position.z + Math.cos(radians) * 5.5
+    );
   const currentCamera = camera.getPosition().clone();
   const smoothedCamera = new pc.Vec3().lerp(currentCamera, desiredCamera, 1 - Math.exp(-8 * dt));
   camera.setPosition(smoothedCamera);
