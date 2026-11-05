@@ -1,13 +1,5 @@
 import { Client, type Room } from '@colyseus/sdk';
 
-export interface NetworkInput {
-  sequence: number;
-  moveX: number;
-  moveZ: number;
-  yaw: number;
-  sprint: boolean;
-}
-
 export interface NetworkPlayerSnapshot {
   playerId: string;
   x: number;
@@ -16,15 +8,37 @@ export interface NetworkPlayerSnapshot {
   health: number;
 }
 
+export interface NetworkTargetSnapshot {
+  targetId: string;
+  health: number;
+  active: boolean;
+}
+
+export interface NetworkPrivateState {
+  ammo: number;
+  reserve: number;
+  score: number;
+}
+
 export interface NetworkSnapshot {
   serverTime: number;
   players: NetworkPlayerSnapshot[];
+  targets: NetworkTargetSnapshot[];
+}
+
+export interface NetworkShotResult {
+  accepted: boolean;
+  hit?: boolean;
+  eliminated?: boolean;
+  reason?: string;
 }
 
 export interface NetworkCallbacks {
   onStatus(message: string): void;
   onWelcome?(playerId: string, spawn: { x: number; z: number }): void;
   onSnapshot(snapshot: NetworkSnapshot): void;
+  onSelf?(state: NetworkPrivateState): void;
+  onShot?(result: NetworkShotResult): void;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -32,9 +46,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function parseSnapshot(value: unknown): NetworkSnapshot | null {
-  if (!isRecord(value) || typeof value.serverTime !== 'number' || !Array.isArray(value.players)) {
-    return null;
-  }
+  if (
+    !isRecord(value) ||
+    typeof value.serverTime !== 'number' ||
+    !Array.isArray(value.players) ||
+    !Array.isArray(value.targets)
+  ) return null;
 
   const players: NetworkPlayerSnapshot[] = [];
   for (const candidate of value.players) {
@@ -47,16 +64,38 @@ function parseSnapshot(value: unknown): NetworkSnapshot | null {
       typeof yaw !== 'number' || !Number.isFinite(yaw) ||
       typeof health !== 'number' || !Number.isFinite(health)
     ) continue;
-
     players.push({ playerId, x, z, yaw, health });
   }
 
-  return { serverTime: value.serverTime, players };
+  const targets: NetworkTargetSnapshot[] = [];
+  for (const candidate of value.targets) {
+    if (!isRecord(candidate)) continue;
+    const { targetId, health, active } = candidate;
+    if (
+      typeof targetId !== 'string' ||
+      typeof health !== 'number' || !Number.isFinite(health) ||
+      typeof active !== 'boolean'
+    ) continue;
+    targets.push({ targetId, health, active });
+  }
+
+  return { serverTime: value.serverTime, players, targets };
+}
+
+function parsePrivateState(value: unknown): NetworkPrivateState | null {
+  if (!isRecord(value)) return null;
+  const { ammo, reserve, score } = value;
+  if (
+    typeof ammo !== 'number' || !Number.isInteger(ammo) || ammo < 0 ||
+    typeof reserve !== 'number' || !Number.isInteger(reserve) || reserve < 0 ||
+    typeof score !== 'number' || !Number.isInteger(score) || score < 0
+  ) return null;
+  return { ammo, reserve, score };
 }
 
 /**
  * Development-only Colyseus connection.
- * The local token is deliberately not a production authentication system.
+ * The local token is not a production authentication mechanism.
  */
 export class TsiNetworkClient {
   private room: Room | null = null;
@@ -96,6 +135,21 @@ export class TsiNetworkClient {
       if (snapshot) callbacks.onSnapshot(snapshot);
     });
 
+    room.onMessage('self', (payload: unknown) => {
+      const state = parsePrivateState(payload);
+      if (state) callbacks.onSelf?.(state);
+    });
+
+    room.onMessage('shot', (payload: unknown) => {
+      if (!isRecord(payload) || typeof payload.accepted !== 'boolean') return;
+      callbacks.onShot?.({
+        accepted: payload.accepted,
+        ...(typeof payload.hit === 'boolean' ? { hit: payload.hit } : {}),
+        ...(typeof payload.eliminated === 'boolean' ? { eliminated: payload.eliminated } : {}),
+        ...(typeof payload.reason === 'string' ? { reason: payload.reason } : {})
+      });
+    });
+
     room.onLeave((code) => {
       this.room = null;
       this._playerId = null;
@@ -105,10 +159,21 @@ export class TsiNetworkClient {
     callbacks.onStatus('Connecté · attente du joueur…');
   }
 
-  sendInput(input: Omit<NetworkInput, 'sequence'>): void {
+  sendInput(input: {
+    moveX: number;
+    moveZ: number;
+    yaw: number;
+    pitch: number;
+    sprint: boolean;
+    shoot: boolean;
+  }): void {
     if (!this.room) return;
     this.sequence += 1;
     this.room.send('input', { ...input, sequence: this.sequence });
+  }
+
+  sendReload(): void {
+    this.room?.send('reload');
   }
 
   async disconnect(): Promise<void> {
