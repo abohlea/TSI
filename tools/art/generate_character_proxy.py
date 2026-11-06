@@ -2,6 +2,7 @@
 Usage:
   blender --background --factory-startup --python tools/art/generate_character_proxy.py
   blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb
+  blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --lod-output prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --lod-ratio 0.55
 
 Génère un proxy de validation détaillé (pas le héros final). Les volumes restent segmentés;
 retopologie, UV/PBR texturés et animations mocap restent des étapes séparées.
@@ -15,18 +16,28 @@ def output_path():
     if "--output" in args: return os.path.abspath(args[args.index("--output")+1])
     return os.path.abspath("//TSI-CHAR-001-operator-proxy.glb")
 
-def mat(name, color, metallic=0.0, rough=0.55):
+def mat(name, color, metallic=0.0, rough=0.55, role="generic"):
     m=bpy.data.materials.new(name); m.diffuse_color=(*color,1)
     m.use_nodes=True; p=m.node_tree.nodes.get("Principled BSDF")
-    p.inputs["Base Color"].default_value=(*color,1); p.inputs["Metallic"].default_value=metallic
+    p.inputs["Base Color"].default_value=(*color,1)
+    p.inputs["Metallic"].default_value=metallic
     p.inputs["Roughness"].default_value=rough
+    # Explicit, glTF-friendly material contract; no fake procedural texture maps.
+    m["tsi_pbr_role"]=role
+    m["tsi_metallic"]=metallic
+    m["tsi_roughness"]=rough
+    if "Specular IOR Level" in p.inputs:
+        p.inputs["Specular IOR Level"].default_value=0.38 if metallic < 0.2 else 0.5
+    if "Coat Weight" in p.inputs and role in ("armor","alloy"):
+        p.inputs["Coat Weight"].default_value=0.18
+        p.inputs["Coat Roughness"].default_value=0.32
     return m
-GRAPH=mat("TSI | graphite armor",(0.025,0.035,0.045),.48,.38)
-FAB=mat("TSI | tactical fabric",(0.075,0.09,0.105),.05,.82)
-STEEL=mat("TSI | dark alloy",(.16,.19,.21),.78,.3)
-ORANGE=mat("TSI | safety orange",(1,.16,.018),.12,.4)
-BLUE=mat("TSI | electric blue",(.015,.22,.38),.35,.25)
-SKIN=mat("TSI | neutral skin proxy",(.34,.22,.16),0,.65)
+GRAPH=mat("TSI | graphite armor",(0.025,0.035,0.045),.48,.38,"armor")
+FAB=mat("TSI | tactical fabric",(0.075,0.09,0.105),.05,.82,"fabric")
+STEEL=mat("TSI | dark alloy",(.16,.19,.21),.78,.3,"alloy")
+ORANGE=mat("TSI | safety orange",(1,.16,.018),.12,.4,"marking")
+BLUE=mat("TSI | electric blue",(.015,.22,.38),.35,.25,"visor")
+SKIN=mat("TSI | neutral skin proxy",(.34,.22,.16),0,.65,"proxy_skin")
 
 def ellipsoid(name, loc, scale, material, bone=None):
     bpy.ops.mesh.primitive_uv_sphere_add(segments=16, ring_count=12, location=loc)
@@ -47,6 +58,9 @@ def box(name, loc, scale, material, bone=None, bevel=.035):
         except Exception: pass
     if bone: o["attach_bone"]=bone
     return o
+
+def cli_args():
+    return sys.argv[sys.argv.index("--")+1:] if "--" in sys.argv else []
 
 def build():
     bpy.ops.object.select_all(action="SELECT"); bpy.ops.object.delete(use_global=False)
@@ -285,5 +299,30 @@ def build():
       export_materials="EXPORT",export_nla_strips=True)
     print("TSI-CHAR-001 PROXY EXPORTED:",path)
     print("WARNING: segmented procedural proxy; UVs are automatic and materials are not final texture sets.")
+    args=cli_args()
+    if "--lod-output" in args:
+        lod_path=os.path.abspath(args[args.index("--lod-output")+1])
+        ratio=float(args[args.index("--lod-ratio")+1]) if "--lod-ratio" in args else 0.55
+        if not 0.1 <= ratio < 1.0:
+            raise ValueError("--lod-ratio must be >= 0.1 and < 1.0")
+        # Separate GLB prevents high- and low-detail meshes being drawn together.
+        lod=mesh.copy(); lod.data=mesh.data.copy(); lod.name="TSI001_Skinned_Proxy_LOD"
+        bpy.context.collection.objects.link(lod)
+        lod.parent=arm; lod.matrix_world=mesh.matrix_world.copy()
+        dec=lod.modifiers.new("TSI001 Mobile LOD Decimate","DECIMATE")
+        dec.decimate_type="COLLAPSE"; dec.ratio=ratio
+        bpy.context.view_layer.objects.active=lod
+        bpy.ops.object.modifier_apply(modifier=dec.name)
+        bpy.ops.object.select_all(action="DESELECT")
+        lod.select_set(True); arm.select_set(True)
+        for obj in bpy.context.scene.objects:
+            if obj.name.startswith(PREFIX) and obj.type=="EMPTY":
+                obj.select_set(True)
+        bpy.context.view_layer.objects.active=arm
+        os.makedirs(os.path.dirname(lod_path) or ".",exist_ok=True)
+        bpy.ops.export_scene.gltf(filepath=lod_path,export_format="GLB",use_selection=True,
+          export_apply=True,export_yup=True,export_animations=True,export_skins=True,
+          export_materials="EXPORT",export_nla_strips=True)
+        print("TSI-CHAR-001 MOBILE LOD EXPORTED:",lod_path,"ratio:",ratio)
 
 if __name__=="__main__": build()
