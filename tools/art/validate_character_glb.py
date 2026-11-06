@@ -43,6 +43,7 @@ def main():
         print("Usage: blender --background --python tools/art/validate_character_glb.py -- file.glb")
         return 2
     path=os.path.abspath(args[0])
+    max_triangles=int(args[args.index("--max-triangles")+1]) if "--max-triangles" in args else None
     if not os.path.isfile(path):
         print("FAIL: GLB not found:", path)
         return 2
@@ -119,12 +120,16 @@ def main():
     if len(materials)<3: errors.append("expected at least 3 material slots, found %d"%len(materials))
     triangle_count=sum(max(0,len(poly.vertices)-2) for mesh in meshes for poly in mesh.data.polygons)
     if triangle_count<=0: errors.append("mesh contains no triangles")
+    if max_triangles is not None and triangle_count>max_triangles:
+        errors.append("triangle budget exceeded: %d > %d"%(triangle_count,max_triangles))
     if errors:
         for error in errors: fail(error)
         print("TSI-CHAR-001 STRUCTURAL VALIDATION: FAILED")
         return 1
     print("TSI-CHAR-001 STRUCTURAL VALIDATION: PASSED")
     print("Meshes:",len(meshes),"Triangles:",triangle_count,"Bones:",len(armatures[0].data.bones),"Clips:",len(clip_names),"Materials:",len(materials))
+    if max_triangles is not None:
+        print("Triangle budget:",triangle_count,"/",max_triangles)
     print("NOTE: visual deformation, scale/orientation, IK behavior and PlayCanvas playback still require manual QA.")
     return 0
 
