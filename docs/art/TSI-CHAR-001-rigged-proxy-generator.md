@@ -5,7 +5,7 @@
 Depuis la racine du dépôt, avec Blender et l'exporteur glTF actifs :
 
 ```bash
-blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb
+blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --lod-output prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --lod-ratio 0.55
 ```
 
 Le générateur construit un proxy tactique d'environ 1,9 m dans la palette graphite/noir, orange sécurité et bleu électrique. La géométrie comprend désormais :
@@ -15,6 +15,10 @@ Le générateur construit un proxy tactique d'environ 1,9 m dans la palette grap
 - gants segmentés avec volumes proxy pour chaque phalange, capuchons d'orteils et semelles renforcées.
 
 Le mesh fusionné reçoit un premier dépliage UV automatique par Smart UV Project et conserve un manifeste interne des pièces de détail pour le contrôle après export. Ce dépliage est une base de travail, pas des îlots UV optimisés pour une production texture.
+
+Les matériaux portent des rôles PBR explicites (armure, textile, alliage, marquage, visière et proxy peau) avec valeurs Metallic/Roughness distinctes et réglages de couche spéculaire compatibles Principled/glTF. Ce sont des matériaux de base colorés : aucune map Base Color, Normal, ORM ou AO peinte n'est générée à ce stade.
+
+Avec les options --lod-output et --lod-ratio, le script produit un second GLB autonome destiné au profil mobile. Le mesh est dupliqué, décimé en mode Collapse, puis exporté seul avec le rig, les sockets et les clips. La valeur par défaut est 0.55 ; elle doit être ajustée après mesure des triangles et revue des silhouettes. Le LOD n'est volontairement pas empilé dans le GLB principal afin d'éviter le rendu simultané des deux versions.
 
 Le rig contient les os humanoïdes et les chaînes des doigts (deux segments pour le pouce, trois pour chaque autre doigt). Les vertex groups sont maintenant créés depuis l'ensemble des os de l'armature, doigts compris, afin que les volumes des gants puissent recevoir leurs poids. Les contrôles IK des mains et pôles de coude restent des contrôles de pose Blender.
 
@@ -37,10 +41,10 @@ Le validateur réimporte le GLB et vérifie une armature, les os principaux, les
 
 ## Limites et statut
 
-Il s'agit toujours d'un proxy procédural, pas du personnage final. Les plaques restent des volumes segmentés, les gants ne sont pas des mains anatomiques, les poids sont calculés automatiquement par distance aux segments osseux et nécessitent une correction manuelle. Les matériaux sont des couleurs Principled de base, pas un jeu de textures PBR final. Il n'y a pas encore de retopologie, d'UV artistiquement optimisés, de textures PBR peintes, de LOD, de mocap ni de validation Android.
+Il s'agit toujours d'un proxy procédural, pas du personnage final. Les plaques restent des volumes segmentés, les gants ne sont pas des mains anatomiques, les poids sont calculés automatiquement par distance aux segments osseux et nécessitent une correction manuelle. Les matériaux sont des Principled paramétrés, pas un jeu de textures PBR final. Le script sait désormais exporter un LOD mobile séparé par décimation, mais ce LOD n'a pas encore été mesuré ni approuvé visuellement. Il n'y a pas encore de retopologie, d'UV artistiquement optimisés, de textures PBR peintes, de mocap ni de validation Android.
 
 Aucun GLB n'est livré par ces changements : l'export Blender n'a pas été exécuté ici. Ne pas activer le personnage dans le runtime avant génération, validation structurelle, revue visuelle et tests PlayCanvas/Android.
 
 ## Suite de production
 
-La géométrie de tête reçoit maintenant des marqueurs de forme supplémentaires, mais reste constituée de primitives. Le générateur crée un UV de première passe et le validateur vérifie sa présence ainsi que le manifeste de détails après fusion des primitives. La validation des poids détecte les sommets dont la somme dépasse la tolérance et les meshes sans modificateur d'armature. La prochaine étape reste une vraie retopologie faciale et anatomique, une correction visuelle des déformations, des UV et textures PBR, puis une stratégie LOD mesurée sur le budget de triangles cible. Les clips de blocout devront ensuite être remplacés par des animations retargetées.
+La géométrie de tête reçoit maintenant des marqueurs de forme supplémentaires, mais reste constituée de primitives. Le générateur crée un UV de première passe et le validateur vérifie sa présence ainsi que le manifeste de détails après fusion des primitives. La validation des poids détecte les sommets dont la somme dépasse la tolérance et les meshes sans modificateur d'armature. La prochaine étape reste une vraie retopologie faciale et anatomique, une correction visuelle des déformations, des UV et textures PBR peintes, puis la mesure comparative du LOD sur le budget de triangles cible. Les clips de blocout devront ensuite être remplacés par des animations retargetées.
