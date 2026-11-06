@@ -37,7 +37,7 @@ def main():
     # Duplicate geometry into a clean, unrigged retopology reference.
     refs=[]
     for src in originals:
-        dup=src.copy(); dup.data=src.data.copy(); dup.name="RETPO_REF_"+src.name
+        dup=src.copy(); dup.data=src.data.copy(); dup.name="RETOPO_REF_"+src.name
         bpy.context.scene.collection.objects.link(dup)
         dup.hide_viewport=False; dup.hide_render=False
         for mod in list(dup.modifiers):
@@ -51,7 +51,7 @@ def main():
     active=refs[0]; bpy.context.view_layer.objects.active=active
     if len(refs)>1:
         bpy.ops.object.join()
-    active.name="TSI001_RETPOLOGY_REFERENCE"
+    active.name="TSI001_RETOPOLOGY_REFERENCE"
     # Voxel remesh welds intersecting armor pieces into a continuous sculptable
     # reference surface. Fine details may be softened: original stays preserved.
     remesh=active.modifiers.new("TSI001_Voxel_Weld_Reference","REMESH")
