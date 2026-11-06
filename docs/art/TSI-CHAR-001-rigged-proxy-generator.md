@@ -34,11 +34,11 @@ Neuf clips de blocout sont conservés en pistes NLA : Idle, Walk, Run, Sprint, A
 Après génération, exécuter :
 
 ```bash
-blender --background --python tools/art/validate_character_glb.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --max-triangles 65000
-blender --background --python tools/art/validate_character_glb.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --max-triangles 35000
+blender --background --python tools/art/validate_character_glb.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --max-triangles 65000 --report-json work/TSI001-high-qa.json
+blender --background --python tools/art/validate_character_glb.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --max-triangles 35000 --report-json work/TSI001-mobile-qa.json
 ```
 
-Le validateur réimporte le GLB et vérifie une armature, les os principaux, les 28 os de phalanges, les trois sockets, le manifeste de détails de tête conservé dans le mesh fusionné, une couche UV, des sommets pondérés, les groupes de doigts, la normalisation des poids, un modificateur d'armature, les neuf clips et au moins trois matériaux et, si `--max-triangles` est fourni, le budget polygonal. Les seuils de départ sont 65 000 triangles pour le modèle principal et 35 000 pour le profil mobile ; ils devront être confirmés par mesure et tests de performance. Code de sortie 0 = contrôles structurels passés ; code 1 ou 2 = échec. Ce contrôle ne certifie pas la qualité artistique, les déformations, la pose de prise d'arme ou la compatibilité PlayCanvas.
+Le validateur réimporte le GLB et vérifie une armature, les os principaux, les 28 os de phalanges, les trois sockets, le manifeste de détails de tête conservé dans le mesh fusionné, une couche UV, les sommets pondérés, les groupes de doigts, la normalisation des poids, un modificateur d'armature, les neuf clips, les matériaux, les faces dégénérées et les arêtes non-manifold et, si `--max-triangles` est fourni, le budget polygonal. Les seuils de départ sont 65 000 triangles pour le modèle principal et 35 000 pour le profil mobile ; ils devront être confirmés par mesure et tests de performance. Code de sortie 0 = contrôles structurels passés ; code 1 ou 2 = échec. Ce contrôle ne certifie pas la qualité artistique, les déformations, la pose de prise d'arme ou la compatibilité PlayCanvas.
 
 ## Limites et statut
 
@@ -62,3 +62,15 @@ blender --background --factory-startup --python tools/art/prepare_character_reto
 Le fichier Blender conserve le GLB importé dans la collection masquée `SOURCE_LOCKED_DO_NOT_EDIT` et crée `TSI001_RETPOLOGY_REFERENCE` comme copie de travail. Les modificateurs d'armature sont appliqués uniquement à cette copie ; un voxel remesh soude les volumes qui se croisent et un léger lissage prépare la sculpture et le tracé de la nouvelle topologie. Un OBJ de référence est également exporté.
 
 **Limite importante :** le voxel remesh produit une surface de référence triangulée, pas une retopologie quad de production. Il peut arrondir ou effacer des petits détails. Il ne remplace ni le retopo manuel (boucles autour des épaules, coudes, poignets, bassin, genoux, visage et doigts), ni la reconstruction des UV, des poids et des clips. Le GLB source reste préservé dans le fichier de travail pour comparaison. Aucun artefact n'est annoncé comme généré tant que Blender n'a pas exécuté ce script.
+
+
+### Rapport de topologie et de skinning
+
+Le validateur produit désormais des métriques supplémentaires : sommets/arêtes/triangles, sommets sans poids, nombre maximal d'influences par sommet, arêtes non-manifold et faces dégénérées. `--report-json` écrit un rapport exploitable par la revue technique. Les arêtes non-manifold sont des avertissements par défaut afin de permettre l'audit initial des proxies composés de coques ; `--strict-topology` les transforme en erreurs bloquantes. Les faces dégénérées sont bloquantes. Les sommets sans poids sont signalés comme avertissement pour faciliter le diagnostic, mais doivent être corrigés avant validation d'un personnage skinné de production.
+
+Exemple strict après retopologie :
+```bash
+blender --background --python tools/art/validate_character_glb.py -- character-retopo.glb --max-triangles 65000 --strict-topology --report-json work/TSI001-retopo-qa.json
+```
+
+Le rapport structurel ne mesure pas la qualité des edge loops, la silhouette, le volume musculaire, les déformations en pose extrême ou la qualité visuelle des textures. Ces points restent une revue Blender/PlayCanvas.
