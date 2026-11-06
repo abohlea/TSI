@@ -49,3 +49,16 @@ Aucun GLB n'est livré par ces changements : l'export Blender n'a pas été exé
 ## Suite de production
 
 La géométrie de tête reçoit maintenant des marqueurs de forme supplémentaires, mais reste constituée de primitives. Le générateur crée un UV de première passe et le validateur vérifie sa présence ainsi que le manifeste de détails après fusion des primitives. La validation des poids détecte les sommets dont la somme dépasse la tolérance et les meshes sans modificateur d'armature. La retopologie faciale et anatomique reste une opération de modélisation manuelle dans Blender : une décimation automatique ne constitue pas une topologie de production. Le prochain gate est de générer les deux GLB, vérifier les budgets 65k/35k, inspecter les déformations et silhouette, puis faire la retopologie propre et les textures PBR peintes. Les clips de blocout devront ensuite être remplacés par des animations retargetées.
+
+
+## Préparation de la retopologie manuelle
+
+Un outil distinct prépare maintenant une surface de référence sans écraser le GLB source :
+
+```bash
+blender --background --factory-startup --python tools/art/prepare_character_retopology.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --blend-output work/TSI001-retopo.blend --obj-output work/TSI001-retopo-reference.obj --voxel-size 0.008
+```
+
+Le fichier Blender conserve le GLB importé dans la collection masquée `SOURCE_LOCKED_DO_NOT_EDIT` et crée `TSI001_RETPOLOGY_REFERENCE` comme copie de travail. Les modificateurs d'armature sont appliqués uniquement à cette copie ; un voxel remesh soude les volumes qui se croisent et un léger lissage prépare la sculpture et le tracé de la nouvelle topologie. Un OBJ de référence est également exporté.
+
+**Limite importante :** le voxel remesh produit une surface de référence triangulée, pas une retopologie quad de production. Il peut arrondir ou effacer des petits détails. Il ne remplace ni le retopo manuel (boucles autour des épaules, coudes, poignets, bassin, genoux, visage et doigts), ni la reconstruction des UV, des poids et des clips. Le GLB source reste préservé dans le fichier de travail pour comparaison. Aucun artefact n'est annoncé comme généré tant que Blender n'a pas exécuté ce script.
