@@ -2,7 +2,7 @@
 Usage:
   blender --background --factory-startup --python tools/art/generate_character_proxy.py
   blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb
-  blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --lod-output prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --lod-ratio 0.55
+  blender --background --factory-startup --python tools/art/generate_character_proxy.py -- --output prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --lod-output prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --lod-target-triangles 35000
 
 Génère un proxy de validation détaillé (pas le héros final). Les volumes restent segmentés;
 retopologie, UV/PBR texturés et animations mocap restent des étapes séparées.
@@ -302,9 +302,16 @@ def build():
     args=cli_args()
     if "--lod-output" in args:
         lod_path=os.path.abspath(args[args.index("--lod-output")+1])
-        ratio=float(args[args.index("--lod-ratio")+1]) if "--lod-ratio" in args else 0.55
-        if not 0.1 <= ratio < 1.0:
-            raise ValueError("--lod-ratio must be >= 0.1 and < 1.0")
+        source_triangles=sum(max(0,len(poly.vertices)-2) for poly in mesh.data.polygons)
+        if "--lod-ratio" in args:
+            ratio=float(args[args.index("--lod-ratio")+1])
+            if not 0.1 <= ratio < 1.0:
+                raise ValueError("--lod-ratio must be >= 0.1 and < 1.0")
+        else:
+            target=int(args[args.index("--lod-target-triangles")+1]) if "--lod-target-triangles" in args else 35000
+            if target < 1000:
+                raise ValueError("--lod-target-triangles must be >= 1000")
+            ratio=min(0.99,max(0.1,target/max(1,source_triangles)))
         # Separate GLB prevents high- and low-detail meshes being drawn together.
         lod=mesh.copy(); lod.data=mesh.data.copy(); lod.name="TSI001_Skinned_Proxy_LOD"
         bpy.context.collection.objects.link(lod)
@@ -323,6 +330,7 @@ def build():
         bpy.ops.export_scene.gltf(filepath=lod_path,export_format="GLB",use_selection=True,
           export_apply=True,export_yup=True,export_animations=True,export_skins=True,
           export_materials="EXPORT",export_nla_strips=True)
-        print("TSI-CHAR-001 MOBILE LOD EXPORTED:",lod_path,"ratio:",ratio)
+        lod_triangles=sum(max(0,len(poly.vertices)-2) for poly in lod.data.polygons)
+        print("TSI-CHAR-001 MOBILE LOD EXPORTED:",lod_path,"source_triangles:",source_triangles,"lod_triangles:",lod_triangles,"ratio:",ratio)
 
 if __name__=="__main__": build()
