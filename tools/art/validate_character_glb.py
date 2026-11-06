@@ -68,8 +68,11 @@ def main():
     names={o.name for o in objects}
     missing_sockets=EXPECTED_SOCKETS-names
     if missing_sockets: errors.append("missing sockets: "+", ".join(sorted(missing_sockets)))
-    missing_details=EXPECTED_DETAIL_MARKERS-names
-    if missing_details: errors.append("missing head detail markers: "+", ".join(sorted(missing_details)))
+    detail_markers=set()
+    for mesh in meshes:
+        detail_markers.update(filter(None,mesh.get("detail_markers","").split(";")))
+    missing_details=EXPECTED_DETAIL_MARKERS-detail_markers
+    if missing_details: errors.append("missing head detail markers in mesh manifest: "+", ".join(sorted(missing_details)))
     weighted=False
     for mesh in meshes:
         group_names={g.name for g in mesh.vertex_groups}
@@ -90,6 +93,9 @@ def main():
         if not armature_modifiers:
             errors.append("mesh has no armature modifier: "+mesh.name)
     if not weighted: errors.append("no weighted mesh vertices found")
+    for mesh in meshes:
+        if not mesh.data.uv_layers:
+            errors.append("mesh has no UV layer: "+mesh.name)
     finger_weight_groups=set()
     for mesh in meshes:
         finger_weight_groups |= {
