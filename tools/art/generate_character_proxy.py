@@ -204,9 +204,16 @@ def build():
     for o in parts: o.select_set(True)
     mesh=parts[0]
     bpy.context.view_layer.objects.active=mesh
+    detail_markers={o.name for o in parts}
     bpy.ops.object.join()
     mesh.name="TSI001_Skinned_Proxy"
     mesh.parent=None
+    mesh["detail_markers"]=";".join(sorted(detail_markers))
+    # Generate a usable first-pass UV layout for material authoring.
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(island_margin=0.012)
+    bpy.ops.object.mode_set(mode="OBJECT")
     groups={bone.name:mesh.vertex_groups.new(name=bone.name) for bone in arm_data.bones}
     segments={}
     for bone in arm_data.bones:
@@ -277,6 +284,6 @@ def build():
       export_apply=True,export_yup=True,export_animations=True,export_skins=True,
       export_materials="EXPORT",export_nla_strips=True)
     print("TSI-CHAR-001 PROXY EXPORTED:",path)
-    print("WARNING: rigid armor proxy, not production skinning or final character.")
+    print("WARNING: segmented procedural proxy; UVs are automatic and materials are not final texture sets.")
 
 if __name__=="__main__": build()
