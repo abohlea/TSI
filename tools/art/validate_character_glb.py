@@ -117,12 +117,14 @@ def main():
     if missing_clips: errors.append("missing animation clips: "+", ".join(sorted(missing_clips)))
     materials={m.name for mesh in meshes for m in mesh.data.materials if m}
     if len(materials)<3: errors.append("expected at least 3 material slots, found %d"%len(materials))
+    triangle_count=sum(max(0,len(poly.vertices)-2) for mesh in meshes for poly in mesh.data.polygons)
+    if triangle_count<=0: errors.append("mesh contains no triangles")
     if errors:
         for error in errors: fail(error)
         print("TSI-CHAR-001 STRUCTURAL VALIDATION: FAILED")
         return 1
     print("TSI-CHAR-001 STRUCTURAL VALIDATION: PASSED")
-    print("Meshes:",len(meshes),"Bones:",len(armatures[0].data.bones),"Clips:",len(clip_names),"Materials:",len(materials))
+    print("Meshes:",len(meshes),"Triangles:",triangle_count,"Bones:",len(armatures[0].data.bones),"Clips:",len(clip_names),"Materials:",len(materials))
     print("NOTE: visual deformation, scale/orientation, IK behavior and PlayCanvas playback still require manual QA.")
     return 0
 
