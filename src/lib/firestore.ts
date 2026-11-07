@@ -3,9 +3,14 @@ import {
   collection,
   doc,
   getDoc,
+  getDocs,
+  limit,
   onSnapshot,
   orderBy,
   query,
+  startAt,
+  endAt,
+  orderBy,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -191,4 +196,20 @@ export async function sendTextMessage(
     lastMessageAt: serverTimestamp(),
   });
   return messageRef.id;
+}
+
+export async function searchProfiles(term: string, currentUid: string): Promise<TsiProfile[]> {
+  const normalized = term.trim();
+  if (normalized.length < 2) return [];
+  const usersQuery = query(
+    collection(database(), "users"),
+    orderBy("displayName"),
+    startAt(normalized),
+    endAt(normalized + "\\uf8ff"),
+    limit(20)
+  );
+  const snapshot = await getDocs(usersQuery);
+  return snapshot.docs
+    .map((item) => item.data() as TsiProfile)
+    .filter((profile) => profile.uid !== currentUid);
 }
