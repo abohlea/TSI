@@ -24,7 +24,14 @@ const app = new pc.Application(canvas, {
 });
 app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
 app.setCanvasResolution(pc.RESOLUTION_AUTO);
-app.scene.ambientLight = new pc.Color(0.34, 0.39, 0.43);
+app.scene.ambientLight = new pc.Color(0.30, 0.34, 0.36);
+// A restrained cinematic grade: preserve target readability while avoiding the
+// flat, over-bright default look on both desktop and mobile GPUs.
+app.scene.toneMapping = pc.TONEMAP_ACES;
+app.scene.exposure = 1.12;
+app.scene.fog = pc.FOG_EXP2;
+app.scene.fogColor = new pc.Color(0.36, 0.40, 0.39);
+app.scene.fogDensity = 0.0065;
 
 const camera = new pc.Entity('third-person-camera');
 camera.addComponent('camera', {
