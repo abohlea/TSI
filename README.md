@@ -1,6 +1,6 @@
 # TSI — application de messagerie
 
-TSI est une application mobile Expo / React Native. Le socle actuel comprend l'authentification Firebase par e-mail, une boîte de réception Firestore en temps réel, la création de discussions individuelles et l'envoi de messages texte.
+TSI est une application de messagerie Expo / React Native avec une cible mobile Android/iOS et une version Web accessible depuis un navigateur. Le socle actuel comprend l'authentification Firebase par e-mail, une boîte de réception Firestore en temps réel, la création de discussions individuelles et l'envoi de messages texte.
 
 ## Stack et coût
 
@@ -8,6 +8,17 @@ TSI est une application mobile Expo / React Native. Le socle actuel comprend l'a
 - Firebase Authentication et Cloud Firestore
 - Cloudinary pour les médias (téléversement non signé)
 - Les dépendances et services sont choisis pour démarrer avec les offres gratuites. Les quotas gratuits ont des limites et peuvent évoluer. **Ne passez pas un projet Firebase ou Cloudinary à une formule payante sans vérifier les quotas et les coûts.**
+
+## Version Web
+
+La version navigateur est construite avec Expo Web et utilise le même projet Firebase que les applications mobiles.
+
+- Développement local : `npm run web`
+- Génération du site statique : `npm run build:web` (fichiers produits dans `dist/`)
+- Déploiement : connecter le dépôt à Vercel ou Netlify, définir les variables `EXPO_PUBLIC_FIREBASE_*` du fichier `.env.example`, utiliser `npm run build:web` comme commande de build et `dist` comme répertoire de sortie.
+- Pour Vercel, le fichier `vercel.json` du dépôt configure le fallback des routes Expo Router.
+
+Le déploiement public n'est pas encore activé : il nécessite de connecter un compte d'hébergement et de renseigner la configuration Firebase. Aucun jeton ni identifiant de déploiement ne doit être ajouté au dépôt.
 
 ## Configuration locale
 
@@ -49,7 +60,7 @@ Créer un preset de téléversement non signé dans Cloudinary et renseigner `EX
 npm run typecheck
 ```
 
-Le workflow GitHub Actions exécute ce contrôle à chaque mise à jour de la branche de développement.
+Le workflow GitHub Actions exécute le contrôle TypeScript et génère la version Web à chaque mise à jour de la branche de développement.
 
 ## État fonctionnel — transparence
 
