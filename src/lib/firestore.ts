@@ -8,12 +8,14 @@ import {
   onSnapshot,
   orderBy,
   query,
-  startAt,
-  endAt,
+  runTransaction,
   serverTimestamp,
   setDoc,
+  startAt,
+  endAt,
   updateDoc,
   where,
+  writeBatch,
   type Unsubscribe,
 } from "firebase/firestore";
 import { requireFirebase } from "./firebase";
@@ -133,17 +135,35 @@ export async function createConversation(
   }
   const db = database();
   if (uniqueMembers.length === 2) {
-    const existingQuery = query(
+    const sortedMembers = [...uniqueMembers].sort();
+    const legacyQuery = query(
       collection(db, "conversations"),
-      where("memberIds", "array-contains", uniqueMembers[0])
+      where("memberIds", "array-contains", sortedMembers[0])
     );
-    const existing = await getDocs(existingQuery);
-    const match = existing.docs.find((item) => {
+    const legacy = await getDocs(legacyQuery);
+    const existingLegacy = legacy.docs.find((item) => {
       const members = (item.data().memberIds as string[] | undefined) ?? [];
-      return members.length === 2 && uniqueMembers.every((uid) => members.includes(uid));
+      return members.length === 2 && sortedMembers.every((uid) => members.includes(uid));
     });
-    if (match) return match.id;
+    if (existingLegacy) return existingLegacy.id;
+
+    // A deterministic document ID plus a transaction prevents two devices
+    // from creating duplicate direct conversations at the same time.
+    const conversationRef = doc(db, "conversations", `direct_${sortedMembers.join("_")}`);
+    await runTransaction(db, async (transaction) => {
+      const existing = await transaction.get(conversationRef);
+      if (!existing.exists()) {
+        transaction.set(conversationRef, {
+          memberIds: sortedMembers,
+          createdAt: serverTimestamp(),
+          lastMessageAt: serverTimestamp(),
+          lastMessage: "",
+        });
+      }
+    });
+    return conversationRef.id;
   }
+
   const conversation = await addDoc(collection(db, "conversations"), {
     memberIds: uniqueMembers,
     ...(title ? { title } : {}),
@@ -163,21 +183,21 @@ export async function sendMediaMessage(
     throw new Error("Le fichier doit disposer d'une URL HTTPS sécurisée.");
   }
   const db = database();
-  const messageRef = await addDoc(
-    collection(db, "conversations", conversationId, "messages"),
-    {
-      senderId,
-      text: "",
-      type: media.type,
-      mediaUrl: media.url,
-      ...(media.name ? { mediaName: media.name } : {}),
-      createdAt: serverTimestamp(),
-    }
-  );
-  await updateDoc(doc(db, "conversations", conversationId), {
+  const messageRef = doc(collection(db, "conversations", conversationId, "messages"));
+  const batch = writeBatch(db);
+  batch.set(messageRef, {
+    senderId,
+    text: "",
+    type: media.type,
+    mediaUrl: media.url,
+    ...(media.name ? { mediaName: media.name } : {}),
+    createdAt: serverTimestamp(),
+  });
+  batch.update(doc(db, "conversations", conversationId), {
     lastMessage: media.type === "image" ? "📷 Photo" : media.type === "video" ? "🎥 Vidéo" : media.type === "audio" ? "🎵 Audio" : "📎 Fichier",
     lastMessageAt: serverTimestamp(),
   });
+  await batch.commit();
   return messageRef.id;
 }
 
@@ -192,20 +212,19 @@ export async function sendTextMessage(
     throw new Error("Le message dépasse 10 000 caractères.");
   }
   const db = database();
-  const message = {
+  const messageRef = doc(collection(db, "conversations", conversationId, "messages"));
+  const batch = writeBatch(db);
+  batch.set(messageRef, {
     senderId,
     text: normalizedText,
-    type: "text" as const,
+    type: "text",
     createdAt: serverTimestamp(),
-  };
-  const messageRef = await addDoc(
-    collection(db, "conversations", conversationId, "messages"),
-    message
-  );
-  await updateDoc(doc(db, "conversations", conversationId), {
+  });
+  batch.update(doc(db, "conversations", conversationId), {
     lastMessage: normalizedText,
     lastMessageAt: serverTimestamp(),
   });
+  await batch.commit();
   return messageRef.id;
 }
 
