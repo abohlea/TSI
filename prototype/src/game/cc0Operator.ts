@@ -7,6 +7,8 @@ export interface LoadedOperator {
   clips: string[];
   setLocomotion(moving: boolean, sprinting: boolean): void;
   playAction(action: OperatorAction): boolean;
+  /** Restore locomotion after a server-confirmed respawn. */
+  revive(): void;
 }
 
 export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise<LoadedOperator> {
@@ -110,7 +112,14 @@ export function loadCc0Operator(app: pc.Application, parent: pc.Entity): Promise
         actionTimer = Math.max(0, actionTimer - dt);
         if (actionTimer === 0) playLocomotion();
       });
-      resolve({ entity: operator, clips, setLocomotion, playAction });
+      const revive = (): void => {
+        dead = false;
+        actionTimer = 0;
+        activeClip = undefined;
+        playLocomotion();
+      };
+
+      resolve({ entity: operator, clips, setLocomotion, playAction, revive });
     });
   });
 }

@@ -4,12 +4,14 @@ on:
   push:
     branches:
       - build/android-content-expansion
+      - 'feat/**'
     paths:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"
   pull_request:
     branches:
       - build/android-production-field-test
+      - build/android-content-expansion
     paths:
       - "prototype/**"
       - ".github/workflows/android-apk.yml"

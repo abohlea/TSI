@@ -29,6 +29,7 @@ function part(
 export interface PlayerRig {
   root: pc.Entity;
   weapon: pc.Entity;
+  setCameraMode(camera: pc.Entity, firstPerson: boolean): void;
   updateAnimation(deltaTime: number, moving: boolean, sprinting: boolean): void;
   triggerShot(): void;
   playReload(): void;
@@ -90,6 +91,17 @@ export function createPlayer(app: pc.Application): PlayerRig {
   // AR-01 rifle blockout with sight, magazine, stock, handguard and muzzle.
   const weapon = new pc.Entity('ar-01-rifle');
   const weaponRest = new pc.Vec3(0.28, 1.27, -0.46);
+  const weaponFpsRest = new pc.Vec3(0.24, -0.27, -0.58);
+  let firstPersonView = false;
+  const firstPersonArms = new pc.Entity('ar-01-fps-arms');
+  const armFabric = makeMaterial(new pc.Color(0.16, 0.2, 0.19), 0.04, 0.9);
+  const glove = makeMaterial(new pc.Color(0.035, 0.045, 0.042), 0.02, 0.98);
+  // Dedicated camera-space sleeves and gloves: the world character is hidden in FPS.
+  part(firstPersonArms, 'fps-left-sleeve', 'capsule', new pc.Vec3(-0.31, -0.43, -0.48), new pc.Vec3(0.15, 0.43, 0.15), armFabric);
+  part(firstPersonArms, 'fps-right-sleeve', 'capsule', new pc.Vec3(0.34, -0.4, -0.39), new pc.Vec3(0.15, 0.4, 0.15), armFabric);
+  part(firstPersonArms, 'fps-left-glove', 'sphere', new pc.Vec3(-0.19, -0.24, -0.75), new pc.Vec3(0.13, 0.105, 0.16), glove);
+  part(firstPersonArms, 'fps-right-glove', 'sphere', new pc.Vec3(0.17, -0.24, -0.47), new pc.Vec3(0.12, 0.11, 0.15), glove);
+  firstPersonArms.enabled = false;
   weapon.setLocalPosition(weaponRest);
   root.addChild(weapon);
   part(weapon, 'receiver', 'box', new pc.Vec3(0, 0, 0), new pc.Vec3(0.17, 0.16, 0.62), dark);
@@ -97,13 +109,44 @@ export function createPlayer(app: pc.Application): PlayerRig {
   part(weapon, 'barrel', 'cylinder', new pc.Vec3(0, 0.015, -0.42), new pc.Vec3(0.045, 0.38, 0.045), helmet).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'muzzle-device', 'cylinder', new pc.Vec3(0, 0.015, -0.68), new pc.Vec3(0.065, 0.12, 0.065), metal).setLocalEulerAngles(90, 0, 0);
   part(weapon, 'handguard', 'box', new pc.Vec3(0, 0, -0.26), new pc.Vec3(0.14, 0.13, 0.34), armor);
+  // Side armor plates, cooling ribs and a segmented top rail improve silhouette readability.
+  for (const side of [-1, 1]) {
+    part(weapon, `receiver-side-plate-${side}`, 'box', new pc.Vec3(side * 0.086, 0.005, -0.015), new pc.Vec3(0.012, 0.105, 0.34), metal);
+    for (let index = 0; index < 5; index += 1) {
+      part(weapon, `handguard-vent-${side}-${index}`, 'box', new pc.Vec3(side * 0.075, 0.008, -0.17 - index * 0.045), new pc.Vec3(0.008, 0.055, 0.018), dark);
+    }
+  }
+  for (let index = 0; index < 7; index += 1) {
+    part(weapon, `top-rail-notch-${index}`, 'box', new pc.Vec3(0, 0.105, -0.21 + index * 0.045), new pc.Vec3(0.075, 0.012, 0.012), metal);
+  }
   part(weapon, 'stock', 'box', new pc.Vec3(0, 0.005, 0.38), new pc.Vec3(0.13, 0.17, 0.32), dark);
   const magazine = part(weapon, 'magazine', 'box', new pc.Vec3(0, -0.16, 0.04), new pc.Vec3(0.1, 0.28, 0.16), dark);
   const magazineBase = part(weapon, 'magazine-base', 'box', new pc.Vec3(0, -0.31, 0.04), new pc.Vec3(0.12, 0.05, 0.18), metal);
+  for (let index = 0; index < 4; index += 1) {
+    part(magazine, `magazine-rib-${index}`, 'box', new pc.Vec3(0, 0.055, -0.065 + index * 0.045), new pc.Vec3(0.105, 0.008, 0.012), metal);
+  }
   part(weapon, 'optic-mount', 'box', new pc.Vec3(0, 0.13, -0.02), new pc.Vec3(0.14, 0.035, 0.2), dark);
   part(weapon, 'optic', 'box', new pc.Vec3(0, 0.21, -0.02), new pc.Vec3(0.1, 0.12, 0.13), orange);
   part(weapon, 'optic-glass', 'box', new pc.Vec3(0, 0.215, -0.091), new pc.Vec3(0.07, 0.07, 0.015), glass);
   part(weapon, 'foregrip', 'box', new pc.Vec3(0, -0.12, -0.23), new pc.Vec3(0.09, 0.22, 0.1), rubber);
+  part(weapon, 'charging-handle', 'box', new pc.Vec3(0.095, 0.085, 0.105), new pc.Vec3(0.045, 0.025, 0.11), metal);
+  part(weapon, 'selector-mark', 'box', new pc.Vec3(0.095, 0.015, 0.045), new pc.Vec3(0.012, 0.025, 0.055), orange);
+  part(weapon, 'muzzle-ring', 'cylinder', new pc.Vec3(0, 0.015, -0.72), new pc.Vec3(0.073, 0.035, 0.073), orange).setLocalEulerAngles(90, 0, 0);
+
+  // Named attachment pivots are stable targets for future authored GLB parts and VFX.
+  const sockets: Array<[string, pc.Vec3]> = [
+    ['AR01_MuzzleFlashSocket', new pc.Vec3(0, 0.015, -0.79)],
+    ['AR01_LeftHandGrip', new pc.Vec3(-0.01, -0.105, -0.25)],
+    ['AR01_RightHandGrip', new pc.Vec3(0.015, -0.035, 0.12)],
+    ['AR01_EjectSocket', new pc.Vec3(0.095, 0.055, 0.02)],
+    ['AR01_MagazineSocket', new pc.Vec3(0, -0.16, 0.04)],
+    ['AR01_SightSocket', new pc.Vec3(0, 0.22, -0.02)]
+  ];
+  for (const [name, position] of sockets) {
+    const socket = new pc.Entity(name);
+    socket.setLocalPosition(position);
+    weapon.addChild(socket);
+  }
 
   const muzzleFlash = part(weapon, 'muzzle-flash', 'sphere', new pc.Vec3(0, 0.015, -0.78), new pc.Vec3(0.16, 0.16, 0.28), orange);
   muzzleFlash.enabled = false;
@@ -115,10 +158,55 @@ export function createPlayer(app: pc.Application): PlayerRig {
   let hitTime = 0;
   const magazineRest = magazine.getLocalPosition().clone();
   const magazineBaseRest = magazineBase.getLocalPosition().clone();
+  const chargingHandle = weapon.findByName('charging-handle') as pc.Entity;
+  const magazineRotation = magazine.getLocalEulerAngles().clone();
+  const weaponRestRotation = new pc.Vec3(0, 0, 0);
+  // Optional production GLB: keep the procedural blockout until a valid asset is present.
+  app.assets.loadFromUrl('/assets/tsi/TSI-WPN-AR-01.glb', 'container', (error, asset) => {
+    if (error || !asset?.resource) {
+      console.info('TSI-WPN-AR-01 GLB absent; keeping procedural weapon blockout.');
+      return;
+    }
+    const model = asset.resource.instantiateRenderEntity({ castShadows: true, receiveShadows: true });
+    model.name = 'tsi-ar-01-authored-glb';
+    model.setLocalPosition(0, 0, 0);
+    model.setLocalEulerAngles(0, 0, 0);
+    model.setLocalScale(1, 1, 1);
+    weapon.addChild(model);
+    // Only hide primitive render components after the authored GLB is instantiated.
+    const hideBlockout = (entity: pc.Entity): void => {
+      if (entity !== model && entity.render) entity.render.enabled = false;
+      entity.children.forEach((child) => {
+        if (child !== model) hideBlockout(child);
+      });
+    };
+    weapon.children.forEach((child) => {
+      if (child !== model && child.name !== 'AR01_MuzzleFlashSocket' &&
+          child.name !== 'AR01_LeftHandGrip' && child.name !== 'AR01_RightHandGrip' &&
+          child.name !== 'AR01_EjectSocket' && child.name !== 'AR01_MagazineSocket' &&
+          child.name !== 'AR01_SightSocket' && child.name !== 'muzzle-flash') hideBlockout(child);
+    });
+    console.info('TSI-WPN-AR-01 authored GLB loaded. Confirm scale, orientation and socket alignment in G1.');
+  });
 
   return {
     root,
     weapon,
+    setCameraMode(cameraEntity, firstPerson) {
+      firstPersonView = firstPerson;
+      if (firstPerson) {
+        cameraEntity.addChild(weapon);
+        cameraEntity.addChild(firstPersonArms);
+        firstPersonArms.enabled = true;
+        weapon.setLocalPosition(weaponFpsRest);
+        weapon.setLocalEulerAngles(-1.5, -2.5, 0);
+      } else {
+        root.addChild(weapon);
+        firstPersonArms.enabled = false;
+        weapon.setLocalPosition(weaponRest);
+        weapon.setLocalEulerAngles(weaponRestRotation);
+      }
+    },
     triggerShot() {
       muzzleTimer = 0.055;
       recoil = 1;
@@ -135,9 +223,22 @@ export function createPlayer(app: pc.Application): PlayerRig {
       reloadTime = Math.max(0, reloadTime - deltaTime);
       hitTime = Math.max(0, hitTime - deltaTime);
       const reloadProgress = reloadTime > 0 ? 1 - reloadTime / 1.25 : 0;
-      const reloadDip = reloadTime > 0 ? Math.sin(Math.min(1, reloadProgress * 1.7) * Math.PI) : 0;
-      magazine.setLocalPosition(magazineRest.x, magazineRest.y - reloadDip * 0.22, magazineRest.z);
-      magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y - reloadDip * 0.22, magazineBaseRest.z);
+      // Three readable reload beats: lower/remove, seat, then settle. This is a
+      // procedural placeholder until authored AR01_Reload animation data exists.
+      const remove = Math.sin(Math.min(1, reloadProgress / 0.42) * Math.PI * 0.5);
+      const insert = reloadProgress >= 0.58
+        ? Math.sin(Math.min(1, (reloadProgress - 0.58) / 0.28) * Math.PI * 0.5) : 0;
+      const magazineOffset = reloadProgress < 0.42
+        ? -remove * 0.28
+        : reloadProgress < 0.58 ? -0.28 : -0.28 * (1 - insert);
+      magazine.enabled = !(reloadProgress >= 0.42 && reloadProgress < 0.58);
+      magazineBase.enabled = magazine.enabled;
+      magazine.setLocalPosition(magazineRest.x, magazineRest.y + magazineOffset, magazineRest.z);
+      magazineBase.setLocalPosition(magazineBaseRest.x, magazineBaseRest.y + magazineOffset, magazineBaseRest.z);
+      const magazineTilt = reloadProgress < 0.42 ? remove : reloadProgress < 0.58 ? 1 : 1 - insert;
+      magazine.setLocalEulerAngles(magazineRotation.x + magazineTilt * 12, magazineRotation.y, magazineRotation.z);
+      magazineBase.setLocalEulerAngles(magazineTilt * 12, 0, 0);
+      if (chargingHandle) chargingHandle.setLocalPosition(0.095, 0.085, 0.105 + (reloadTime > 0 && reloadProgress > 0.84 ? 0.045 : 0));
       const rate = sprinting ? 13.5 : 9.5;
       const amplitude = moving ? (sprinting ? 0.48 : 0.3) : 0.025;
       const swing = Math.sin(animationTime * rate) * amplitude;
@@ -147,7 +248,14 @@ export function createPlayer(app: pc.Application): PlayerRig {
       armLeft.setLocalEulerAngles(-swing * 13 - hitFlinch * 18, 0, -5);
       armRight.setLocalEulerAngles(swing * 13 - hitFlinch * 18, 0, 5);
       const bob = moving ? Math.abs(Math.sin(animationTime * rate)) * (sprinting ? 0.055 : 0.032) : Math.sin(animationTime * 1.8) * 0.008;
-      weapon.setLocalPosition(weaponRest.x, weaponRest.y + bob, weaponRest.z + recoil * 0.075);
+      const rest = firstPersonView ? weaponFpsRest : weaponRest;
+      weapon.setLocalPosition(rest.x, rest.y + bob * (firstPersonView ? 0.55 : 1), rest.z + recoil * (firstPersonView ? 0.11 : 0.075));
+      weapon.setLocalEulerAngles(
+        (firstPersonView ? -1.5 : 0) - recoil * (firstPersonView ? 3.2 : 1.8),
+        firstPersonView ? -2.5 : 0,
+        Math.sin(animationTime * rate) * (moving ? (firstPersonView ? 0.8 : 1.25) : 0.12)
+      );
+      firstPersonArms.setLocalPosition(0, moving ? bob * 0.45 : 0, 0);
       recoil = Math.max(0, recoil - deltaTime * 7.5);
       muzzleTimer = Math.max(0, muzzleTimer - deltaTime);
       if (muzzleTimer === 0) muzzleFlash.enabled = false;

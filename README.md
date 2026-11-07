@@ -8,6 +8,8 @@ TSI est un projet original de shooter compétitif mobile-first. Le dépôt réun
 - [TDD TSI V1](docs/TDD_TSI_V1.md) — architecture technique, réseau, données, sécurité et qualité.
 - [ADR-001](docs/adr/ADR-001-backend-media-hosting.md) — Firebase, Firestore, Cloudinary et exclusion de Render.
 - [ADR-002](docs/adr/ADR-002-playcanvas-colyseus.md) — PlayCanvas pour le prototype et Colyseus comme serveur candidat.
+- [ADR-003](docs/adr/ADR-003-single-active-runtime.md) — désignation du runtime unique et gel des anciens dossiers.
+- [Direction artistique officielle](docs/ART_DIRECTION_TSI.md) — réalisme militaire, caméras FPS/TPS, pipeline d'assets et critères graphiques Android.
 - [backend/firebase/README.md](backend/firebase/README.md) — émulateur Firebase et tests des règles Firestore.
 - `prototype/` — terrain d'entraînement PlayCanvas et client Colyseus optionnel.
 - `backend/realtime/` — room Colyseus locale avec déplacement, tirs sur cibles et première boucle PvP FFA (dégâts, élimination et réapparition) validés côté serveur.
@@ -64,6 +66,7 @@ Les deux clients doivent utiliser le même serveur local. Les déplacements et t
 
 - **W / A / S / D** ou **Z / Q / S / D** : déplacement
 - **Souris** : caméra (cliquer sur le terrain pour activer le verrouillage du pointeur)
+- **V** : basculer entre les caméras FPS et TPS
 - **Clic gauche** : tir
 - **Maj** ou **Espace** : sprint
 - **R** : rechargement
@@ -124,11 +127,13 @@ Ces fichiers structurent les références de contenu ; les sons, modèles et eff
 
 ## Architecture retenue
 
-Le chemin actif du prototype est `prototype/` + `backend/realtime/`. Les anciens dossiers `game-client/` et `server/` ne doivent pas recevoir de nouvelles fonctionnalités : leur workflow CI dédié a été retiré de cette branche pour éviter de valider deux architectures concurrentes. Les fonctions encore utiles de ces branches doivent être portées vers l'architecture active avant toute fusion.
+Le chemin officiel et unique est `prototype/` + `backend/realtime/`, avec `backend/firebase/` pour l'authentification et les règles de données. Les anciens dossiers `game-client/` et `server/` sont archivés en lecture seule ; ils ne doivent plus recevoir de nouvelles fonctionnalités. Voir [ADR-003](docs/adr/ADR-003-single-active-runtime.md).
+
+Après avoir installé les dépendances dans les trois paquets actifs (`prototype`, `backend/realtime` et `backend/firebase`), exécuter `npm run validate:active` à la racine pour lancer le typecheck/build du client, les tests et le build du serveur, puis les tests Firestore.
 
 ## Prochaines étapes
 
-1. Obtenir une installation npm reproductible et valider les builds du client et du serveur.
+1. Ajouter et vérifier les lockfiles npm des trois paquets actifs, puis passer la CI à `npm ci`.
 2. Vérifier la scène et les commandes sur de vrais appareils Android et iOS.
 3. Ajouter équipes, manches, résultats persistants et tests multi-clients au combat autoritaire.
 4. Finaliser l'initialisation des profils et l'écriture idempotente des résultats dans Firestore.
