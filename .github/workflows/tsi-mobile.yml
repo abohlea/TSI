@@ -1,0 +1,16 @@
+name: TSI mobile checks
+on:
+  push:
+    branches: [app/tsi-messaging-foundation]
+  pull_request:
+    branches: [main]
+jobs:
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - run: npm run typecheck
