@@ -36,8 +36,18 @@ service cloud.firestore {
         allow read: if isConversationMember(conversationId);
         allow create: if isConversationMember(conversationId)
           && request.resource.data.senderId == request.auth.uid
-          && request.resource.data.text is string
-          && request.resource.data.text.size() <= 10000;
+          && request.resource.data.type in ["text", "image", "video", "file", "audio"]
+          && (
+            (request.resource.data.type == "text"
+              && request.resource.data.text is string
+              && request.resource.data.text.size() > 0
+              && request.resource.data.text.size() <= 10000)
+            ||
+            (request.resource.data.type in ["image", "video", "file", "audio"]
+              && request.resource.data.text == ""
+              && request.resource.data.mediaUrl is string
+              && request.resource.data.mediaUrl.matches("https://.*"))
+          );
         allow update, delete: if false;
       }
     }
