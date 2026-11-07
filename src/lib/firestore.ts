@@ -138,6 +138,33 @@ export async function createConversation(
   return conversation.id;
 }
 
+export async function sendMediaMessage(
+  conversationId: string,
+  senderId: string,
+  media: { url: string; type: "image" | "video" | "file" | "audio"; name?: string }
+): Promise<string> {
+  if (!media.url.startsWith("https://")) {
+    throw new Error("Le fichier doit disposer d'une URL HTTPS sécurisée.");
+  }
+  const db = database();
+  const messageRef = await addDoc(
+    collection(db, "conversations", conversationId, "messages"),
+    {
+      senderId,
+      text: "",
+      type: media.type,
+      mediaUrl: media.url,
+      ...(media.name ? { mediaName: media.name } : {}),
+      createdAt: serverTimestamp(),
+    }
+  );
+  await updateDoc(doc(db, "conversations", conversationId), {
+    lastMessage: media.type === "image" ? "📷 Photo" : media.type === "video" ? "🎥 Vidéo" : media.type === "audio" ? "🎵 Audio" : "📎 Fichier",
+    lastMessageAt: serverTimestamp(),
+  });
+  return messageRef.id;
+}
+
 export async function sendTextMessage(
   conversationId: string,
   senderId: string,
