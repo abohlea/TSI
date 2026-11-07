@@ -1,48 +1,133 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "expo-router";
-import { View, Text, TextInput, Pressable, FlatList, Image, StyleSheet, Platform } from "react-native";
+import { View, Text, TextInput, Pressable, FlatList, StyleSheet, Platform, ActivityIndicator } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Search, Plus, MessageCircle, Phone, Users, CircleDot, Settings, Check, CheckCheck, Camera, SlidersHorizontal } from "lucide-react-native";
+import { Search, Plus, MessageCircle, Phone, Users, CircleDot, Settings, CheckCheck, Camera, SlidersHorizontal } from "lucide-react-native";
+import type { User } from "firebase/auth";
+import { observeAuth } from "../src/lib/auth";
+import { listenToConversations, listenToProfile, type TsiConversation, type TsiProfile } from "../src/lib/firestore";
 
-type Chat = { id:string; name:string; message:string; time:string; unread:number; online?:boolean; group?:boolean; color:string; initials:string; sent?:boolean; read?:boolean };
-const CHATS:Chat[] = [
- {id:"1",name:"Aïcha Koné",message:"Tu as reçu les photos ? 😍",time:"10:42",unread:2,online:true,color:"#F5D8CB",initials:"AK",read:true},
- {id:"2",name:"Équipe TSI",message:"Moussa : On se retrouve à 18h",time:"09:58",unread:5,group:true,color:"#DCE7FF",initials:"TS"},
- {id:"3",name:"Maman ❤️",message:"D'accord mon enfant, merci.",time:"Hier",unread:0,color:"#F3E4B9",initials:"M",read:true},
- {id:"4",name:"Yannick",message:"Appel vocal manqué",time:"Hier",unread:0,color:"#D8EDE3",initials:"Y"},
- {id:"5",name:"Les amis du quartier",message:"Vous : Je suis en route",time:"Hier",unread:0,group:true,color:"#E8DDF7",initials:"AQ",sent:true,read:true},
- {id:"6",name:"Fatou Traoré",message:"Merci beaucoup !",time:"Mar.",unread:0,color:"#F6DCE7",initials:"FT",read:true},
- {id:"7",name:"Kader",message:"😂😂😂",time:"Lun.",unread:0,color:"#D9EAF2",initials:"K"}
-];
-const STORIES = [{name:"Votre statut",initials:"+",color:"#DCE5F5",add:true},{name:"Aïcha",initials:"AK",color:"#F5D8CB"},{name:"Moussa",initials:"M",color:"#DCE7FF"},{name:"Fatou",initials:"FT",color:"#F6DCE7"},{name:"Yannick",initials:"Y",color:"#D8EDE3"}];
+type Chat = { id: string; name: string; message: string; time: string; unread: number; group: boolean; color: string; initials: string; sent?: boolean };
+const AVATAR_COLORS = ["#F5D8CB", "#DCE7FF", "#F3E4B9", "#D8EDE3", "#E8DDF7", "#F6DCE7", "#D9EAF2"];
+
+function initials(name: string) {
+  return name.trim().split(/\\s+/).slice(0, 2).map((part) => part[0]?.toUpperCase() ?? "").join("") || "T";
+}
+
+function formatConversationTime(value: unknown) {
+  if (!value || typeof value !== "object" || !("toDate" in value) || typeof value.toDate !== "function") return "";
+  const date = value.toDate();
+  const now = new Date();
+  if (date.toDateString() === now.toDateString()) return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return "Hier";
+  return date.toLocaleDateString([], { day: "2-digit", month: "2-digit" });
+}
 
 export default function HomeScreen() {
  const router = useRouter();
  const [tab,setTab]=useState("Messages");
  const [query,setQuery]=useState("");
  const [filter,setFilter]=useState("Tous");
- const [selected,setSelected]=useState("1");
- const filtered=useMemo(()=>CHATS.filter(c=>(c.name.toLowerCase().includes(query.toLowerCase())||c.message.toLowerCase().includes(query.toLowerCase()))&&(filter==="Tous"||(filter==="Non lus"&&c.unread>0)||(filter==="Groupes"&&c.group))),[query,filter]);
+ const [selected,setSelected]=useState("");
+ const [user,setUser]=useState<User|null>(null);
+ const [conversations,setConversations]=useState<TsiConversation[]>([]);
+ const [profiles,setProfiles]=useState<Record<string,TsiProfile>>({});
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState("");
+
+ useEffect(() => {
+   let stopConversations: (() => void) | undefined;
+   let profileStops: Record<string, () => void> = {};
+   let active = true;
+   let stopAuth: (() => void) | undefined;
+   try {
+     stopAuth = observeAuth((currentUser) => {
+       if (!active) return;
+       setUser(currentUser);
+       stopConversations?.();
+       Object.values(profileStops).forEach((stop) => stop());
+       profileStops = {};
+       setConversations([]);
+       setProfiles({});
+       if (!currentUser) { setLoading(false); return; }
+       setLoading(true);
+       setError("");
+       stopConversations = listenToConversations(currentUser.uid, (items) => {
+         if (!active) return;
+         setConversations(items);
+         setLoading(false);
+         const memberIds = [...new Set(items.flatMap((item) => item.memberIds).filter((id) => id !== currentUser.uid))];
+         for (const uid of memberIds) {
+           if (!profileStops[uid]) {
+             profileStops[uid] = listenToProfile(uid, (profile) => {
+               if (!active) return;
+               setProfiles((current) => {
+                 if (!profile) return current;
+                 return { ...current, [uid]: profile };
+               });
+             }, () => setError("Impossible de charger certains profils."));
+           }
+         }
+         for (const uid of Object.keys(profileStops)) {
+           if (!memberIds.includes(uid)) {
+             profileStops[uid]();
+             delete profileStops[uid];
+             setProfiles((current) => { const next = { ...current }; delete next[uid]; return next; });
+           }
+         }
+       }, () => { if (active) { setError("Impossible de synchroniser les conversations. Vérifiez les règles Firestore."); setLoading(false); } });
+     });
+   } catch {
+     setError("Firebase n'est pas configuré. Ajoutez les clés du projet dans le fichier .env.");
+     setLoading(false);
+   }
+   return () => {
+     active = false;
+     stopAuth?.();
+     stopConversations?.();
+     Object.values(profileStops).forEach((stop) => stop());
+   };
+ }, []);
+
+ const chats = useMemo<Chat[]>(() => conversations.map((conversation, index) => {
+   const otherIds = conversation.memberIds.filter((id) => id !== user?.uid);
+   const otherProfiles = otherIds.map((id) => profiles[id]).filter(Boolean);
+   const isGroup = conversation.memberIds.length > 2;
+   const name = conversation.title || (isGroup ? otherProfiles.map((p) => p.displayName).slice(0, 3).join(", ") : otherProfiles[0]?.displayName) || "Nouvelle conversation";
+   return {
+     id: conversation.id,
+     name,
+     message: conversation.lastMessage || "Démarrer la conversation",
+     time: formatConversationTime(conversation.lastMessageAt),
+     unread: 0,
+     group: isGroup,
+     color: AVATAR_COLORS[index % AVATAR_COLORS.length],
+     initials: initials(name),
+   };
+ }), [conversations, profiles, user?.uid]);
+
+ const filtered=useMemo(()=>chats.filter(c=>(c.name.toLowerCase().includes(query.toLowerCase())||c.message.toLowerCase().includes(query.toLowerCase()))&&(filter==="Tous"||(filter==="Non lus"&&c.unread>0)||(filter==="Groupes"&&c.group))),[chats,query,filter]);
  const tabs=[{label:"Messages",icon:MessageCircle},{label:"Appels",icon:Phone},{label:"Communautés",icon:Users},{label:"Statuts",icon:CircleDot}];
  return <SafeAreaView style={s.safe}>
   <View style={s.header}>
    <View><Text style={s.brand}>tsi<Text style={s.brandDot}>.</Text></Text><Text style={s.subtitle}>Restez proches.</Text></View>
    <View style={s.headerActions}>
     <Pressable style={s.iconButton} onPress={()=>setTab("Statuts")}><Camera size={21} color="#26364C"/></Pressable>
-    <Pressable style={s.avatarMe}><Text style={s.avatarMeText}>K</Text><View style={s.onlineDot}/></Pressable>
+    <Pressable style={s.avatarMe}><Text style={s.avatarMeText}>{initials(user?.displayName || "TS")}</Text><View style={s.onlineDot}/></Pressable>
    </View>
   </View>
-  <View style={s.titleRow}><View><Text style={s.pageTitle}>{tab==="Messages"?"Messages":tab}</Text><Text style={s.pageSub}>{tab==="Messages"?"Vos conversations, au même endroit":"Gardez le lien avec vos proches"}</Text></View><Pressable style={s.newButton}><Plus size={19} color="#FFFFFF"/><Text style={s.newButtonText}>Nouveau</Text></Pressable></View>
+  <View style={s.titleRow}><View><Text style={s.pageTitle}>{tab==="Messages"?"Messages":tab}</Text><Text style={s.pageSub}>{tab==="Messages"?"Vos conversations, au même endroit":"Gardez le lien avec vos proches"}</Text></View><Pressable style={s.newButton} onPress={() => router.push("/new-chat" as never)}><Plus size={19} color="#FFFFFF"/><Text style={s.newButtonText}>Nouveau</Text></Pressable></View>
   <View style={s.search}><Search size={19} color="#8B98A9"/><TextInput value={query} onChangeText={setQuery} placeholder="Rechercher une conversation" placeholderTextColor="#98A3B2" style={s.searchInput}/><SlidersHorizontal size={18} color="#8794A5"/></View>
   <View style={s.filters}>{["Tous","Non lus","Groupes"].map(f=><Pressable key={f} onPress={()=>setFilter(f)} style={[s.filterPill,filter===f&&s.filterActive]}><Text style={[s.filterText,filter===f&&s.filterTextActive]}>{f}</Text></Pressable>)}</View>
-  <View style={s.sectionHead}><Text style={s.sectionTitle}>Statuts récents</Text><Text style={s.seeAll}>Voir tout</Text></View>
-  <View style={s.stories}>{STORIES.map((story,i)=><Pressable key={story.name} style={s.story}><View style={[s.storyRing,story.add&&s.storyRingAdd]}><View style={[s.storyAvatar,{backgroundColor:story.color}]}><Text style={s.storyInitial}>{story.initials}</Text></View>{story.add&&<View style={s.storyPlus}><Plus size={12} color="#FFF"/></View>}</View><Text numberOfLines={1} style={s.storyName}>{story.name}</Text></Pressable>)}</View>
+  <View style={s.sectionHead}><Text style={s.sectionTitle}>Vos échanges</Text><Text style={s.seeAll}>Synchronisés en direct</Text></View>
   <View style={s.listHead}><Text style={s.sectionTitle}>Récents</Text><Text style={s.count}>{filtered.length} discussions</Text></View>
-  <FlatList data={filtered} keyExtractor={item=>item.id} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false} renderItem={({item})=><Pressable onPress={()=>{setSelected(item.id);router.push({pathname:"/chat/[id]",params:{id:item.id,name:item.name}});}} style={[s.chatRow,selected===item.id&&s.chatSelected]}>
-   <View style={[s.chatAvatar,{backgroundColor:item.color}]}><Text style={s.chatInitial}>{item.initials}</Text>{item.online&&<View style={s.chatOnline}/>}</View>
-   <View style={s.chatMain}><View style={s.chatTop}><Text style={s.chatName}>{item.name}</Text><Text style={[s.chatTime,item.unread>0&&s.chatTimeUnread]}>{item.time}</Text></View><View style={s.chatBottom}><View style={s.previewLine}>{item.sent&&<CheckCheck size={15} color="#2A9D83"/>}{item.read&&item.sent!==true&&<CheckCheck size={15} color="#2A9D83"/>}<Text numberOfLines={1} style={[s.chatPreview,item.unread>0&&s.chatPreviewUnread]}>{item.message}</Text></View>{item.unread>0&&<View style={s.unread}><Text style={s.unreadText}>{item.unread}</Text></View>}</View></View>
-  </Pressable>}/>
-  <View style={s.bottomBar}>{tabs.map(t=>{const Icon=t.icon;const active=tab===t.label;return <Pressable key={t.label} onPress={()=>setTab(t.label)} style={s.tab}><View style={[s.tabIcon,active&&s.tabIconActive]}><Icon size={20} color={active?"#FFFFFF":"#8794A5"}/>{t.label==="Messages"&&<View style={s.tabBadge}/>}</View><Text style={[s.tabLabel,active&&s.tabLabelActive]}>{t.label}</Text></Pressable>})}<Pressable onPress={()=>setTab("Paramètres")} style={s.tab}><View style={s.tabIcon}><Settings size={20} color="#8794A5"/></View><Text style={s.tabLabel}>Réglages</Text></Pressable></View>
+  {loading ? <View style={{padding:32,alignItems:"center"}}><ActivityIndicator color="#238C78"/><Text style={{marginTop:10,color:"#8793A3",fontSize:12}}>Chargement des conversations…</Text></View> : error ? <View style={{padding:20,backgroundColor:"#FFF1F0",borderRadius:14}}><Text style={{color:"#A13D36",fontSize:12}}>{error}</Text></View> : <FlatList data={filtered} keyExtractor={item=>item.id} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false} ListEmptyComponent={<View style={{padding:28,alignItems:"center"}}><MessageCircle size={28} color="#9AA5B2"/><Text style={{marginTop:10,color:"#526276",fontSize:13,fontWeight:"700"}}>{query ? "Aucun résultat" : "Aucune conversation pour le moment"}</Text><Text style={{marginTop:5,color:"#98A3B0",fontSize:11,textAlign:"center"}}>Appuyez sur « Nouveau » pour commencer à discuter.</Text></View>} renderItem={({item})=><Pressable onPress={()=>{setSelected(item.id);router.push({pathname:"/chat/[id]",params:{id:item.id,name:item.name}});}} style={[s.chatRow,selected===item.id&&s.chatSelected]}>
+   <View style={[s.chatAvatar,{backgroundColor:item.color}]}><Text style={s.chatInitial}>{item.initials}</Text></View>
+   <View style={s.chatMain}><View style={s.chatTop}><Text style={s.chatName}>{item.name}</Text><Text style={s.chatTime}>{item.time}</Text></View><View style={s.chatBottom}><View style={s.previewLine}><Text numberOfLines={1} style={s.chatPreview}>{item.message}</Text></View></View></View>
+  </Pressable>}/>}
+  <View style={s.bottomBar}>{tabs.map(t=>{const Icon=t.icon;const active=tab===t.label;return <Pressable key={t.label} onPress={()=>setTab(t.label)} style={s.tab}><View style={[s.tabIcon,active&&s.tabIconActive]}><Icon size={20} color={active?"#FFFFFF":"#8794A5"}/></View><Text style={[s.tabLabel,active&&s.tabLabelActive]}>{t.label}</Text></Pressable>})}<Pressable onPress={()=>setTab("Paramètres")} style={s.tab}><View style={s.tabIcon}><Settings size={20} color="#8794A5"/></View><Text style={s.tabLabel}>Réglages</Text></Pressable></View>
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
