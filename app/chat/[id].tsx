@@ -1,21 +1,26 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { View, Text, TextInput, Pressable, FlatList, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { ArrowLeft, Phone, Video, MoreVertical, Paperclip, Camera, Mic, Send, CheckCheck } from "lucide-react-native";
+import { observeAuth } from "../../src/lib/auth";
+import { listenToMessages, sendTextMessage, type TsiMessage } from "../../src/lib/firestore";
 
 type Message={id:string;text:string;time:string;mine:boolean};
 export default function ConversationScreen(){
  const router=useRouter();const params=useLocalSearchParams<{id:string;name:string}>();
  const name=params.name||"Conversation";
  const [draft,setDraft]=useState("");
- const [messages,setMessages]=useState<Message[]>([
-  {id:"m1",text:"Salut ! Tu vas bien ?",time:"10:35",mine:false},
-  {id:"m2",text:"Très bien merci 😊 Et toi ?",time:"10:37",mine:true},
-  {id:"m3",text:"Ça va super. Tu es disponible cet après-midi ?",time:"10:40",mine:false},
-  {id:"m4",text:"Oui, on peut s'appeler vers 16h.",time:"10:42",mine:true}
- ]);
- const send=()=>{const text=draft.trim();if(!text)return;setMessages(v=>[...v,{id:String(Date.now()),text,time:new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}),mine:true}]);setDraft("");};
+ const [uid,setUid]=useState("");
+ const [messages,setMessages]=useState<Message[]>([]);
+ const [sending,setSending]=useState(false);
+ const [sendError,setSendError]=useState("");
+ useEffect(()=>observeAuth(user=>setUid(user?.uid||"")),[]);
+ useEffect(()=>{
+  if(!params.id||!uid)return;
+  return listenToMessages(params.id,(items:TsiMessage[])=>setMessages(items.map(item=>({id:item.id,text:item.text||"",time:item.createdAt&&typeof (item.createdAt as {toDate?:()=>Date}).toDate==="function"?(item.createdAt as {toDate:()=>Date}).toDate().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}):"",mine:item.senderId===uid}))),error=>setSendError(error.message));
+ },[params.id,uid]);
+ const send=async()=>{const text=draft.trim();if(!text||!uid||sending)return;setSending(true);setSendError("");try{await sendTextMessage(params.id,uid,text);setDraft("");}catch(e){setSendError(e instanceof Error?e.message:"Envoi impossible.");}finally{setSending(false);}};
  return <SafeAreaView style={s.safe}><View style={s.header}>
   <Pressable onPress={()=>router.back()} style={s.back}><ArrowLeft size={22} color="#18334C"/></Pressable>
   <View style={s.avatar}><Text style={s.avatarText}>{name.slice(0,1).toUpperCase()}</Text><View style={s.online}/></View>
@@ -26,7 +31,7 @@ export default function ConversationScreen(){
  <FlatList data={messages} keyExtractor={m=>m.id} contentContainerStyle={s.messages} showsVerticalScrollIndicator={false} renderItem={({item})=><View style={[s.bubble,item.mine?s.mine:s.theirs]}><Text style={[s.message,item.mine&&s.mineText]}>{item.text}</Text><View style={s.meta}><Text style={[s.time,item.mine&&s.mineTime]}>{item.time}</Text>{item.mine&&<CheckCheck size={14} color="#BFE7DB"/>}</View></View>}/>
  <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined}><View style={s.composer}>
   <Pressable style={s.attach}><Paperclip size={21} color="#718094"/></Pressable><TextInput value={draft} onChangeText={setDraft} placeholder="Écrire un message…" placeholderTextColor="#9AA5B2" style={s.input} multiline maxLength={2000}/>
-  {draft.trim()?<Pressable onPress={send} style={s.send}><Send size={18} color="#FFF"/></Pressable>:<><Pressable style={s.attach}><Camera size={20} color="#718094"/></Pressable><Pressable style={s.send}><Mic size={19} color="#FFF"/></Pressable></>}
+  {draft.trim()?<Pressable onPress={send} disabled={sending} style={s.send}><Send size={18} color="#FFF"/></Pressable>:<><Pressable style={s.attach}><Camera size={20} color="#718094"/></Pressable><Pressable style={s.send}><Mic size={19} color="#FFF"/></Pressable></>}
  </View></KeyboardAvoidingView>
  </SafeAreaView>;
 }
