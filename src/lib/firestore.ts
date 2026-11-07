@@ -132,6 +132,18 @@ export async function createConversation(
     throw new Error("Une conversation doit avoir entre 2 et 100 membres.");
   }
   const db = database();
+  if (uniqueMembers.length === 2) {
+    const existingQuery = query(
+      collection(db, "conversations"),
+      where("memberIds", "array-contains", uniqueMembers[0])
+    );
+    const existing = await getDocs(existingQuery);
+    const match = existing.docs.find((item) => {
+      const members = (item.data().memberIds as string[] | undefined) ?? [];
+      return members.length === 2 && uniqueMembers.every((uid) => members.includes(uid));
+    });
+    if (match) return match.id;
+  }
   const conversation = await addDoc(collection(db, "conversations"), {
     memberIds: uniqueMembers,
     ...(title ? { title } : {}),
