@@ -32,6 +32,97 @@ function material(color: pc.Color, options: { metalness?: number; roughness?: nu
   return result;
 }
 
+function makeSurfaceTexture(app: pc.Application, kind: 'ground' | 'concrete'): pc.Texture {
+  // The repository currently contains no imported texture assets. Generate a
+  // compact, deterministic albedo atlas so large surfaces are not flat colour.
+  const size = 512;
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  if (!context) throw new Error('2D canvas context unavailable for arena materials');
+
+  const ground = kind === 'ground';
+  context.fillStyle = ground ? '#55564d' : '#777a76';
+  context.fillRect(0, 0, size, size);
+
+  let seed = ground ? 7319 : 19427;
+  const random = (): number => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+
+  // Broad stains break up the uniform base before fine surface grain is added.
+  for (let i = 0; i < 95; i += 1) {
+    const x = random() * size;
+    const y = random() * size;
+    const radius = (ground ? 9 : 18) + random() * (ground ? 34 : 48);
+    const shade = Math.floor(random() * 28) - 14;
+    context.fillStyle = ground
+      ? `rgba(${shade < 0 ? 10 : 190},${shade < 0 ? 12 : 185},${shade < 0 ? 11 : 170},0.035)`
+      : `rgba(${shade < 0 ? 20 : 230},${shade < 0 ? 22 : 225},${shade < 0 ? 22 : 215},0.045)`;
+    context.beginPath();
+    context.ellipse(x, y, radius, radius * (0.35 + random() * 0.8), random() * Math.PI, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  // Fine aggregate / concrete pores. Kept subtle to avoid noisy mobile rendering.
+  for (let i = 0; i < 12500; i += 1) {
+    const x = random() * size;
+    const y = random() * size;
+    const radius = ground ? 0.35 + random() * 1.1 : 0.25 + random() * 0.8;
+    const light = random() > 0.52;
+    const alpha = 0.08 + random() * 0.16;
+    context.fillStyle = ground
+      ? (light ? `rgba(190,184,160,${alpha})` : `rgba(12,15,14,${alpha})`)
+      : (light ? `rgba(225,224,213,${alpha})` : `rgba(25,29,28,${alpha})`);
+    context.beginPath();
+    context.arc(x, y, radius, 0, Math.PI * 2);
+    context.fill();
+  }
+
+  if (ground) {
+    // Faint tyre scuffs, not graphic stripes: they give the lane a used surface.
+    context.save();
+    context.translate(250, 250);
+    context.rotate(-0.22);
+    for (let i = 0; i < 7; i += 1) {
+      context.strokeStyle = `rgba(18,20,18,${0.035 + random() * 0.025})`;
+      context.lineWidth = 2 + random() * 3;
+      context.beginPath();
+      context.moveTo(-300 + i * 13, -250);
+      context.bezierCurveTo(-270 + i * 12, -80, -220 + i * 15, 95, -190 + i * 17, 290);
+      context.stroke();
+    }
+    context.restore();
+  } else {
+    // Hairline wear marks and shallow casting variation on concrete.
+    for (let i = 0; i < 22; i += 1) {
+      const x = random() * size;
+      const y = random() * size;
+      context.strokeStyle = `rgba(30,34,32,${0.07 + random() * 0.08})`;
+      context.lineWidth = 0.5 + random() * 1.2;
+      context.beginPath();
+      context.moveTo(x, y);
+      context.lineTo(x + (random() - 0.5) * 22, y + 8 + random() * 34);
+      context.stroke();
+    }
+  }
+
+  const texture = new pc.Texture(app.graphicsDevice, {
+    width: size,
+    height: size,
+    format: pc.PIXELFORMAT_R8_G8_B8_A8,
+    mipmaps: true
+  });
+  texture.setSource(canvas);
+  texture.addressU = pc.ADDRESS_REPEAT;
+  texture.addressV = pc.ADDRESS_REPEAT;
+  texture.minFilter = pc.FILTER_LINEAR_MIPMAP_LINEAR;
+  texture.magFilter = pc.FILTER_LINEAR;
+  return texture;
+}
+
 function primitive(
   parent: pc.Entity,
   name: string,
@@ -68,6 +159,12 @@ export function createArena(app: pc.Application): ArenaApi {
   const timber = material(new pc.Color(0.24, 0.16, 0.095), { roughness: 0.96 });
   const sandbag = material(new pc.Color(0.43, 0.39, 0.27), { roughness: 0.99 });
   const hazard = material(new pc.Color(0.78, 0.31, 0.07), { roughness: 0.78 });
+  ground.diffuseMap = makeSurfaceTexture(app, 'ground');
+  ground.diffuseMapTiling = new pc.Vec2(10, 10);
+  ground.update();
+  concrete.diffuseMap = makeSurfaceTexture(app, 'concrete');
+  concrete.diffuseMapTiling = new pc.Vec2(3.5, 3.5);
+  concrete.update();
 
   primitive(app.root, 'training-ground', 'box', new pc.Vec3(0, -0.35, -2), new pc.Vec3(110, 0.7, 110), ground);
   primitive(app.root, 'central-lane', 'box', new pc.Vec3(0, 0.012, -18), new pc.Vec3(16, 0.025, 58), lane);
