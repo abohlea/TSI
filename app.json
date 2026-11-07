@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "TSI",
+    "slug": "tsi-messaging",
+    "scheme": "tsi",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.tsi.messenger"
+    },
+    "android": {
+      "package": "com.tsi.messenger",
+      "adaptiveIcon": {
+        "backgroundColor": "#101B2D"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}
