@@ -74,3 +74,17 @@ blender --background --python tools/art/validate_character_glb.py -- character-r
 ```
 
 Le rapport structurel ne mesure pas la qualité des edge loops, la silhouette, le volume musculaire, les déformations en pose extrême ou la qualité visuelle des textures. Ces points restent une revue Blender/PlayCanvas.
+
+
+## Smoke test de déformation du skinning
+
+Après le contrôle structurel, exécuter le test de déformation automatisé :
+
+```bash
+blender --background --python tools/art/validate_character_deformation.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-proxy.glb --report-json work/TSI001-deformation-qa.json
+blender --background --python tools/art/validate_character_deformation.py -- prototype/public/assets/tsi/TSI-CHAR-001-operator-lod-mobile.glb --report-json work/TSI001-mobile-deformation-qa.json
+```
+
+Le script importe le GLB, remet le rig au repos entre chaque cas et teste des rotations isolées des épaules, coudes, poignets, hanches, genoux et index. Il mesure la proportion de sommets déplacés, le déplacement maximal et les dimensions de la boîte englobante évaluée. Les cas sans os requis sont indiqués comme ignorés ; une déformation sans mouvement mesurable ou une géométrie évaluée non finie/effondrée fait échouer le test.
+
+**Portée du test :** c'est un smoke test de liaison et de réponse du skinning, pas une validation anatomique. Il ne détecte pas de façon fiable les pincements, intersections d'armure, volumes qui glissent, mauvaise orientation des articulations, qualité des edge loops ni la prise correcte de l'AR-01. Les poses doivent toujours être inspectées visuellement dans Blender, puis dans PlayCanvas en FPS et TPS. Les seuils de mouvement sont des garde-fous techniques initiaux, à ajuster sur un modèle réellement généré.
