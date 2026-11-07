@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useRouter } from "expo-router";
 import { View, Text, TextInput, Pressable, FlatList, Image, StyleSheet, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Search, Plus, MessageCircle, Phone, Users, CircleDot, Settings, Check, CheckCheck, Camera, SlidersHorizontal } from "lucide-react-native";
@@ -16,6 +17,7 @@ const CHATS:Chat[] = [
 const STORIES = [{name:"Votre statut",initials:"+",color:"#DCE5F5",add:true},{name:"Aïcha",initials:"AK",color:"#F5D8CB"},{name:"Moussa",initials:"M",color:"#DCE7FF"},{name:"Fatou",initials:"FT",color:"#F6DCE7"},{name:"Yannick",initials:"Y",color:"#D8EDE3"}];
 
 export default function HomeScreen() {
+ const router = useRouter();
  const [tab,setTab]=useState("Messages");
  const [query,setQuery]=useState("");
  const [filter,setFilter]=useState("Tous");
@@ -36,7 +38,7 @@ export default function HomeScreen() {
   <View style={s.sectionHead}><Text style={s.sectionTitle}>Statuts récents</Text><Text style={s.seeAll}>Voir tout</Text></View>
   <View style={s.stories}>{STORIES.map((story,i)=><Pressable key={story.name} style={s.story}><View style={[s.storyRing,story.add&&s.storyRingAdd]}><View style={[s.storyAvatar,{backgroundColor:story.color}]}><Text style={s.storyInitial}>{story.initials}</Text></View>{story.add&&<View style={s.storyPlus}><Plus size={12} color="#FFF"/></View>}</View><Text numberOfLines={1} style={s.storyName}>{story.name}</Text></Pressable>)}</View>
   <View style={s.listHead}><Text style={s.sectionTitle}>Récents</Text><Text style={s.count}>{filtered.length} discussions</Text></View>
-  <FlatList data={filtered} keyExtractor={item=>item.id} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false} renderItem={({item})=><Pressable onPress={()=>setSelected(item.id)} style={[s.chatRow,selected===item.id&&s.chatSelected]}>
+  <FlatList data={filtered} keyExtractor={item=>item.id} contentContainerStyle={s.listContent} showsVerticalScrollIndicator={false} renderItem={({item})=><Pressable onPress={()=>{setSelected(item.id);router.push({pathname:"/chat/[id]",params:{id:item.id,name:item.name}});}} style={[s.chatRow,selected===item.id&&s.chatSelected]}>
    <View style={[s.chatAvatar,{backgroundColor:item.color}]}><Text style={s.chatInitial}>{item.initials}</Text>{item.online&&<View style={s.chatOnline}/>}</View>
    <View style={s.chatMain}><View style={s.chatTop}><Text style={s.chatName}>{item.name}</Text><Text style={[s.chatTime,item.unread>0&&s.chatTimeUnread]}>{item.time}</Text></View><View style={s.chatBottom}><View style={s.previewLine}>{item.sent&&<CheckCheck size={15} color="#2A9D83"/>}{item.read&&item.sent!==true&&<CheckCheck size={15} color="#2A9D83"/>}<Text numberOfLines={1} style={[s.chatPreview,item.unread>0&&s.chatPreviewUnread]}>{item.message}</Text></View>{item.unread>0&&<View style={s.unread}><Text style={s.unreadText}>{item.unread}</Text></View>}</View></View>
   </Pressable>}/>
