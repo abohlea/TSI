@@ -39,7 +39,6 @@ export async function registerWithEmail(
   await saveProfile({
     uid: credential.user.uid,
     displayName: normalizedName,
-    ...(credential.user.email ? { phoneNumber: undefined } : {}),
   });
   return credential.user;
 }
