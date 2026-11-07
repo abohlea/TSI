@@ -27,7 +27,7 @@ export default function ConversationScreen(){
   <View style={s.person}><Text style={s.name}>{name}</Text><Text style={s.presence}>en ligne</Text></View>
   <Pressable style={s.action}><Phone size={20} color="#24445B"/></Pressable><Pressable style={s.action}><Video size={21} color="#24445B"/></Pressable><Pressable style={s.action}><MoreVertical size={20} color="#24445B"/></Pressable>
  </View>
- <View style={s.encryption}><Text style={s.lock}>🔒</Text><Text style={s.encryptionText}>Vos messages sont privés. Seuls les participants à cette conversation peuvent les lire.</Text></View>
+ <View style={s.encryption}><Text style={s.lock}>ℹ️</Text><Text style={s.encryptionText}>Messages synchronisés avec Firestore. Le chiffrement de bout en bout n’est pas encore disponible.</Text></View>
  <FlatList data={messages} keyExtractor={m=>m.id} contentContainerStyle={s.messages} showsVerticalScrollIndicator={false} renderItem={({item})=><View style={[s.bubble,item.mine?s.mine:s.theirs]}><Text style={[s.message,item.mine&&s.mineText]}>{item.text}</Text><View style={s.meta}><Text style={[s.time,item.mine&&s.mineTime]}>{item.time}</Text>{item.mine&&<CheckCheck size={14} color="#BFE7DB"/>}</View></View>}/>
  <KeyboardAvoidingView behavior={Platform.OS==="ios"?"padding":undefined}><View style={s.composer}>
   <Pressable style={s.attach}><Paperclip size={21} color="#718094"/></Pressable><TextInput value={draft} onChangeText={setDraft} placeholder="Écrire un message…" placeholderTextColor="#9AA5B2" style={s.input} multiline maxLength={2000}/>
